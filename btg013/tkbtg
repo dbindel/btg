@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Tcl/Tk front-end to the btg program
+# Written by David Bindel
+
+# This is a trick to get sh to start wish regardless of where
+# it is located from system to system.
+# \
+exec wish -f "$0" ${1+"$@"}
+
+##############################################################
+# System specific settings
+##############################################################
+
+# These settings should be tailored for your installation
+# Set the btg_program variable to the fully pathed name of the
+#   btg engine program
+# Set the btg_help variable to the fully pathed name of the
+#   btg help file
+
+set btg_program "~/tmp/btg"
+set btg_help "~/tmp/btghelp.txt"
+
+

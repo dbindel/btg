@@ -66,3 +66,25 @@ end
 
 # uniform number generator is not necessary.
 # Use rand(MersenneTwister(), min:max)
+
+struct ParamData
+    lambda::Float64 # Transformation parameter
+    theta::Float64 # Correlation parameters ???
+    # missing cholS, cholY, gz, Bh
+    q::Float64
+    pz::Float64 # kp(z | theta, lambda)
+    M::Float64 # location parameter for transformed t
+    qC::Float64 # scale matrix (1x1) qC ????
+    sigma:: # sigma = sqrt(qC/(n-p)) is scale for transformed t
+end
+
+function ParamCompare(a::ParamData, b::ParamData)
+    """
+    Refer to ParamCompare() function
+
+    Requires a, b to be ParamData at this point
+    """
+    da = a.pz
+    db = b.pz
+    return (da < db) ? -1 : (da > db) ? 1 : 0
+end

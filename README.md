@@ -5,4 +5,4 @@ together with current work on a reimplementation using faster linear algebra
 and incorporating new variance reduction strategies.
 
 Sep 22, 2019:
-Tentative translation. Need further testing and improvement (for docs etc). s
+Tentative translation. Need further testing and improvement (for docs etc). Now stop before constructing Predictor Class (at Predictor::Opt_pz(double * x, int))

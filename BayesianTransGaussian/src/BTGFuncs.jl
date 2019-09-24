@@ -6,6 +6,8 @@ functions used in BTG models.
 """
 module BTGFuncs
 
+using Distributions
+
 export IsotropicCorrelation,
     ExpCorr,
     MaternCorr,
@@ -31,23 +33,23 @@ abstract type IsotropicCorrelation{R<:AbstractFloat} end
 TODO
 """
 struct ExpCorr{R} <: IsotropicCorrelation{R}
-    θ1::R
-    θ2::R
+    θ1::Uniform{R}
+    θ2::Uniform{R}
 end
 
-function (k::ExpCorr)(τ)
-    return k.θ1^(τ^k.θ2)
+function (k::ExpCorr)(θ1, θ2, τ)
+    return θ1^(τ^θ2)
 end
 
 """
 TODO
 """
 struct MaternCorr{R} <: IsotropicCorrelation{R}
-    θ1::R
-    θ2::R
+    θ1::Uniform{R}
+    θ2::Uniform{R}
 end
 
-function (k::MaternCorr)(τ) 
+function (k::MaternCorr)(θ1, θ2, τ) 
     # TODO
     return one(τ)
 end
@@ -56,18 +58,18 @@ end
 TODO
 """
 struct RationalCorr{R} <: IsotropicCorrelation{R}
-    θ1::R
-    θ2::R
+    θ1::Uniform{R}
+    θ2::Uniform{R}
 end
 
-function (k::RationalCorr)(τ)
+function (k::RationalCorr)(θ1, θ2, τ)
     return if τ == zero(τ)
         one(τ)
     else
-        θ1 = -log(k.θ1)
-        θ2 = -log(k.θ2)
-        τ′ = τ / θ1
-        (one(τ′) + τ′^2)^(-θ2)
+        θ1′ = -log(θ1)
+        θ2′ = -log(θ2)
+        τ′ = τ / θ1′
+        (one(τ′) + τ′^2)^(-θ2′)
     end
 end
 
@@ -75,16 +77,16 @@ end
 TODO
 """
 struct SphericalCorr{R} <: IsotropicCorrelation{R}
-    θ::R
+    θ::Uniform{R}
 end
 
-function (k::SphericalCorr)(τ)
+function (k::SphericalCorr)(θ, τ)
     return if τ == zero(τ)
         one(τ)
     else
-        θ = -log(k.θ)
-        if τ <= θ
-            τ′ = τ / θ
+        θ′ = -log(θ)
+        if τ <= θ′
+            τ′ = τ / θ′
             one(τ′) - τ′ * (typeof(τ′, 3) - τ′^2) / typeof(τ′, 2)
         else
             zero(τ)
@@ -105,27 +107,27 @@ abstract type PowerTransform{R<:AbstractFloat} end
 TODO
 """
 struct BoxCox{R} <: PowerTransform{R}
-    λ::R
+    λ::Uniform{R}
 end
 
-function (g::BoxCox)(x)
-    return g.λ == zero(g.λ) ? log(x) : expm1(log(x) * λ) / λ
+function (g::BoxCox)(λ, x)
+    return λ == zero(λ) ? log(x) : expm1(log(x) * λ) / λ
 end
 
 """
 TODO
 """
 struct YeoJohnson{R} <: PowerTransform{R}
-    λ::R
+    λ::Uniform{R}
 end
 
-function (g::YeoJohnson)(x)
-    return if g.λ != zero(g.λ) && x >= zero(x)
-        expm1(g.λ * log1p(x)) / g.λ
-    elseif g.λ == zero(g.λ) && x >= zero(x)
+function (g::YeoJohnson)(λ, x)
+    return if λ != zero(λ) && x >= zero(x)
+        expm1(λ * log1p(x)) / λ
+    elseif λ == zero(λ) && x >= zero(x)
         log1p(x)
-    elseif g.λ != oftype(g.λ, 2) && x < zero(x)
-        -expm1((2 - g.λ) * log1p(-x)) / (2 - g.λ)
+    elseif λ != oftype(λ, 2) && x < zero(x)
+        -expm1((2 - λ) * log1p(-x)) / (2 - λ)
     else
         -log1p(-x)
     end
@@ -144,21 +146,21 @@ abstract type DPowerTransform{R<:AbstractFloat} end
 TODO
 """
 struct DBoxCox{R} <: DPowerTransform{R}
-    λ::R
+    λ::Uniform{R}
 end
 
-function (dg::DBoxCox)(x)
-    return x^(dg.λ - one(x))
+function (dg::DBoxCox)(λ, x)
+    return x^(λ - one(x))
 end
 
 """
 TODO
 """
 struct DYeoJohnson{R} <: PowerTransform{R}
-    λ::R
+    λ::Uniform{R}
 end
 
-function (dg::DYeoJohnson)(x)
+function (dg::DYeoJohnson)(λ, x)
     # TODO
     return one(x)
 end

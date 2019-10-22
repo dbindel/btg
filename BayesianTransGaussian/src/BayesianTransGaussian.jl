@@ -1,5 +1,6 @@
 module BayesianTransGaussian
 
+<<<<<<< HEAD
 include("./Model.jl")
 using .Model
 include("./Funcs.jl")

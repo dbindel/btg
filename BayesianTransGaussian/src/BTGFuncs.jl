@@ -13,6 +13,8 @@ export
     SquaredExponential,
     Transform,
     BoxCox,
+    Covariate,
+    Identity,
     kernelmatrix,
     getparam,
     sampleparam,
@@ -43,16 +45,28 @@ function kernelmatrix(k::IsotropicCorrelation, θ, A, B)
     return k.(θ, pairwise(Euclidean(), A, B, dims=1))
 end
 
+
 """
     SquaredExponential(γ::Uniform)
 
-The squared exponential kernel (aka the Gaussian kernel) with a length scale 
+The squared exponential kernel (aka the Gaussian kernel or the radial basis
+function kernel) with a length scale 
 parameter `γ` given by a continuous uniform distribution.
-    
-    SquaredExponential(Uniform()) # γ is uniform over [0, 1]
-    SquaredExponential(Uniform(a, b)) # γ is uniform over [a, b]
 
-    TODO flesh out docs
+```math
+k_\\theta(\\tau) = \\exp\\Big\\lbrace -\\Big(\\frac{\\tau}{\\theta}\\Big)^2\\Big\\rbrace
+```
+
+```julia    
+SquaredExponential(Uniform()) # γ is uniform over [0, 1]
+SquaredExponential(Uniform(a, b)) # γ is uniform over [a, b]
+
+TODO flesh out docs
+```
+
+External links
+* [RBF Kernel on Wikipedia](https://en.wikipedia.org/wiki/Radial_basis_function_kernel)
+
 """
 struct SquaredExponential <: IsotropicCorrelation
     γ::Uniform
@@ -82,11 +96,24 @@ abstract type Transform end
 
 The Box-Cox power transformation function with parameter λ given
 by a continuous uniform distribution.
-    
-    BoxCox(Uniform()) # λ is uniform over [0, 1]
-    BoxCox(Uniform(a, b)) # λ is uniform over [a, b]
 
-    TODO flesh out docs
+```math
+g_\\lambda(x) = \\begin{cases} 
+    \\frac{x^\\lambda - 1}{\\lambda} & \\lambda \\neq 0\\\\ 
+    \\ln(x) & \\lambda = 0
+\\end{cases}
+```
+
+```julia    
+BoxCox(Uniform()) # λ is uniform over [0, 1]
+BoxCox(Uniform(a, b)) # λ is uniform over [a, b]
+
+TODO flesh out docs
+```
+
+External links
+* [Power Transform on Wikipedia](https://en.wikipedia.org/wiki/Power_transform)
+
 """
 struct BoxCox <: Transform
     λ::Uniform
@@ -108,5 +135,22 @@ function prime(g::BoxCox, λ, x)
     return x^(λ[1] - 1)
 end
 
+"""
+    Covariate
+
+Abstract supertype for all covariate functions
+"""
+abstract type Covariate end
+
+"""
+    Identity
+
+A covariate function which returns its input as-is
+"""
+struct Identity <: Covariate end
+
+function (f::Identity)(x)
+    return x
+end
 
 end # module

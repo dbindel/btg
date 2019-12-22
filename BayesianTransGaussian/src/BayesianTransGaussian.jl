@@ -22,8 +22,6 @@ export
 
 export
     BTGModel,
-    GaussQuadrature,
-    MonteCarloQuadrature,
     predictmedian,
     predictmode,
     narrowinterval,
@@ -31,24 +29,6 @@ export
     parameterestimate,
     plotbtg,
     crossvalidate
-
-"""
-    GaussQuadrature(n)
-
-Settings for a gauss quadrature rule.
-"""
-struct GaussQuadrature
-    n::UInt
-end
-
-"""
-    MonteCarloQuadrature(n)
-
-Settings for a monte carlo quadrature
-"""
-struct MonteCarloQuadrature
-    n::UInt
-end
 
 """
     BTGModel
@@ -73,6 +53,8 @@ The probability density of the value `y` at the location `x` given a BTG model.
 ```
 """
 function density(mdl::BTGModel, x, y)
+    # TODO
+    return 1.0
 end
 
 """
@@ -85,6 +67,8 @@ The cumulative probability of the value `y` at the location `x` given a BTG mode
 ```
 """
 function distribution(mdl::BTGModel, x, y)
+    # TODO
+    return 1.0
 end
 
 """
@@ -93,6 +77,8 @@ end
 The inverse cumulative distribution function. The value at location `x` at the `q`th quantile.
 """
 function predictquantile(mdl::BTGModel, q, x)
+    # TODO
+    return 1.0
 end
 
 """
@@ -109,7 +95,7 @@ The equal tailed `p`-credible interval of the value at location `x`.
 """
 function equalinterval(mdl::BTGModel, p, x)
     hw = p / 2
-    return (quantile(mdl, 0.5 - hw, x), quantile(mdl, 0.5, x), quantile(mdl, 0.5 + hw, x))
+    return quantile(mdl, 0.5 - hw, x), quantile(mdl, 0.5, x), quantile(mdl, 0.5 + hw, x)
 end
 
 """
@@ -118,6 +104,8 @@ end
 The value with the highest probability density at the location `x`.
 """
 function predictmode(mdl::BTGModel, x)
+    # TODO
+    return 1.0
 end
 
 """
@@ -126,6 +114,8 @@ end
 The narrowest `p`-credible interval of the value at location `x`.
 """
 function narrowinterval(mdl::BTGModel, p, x)
+    # TODO
+    return 0.0, 1.0, 2.0
 end
 
 """
@@ -134,6 +124,8 @@ end
 Gives MAP point estimates of the transformation parameters λ and kernel parameters θ.
 """
 function parameterestimate(mdl::BTGModel)
+    # TODO
+    return (1.0,), (1.0,)
 end
 
 """
@@ -143,6 +135,7 @@ For 1D inputs, plots the mode and narrowest intervals at the locations in `range
 the specified `resolution`.
 """
 function plotbtg(mdl::BTGModel, range, resolution)
+    # TODO
 end
 
 """
@@ -151,6 +144,7 @@ end
 Plots the probability density of the values at location `x` with the specified `resolution`.
 """
 function plotdensity(mdl::BTGModel, x, resolution)
+    # TODO
 end
 
 """
@@ -159,6 +153,8 @@ end
 The LOOCV error of given BTGModel.
 """
 function crossvalidate(mdl::BTGModel)
+    # TODO
+    return 1.0
 end
 
 end # module

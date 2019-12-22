@@ -61,7 +61,9 @@ k_\\theta(\\tau) = \\exp\\Big\\lbrace -\\Big(\\frac{\\tau}{\\theta}\\Big)^2\\Big
 SquaredExponential(Uniform()) # γ is uniform over [0, 1]
 SquaredExponential(Uniform(a, b)) # γ is uniform over [a, b]
 
-TODO flesh out docs
+getparam(k, q) # The values for the parameters corresponding to the quantiles q
+sampleparam(k) # A random sample of the parameters of k
+k(θ, τ) # The kernel evaluated on the distance τ with parameters θ
 ```
 
 External links
@@ -108,7 +110,10 @@ g_\\lambda(x) = \\begin{cases}
 BoxCox(Uniform()) # λ is uniform over [0, 1]
 BoxCox(Uniform(a, b)) # λ is uniform over [a, b]
 
-TODO flesh out docs
+getparam(g, q) # The values for the parameters corresponding to the quantiles q
+sampleparam(g) # A random sample of the parameters of g
+g(λ, x) # The transformation evaluated on x with parameters y
+prime(g, λ, x) # The derivative of the transformation evaluated on x with parameters y
 ```
 
 External links

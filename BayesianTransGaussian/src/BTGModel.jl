@@ -147,7 +147,7 @@ function distribution(mdl::Model, x::Array{Float64, 1}, y::Float64, (kx, kw), (g
 
             h = q^(-(n - p) / 2) * J^(1 - p / n) / sqrt(det(cholΣ) * det(cholXΣX))
             T = LocationScale(m, sqrt(q * C), TDist(n - p))
-            P = cdf(T, z) * abs(prime(mdl.g, λ, y))
+            P = cdf(T, z)
             
             c += α * α′ * h
             acc += α * α′ * h * P   

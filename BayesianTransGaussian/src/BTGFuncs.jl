@@ -127,6 +127,7 @@ function prime(g::BoxCox, λ, x)
     return x^(λ[1] - 1)
 end
 
+
 """
     Covariate
 

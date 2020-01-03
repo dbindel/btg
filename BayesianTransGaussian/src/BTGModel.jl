@@ -12,8 +12,9 @@ include("./BTGFuncs.jl")
 
 export
     Model,
-    density,
-    distribution
+    btgdensity,
+    btgdistribution,
+    computeweights
 
 """
     BTGModel
@@ -26,6 +27,8 @@ struct Model{K<:Correlation,G<:Transform,V<:Covariate}
     f::V
     X::Array{Float64, 2}
     Y::Array{Float64, 1}
+    knumgauss::Int
+    gnumgauss::Int
 end
 
 function gaussweights(d::Uniform, n)
@@ -55,18 +58,27 @@ function weighttensor(f::Parametric, n)
     return reshape(x, length(x)), reshape(w, length(w))
 end
 
+function computeweights(mdl::Model)
+    kgauss = weighttensor(mdl.k, mdl.knumgauss)
+    ggauss = weighttensor(mdl.g, mdl.gnumgauss)
+    return (kgauss, ggauss)
+end
+
+struct HSSSolver end # TODO Yuanxi Solver
+
+# function Base.size(s::HSSSolver) end # TODO
+
+# function Base.:\(s::HSSSolver, y) end # TODO
+
+# function LinearAlgebra.det(s::HSSSolver) end # TODO
+
+function makesolver!(A)
+    return cholesky!(A) # TODO Placeholder
+end
 
 
-"""
-    density(mdl, x, y)
-
-The probability density of the value `y` at the location `x` given a BTG model.
-
-```math
-\\mathcal{P}(y_x\\lvert m)
-```
-"""
-function density(mdl::Model, x::Array{Float64, 1}, y::Float64, (kx, kw), (gx, gw))
+# TODO Clean this function up, make it faster
+function computedist(mdl::Model, x::Array{Float64, 1}, y::Float64, ((kx, kw), (gx, gw)), f)
     n, p = size(mdl.X)
     
     c = 0
@@ -76,8 +88,8 @@ function density(mdl::Model, x::Array{Float64, 1}, y::Float64, (kx, kw), (gx, gw
         θ = kx[i]
         α = kw[i]
         
-        cholΣ = cholesky!(Symmetric(kernelmatrix(mdl.k, θ, mdl.X, mdl.X)))
-        cholXΣX = cholesky!(Symmetric(mdl.X' * (cholΣ \ mdl.X)))
+        cholΣ = makesolver!(Symmetric(kernelmatrix(mdl.k, θ, mdl.X, mdl.X)))
+        cholXΣX = makesolver!(Symmetric(mdl.X' * (cholΣ \ mdl.X)))
         B = kernelmatrix(mdl.k, θ, reshape(x, 1, length(x)), mdl.X)
         D = 1.0 - (B * (cholΣ \ B'))[1]
         H = x .- B * (cholΣ \ mdl.X)
@@ -97,7 +109,7 @@ function density(mdl::Model, x::Array{Float64, 1}, y::Float64, (kx, kw), (gx, gw
 
             h = q^(-(n - p) / 2) * J^(1 - p / n) / sqrt(det(cholΣ) * det(cholXΣX))
             T = LocationScale(m, sqrt(q * C), TDist(n - p))
-            P = pdf(T, z) * abs(prime(mdl.g, λ, y))
+            P = f(T, θ, λ, z)
             
             c += α * α′ * h
             acc += α * α′ * h * P   
@@ -107,8 +119,24 @@ function density(mdl::Model, x::Array{Float64, 1}, y::Float64, (kx, kw), (gx, gw
     return acc / c
 end
 
+
 """
-    distribution(mdl, x, y)
+    btgdensity(mdl, x, y)
+
+The probability density of the value `y` at the location `x` given a BTG model.
+
+```math
+\\mathcal{P}(y_x\\lvert m)
+```
+"""
+function btgdensity(mdl::Model, x::Array{Float64, 1}, y::Float64, weights)
+    return computedist(mdl, x, y, weights, function (T, θ, λ, z)
+                       return pdf(T, z) * abs(prime(mdl.g, λ, y))
+                       end)
+end
+
+"""
+    btgdistribution(mdl, x, y)
 
 The cumulative probability of the value `y` at the location `x` given a BTG model.
 
@@ -116,45 +144,8 @@ The cumulative probability of the value `y` at the location `x` given a BTG mode
 \\Phi(y_x\\lvert m)
 ```
 """
-function distribution(mdl::Model, x::Array{Float64, 1}, y::Float64, (kx, kw), (gx, gw))
-    n, p = size(mdl.X)
-    
-    c = 0
-    acc = 0
-
-    for i = 1:length(kx)
-        θ = kx[i]
-        α = kw[i]
-        
-        cholΣ = cholesky!(Symmetric(kernelmatrix(mdl.k, θ, mdl.X, mdl.X)))
-        cholXΣX = cholesky!(Symmetric(mdl.X' * (cholΣ \ mdl.X)))
-        B = kernelmatrix(mdl.k, θ, reshape(x, 1, length(x)), mdl.X)
-        D = 1.0 - (B * (cholΣ \ B'))[1]
-        H = x .- B * (cholΣ \ mdl.X)
-        C = D + (H * (cholXΣX \ H'))[1]
-        
-        for j = 1:length(gx)
-            λ = gx[j]
-            α′ = gw[j]
-            
-            Z = mdl.g.(λ, mdl.Y)
-            z = mdl.g(λ, y)
-
-            β = cholXΣX \ (mdl.X' * (cholΣ \ Z))
-            q = ((Z - mdl.X * β)' * (cholΣ \ (Z - mdl.X * β)))[1]
-            J = abs(prod(prime.(Ref(mdl.g), λ, mdl.Y)))
-            m = (B * (cholΣ \ Z))[1] + (H * β)[1]
-
-            h = q^(-(n - p) / 2) * J^(1 - p / n) / sqrt(det(cholΣ) * det(cholXΣX))
-            T = LocationScale(m, sqrt(q * C), TDist(n - p))
-            P = cdf(T, z)
-            
-            c += α * α′ * h
-            acc += α * α′ * h * P   
-        end
-    end
-    
-    return acc / c
+function btgdistribution(mdl::Model, x::Array{Float64, 1}, y::Float64, weights)
+    return computedist(mdl, x, y, weights, (T, _, _, z) -> cdf(T, z))
 end
 
 end # module

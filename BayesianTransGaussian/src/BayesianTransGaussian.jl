@@ -16,6 +16,7 @@ include("./BTGModel.jl")
 # TODO Give Cameron feedback on organization/interface
 # TODO Pick which transforms/kernels we want to implement
 # TODO Add any covariate transforms we want (polynomial, orthopolynomial for 1d, induced point)
+# TODO Add tests to test/runtests.jl, if we want to do unit testing
 
 # See BTGTest.jl for a basic example
 # I recommend using Revise.jl (see workflow tips section in Julia docs)

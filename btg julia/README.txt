@@ -7,5 +7,5 @@ Treasury: 1-dimensional macroeconomics time series dataset (from Box-Cox GP pape
 
 Synthetic: 1-dimensional artificially generated time series dataset 
 
-Most, if not all, of the functionality of the program comes from "model.jl". 
+ "model.jl" implements the math from the paper 
 

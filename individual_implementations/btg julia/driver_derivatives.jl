@@ -31,8 +31,8 @@ else
     data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
     target = convert(Matrix, df[:, 9:9]) #age
 
-    ind = 1:15
-    ind0 = 9:12
+    ind = 5:10
+    ind0 = 11:12
     
     #s = [3 1; 4 1; 2 1; 5 6]; s0 = [1 1; 2 1; 3 1]; X = [3 4; 9 5; 7 13; 7 8]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13;3]
     s = data[ind, :]; s0 = data[ind0, :]; X = data[ind, 1:3]; X0 = data[ind0, 1:3]; z = target[ind]
@@ -65,9 +65,9 @@ end
 #Example 3: Check derivatives of sub-variables of partial_theta
 # Beta_hat, qtilde, Btheta, Etheta, sigmatheta, H, m, D, C, qC_inv
 if false
-    f = θ -> partial_theta(θ[1], 2, example)[1]  
+    f = θ -> partial_theta(θ[1], 2, example)[1]
     df = θ -> partial_theta(θ[1], 2, example)[2]
-    θ0 = [3.14]
+    θ0 = [50]
     (h, A) = checkDerivative(f, df, θ0);
     println("partial_theta function return value")
     println(polyfit(h, A, 1)) 
@@ -76,7 +76,7 @@ end
 #Example 4: Check main derivative
 if false
     #z0 = [1;2;3]
-    z0 = rand(length(s0))
+    z0 = rand(size(s0, 1))
     f = θ -> [partial_theta(θ[1], 2, example)[1](z0)]  
     df = θ -> partial_theta(θ[1], 2, example)[2](z0)
     θ0 = [2.1]
@@ -100,7 +100,7 @@ end
 if false
     θ = 1.312
     λ0 = [2.123]   
-    z0 = rand(length(s0))
+    z0 = rand(size(s0, 1))
     f = λ -> [partial_lambda(θ, λ[1], example)[1](z0)]
     df = λ -> [partial_lambda(θ, λ[1], example)[2](z0)]
     (h, A) = checkDerivative(f, df, λ0)
@@ -124,7 +124,7 @@ if false
     θ = 1
     λ0 = [.5]  
     #z0 = [10;11;13]
-    z0 = rand(length(s0))
+    z0 = rand(size(s0, 1))
 
     f = λ -> [partial_lambda(θ, λ[1], example)[1](z0)]
     df = λ -> partial_lambda(θ, λ[1], example)[2](z0)
@@ -135,7 +135,7 @@ end
 
 #Example 7: Check derivative of sub-variables of posterior_theta. No "sub-functions", because we don't 
 #have a z0 to deal with
-if true
+if false
     θ0 = [.7]
     λ = .4; 
     pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2); pλ = λ -> 1; dpθ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
@@ -148,4 +148,29 @@ if true
     (h, A) = checkDerivative(f, df, θ0)
     println("partial lambda")
     println(polyfit(h, A, 1))
+end
+
+#Example 8: Check derivative of posterior_lambda
+if false
+    θ = 1; 
+    pλ = λ -> 1/sqrt(2*pi)*exp.(-(λ .- 1) .^2/2)
+    dpλ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
+    pθ = θ -> 1; 
+    f = λ -> [posterior_lambda(θ, λ[1], pθ, pλ, dpλ, example)[1]]
+    df = λ -> posterior_lambda(θ, λ[1], pθ, pλ, dpλ, example)[2]
+    λ0 = [0.6]
+    (h, A) = checkDerivative(f, df, λ0)
+    println("partial lambda")
+    println(polyfit(h, A, 1))
+end
+
+#Example 10: Check various derivatives in partial_z0 function
+if true
+    g = (x, λ) -> -exp.(λ .*x)
+    dg = (x, λ) -> -λ .*exp.(λ .*x)
+    dg2 = (x, λ) -> -λ^2 .*exp.(λ .*x)
+   (jac, djac) =  partial_z0(2, 1, example, g, dg, dg2)
+   (h, A) = checkDerivative(jac, djac, [1;20])
+   println("jac and djac w.r.t z0")
+   println(polyfit(h, A, 1)) 
 end

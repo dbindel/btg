@@ -7,33 +7,42 @@ using Printf
 using SpecialFunctions
 using Plots
 using Polynomials
+using LinearAlgebra
 
-export prob, partial_theta, partial_lambda, posterior_theta, checkDerivative
+export prob, partial_theta, partial_lambda, partial_z0, posterior_theta, posterior_lambda, checkDerivative
 
 """
-p(z0| theta, lambda, z)
+Precompute theta-dependent quantities and assign variable to contents of setting 
 """
-function prob(θ, λ, setting)
-    #@check_args (2>1)
+function func(θ, setting)
     s = setting.s 
     s0 = setting.s0 
     X = setting.X
     X0 = setting.X0 
     z = setting.z
-    g = boxCox #boxCox by default
     n = size(X, 1) 
     p = size(X, 2) 
     k = size(X0, 1) 
     Eθ = K(s0, s0, θ, rbf) 
     Σθ = K(s, s, θ, rbf) 
     Bθ = K(s0, s, θ, rbf) 
-    #@printf("size of Sigma_theta: %f \n", string.(size(Σθ)))
-    #@printf("size of Btheta: %f \n", string.(size(Bθ)))
     choleskyΣθ = cholesky(Σθ) 
     choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
     Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
     Hθ = X0 - Bθ*(choleskyΣθ\X) 
     Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+    Eθ_prime = K(s0, s0, θ, rbf_prime) 
+    Σθ_prime = K(s, s, θ, rbf_prime) 
+    Bθ_prime = K(s0, s, θ, rbf_prime) 
+    return (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime)
+end
+
+"""
+p(z0| theta, lambda, z)
+"""
+function prob(θ, λ, setting)
+    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime) = func(θ, setting)
+    g = boxCox #boxCox by default
     βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
     qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(cholesky(Σθ)\g(z, λ)) + Hθ*βhat 
@@ -50,33 +59,15 @@ end
 Compute derivative of p(z0|theta, lambda, z) w.r.t theta
 """
 function partial_theta(θ, λ, setting)
-    #@check_args (2>1)
-    s = setting.s 
-    s0 = setting.s0 
-    X = setting.X
-    X0 = setting.X0 
-    z = setting.z
+    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime) = func(θ, setting)
     g = boxCox #boxCox by default
-    n = size(X, 1) 
-    p = size(X, 2) 
-    k = size(X0, 1) 
-    Eθ = K(s0, s0, θ, rbf) 
-    Σθ = K(s, s, θ, rbf) 
-    Bθ = K(s0, s, θ, rbf) 
-    choleskyΣθ = cholesky(Σθ) 
-    choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
-    Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
-    Hθ = X0 - Bθ*(choleskyΣθ\X) 
-    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+    
     βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
     qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
     
     #cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
-    Eθ_prime = K(s0, s0, θ, rbf_prime) 
-    Σθ_prime = K(s, s, θ, rbf_prime) 
-    Bθ_prime = K(s0, s, θ, rbf_prime) 
-
+    
     Σθ_inv_X = Σθ\X #precomputation 
 
     #compute betahat_prime_theta
@@ -138,6 +129,7 @@ function partial_theta(θ, λ, setting)
     #main_deriv = (AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))
     main = z0 -> (detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
 
+    #return (vec(Σθ), vec(Σθ_prime))
     #return (βhat, βhat_prime_theta)
     #return ([qtilde], [qtilde_prime_theta])
     #return (vec(Eθ), vec(Eθ_prime))
@@ -147,6 +139,7 @@ function partial_theta(θ, λ, setting)
     #return (m, m_prime_theta)
     #return (vec(Dθ), vec(D_theta_prime))
     #return (vec(Cθ), vec(C_theta_prime))
+    
     return (main, main_deriv)
     #return (vec(qC_inv), vec(qC_inv_prime_theta))
     #return ([detqC^(-1/2)], [AA])
@@ -157,28 +150,15 @@ end
 Compute derivative of p(z0|theta, lambda, z) w.r.t lambda
 """
 function partial_lambda(θ, λ, setting)
-    #@check_args (2>1)
-    s = setting.s 
-    s0 = setting.s0 
-    X = setting.X
-    X0 = setting.X0 
-    z = setting.z
+    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime) = func(θ, setting)
+
+    #transformation and its derivatives
     g = boxCox #boxCox by default
     dg = boxCoxPrime
     dgλ = boxCoxPrime_lambda
     dgλ2 = boxCoxPrime_lambda2
     dgλx = boxCoxMixed_lambda_z
-    n = size(X, 1) 
-    p = size(X, 2) 
-    k = size(X0, 1) 
-    Eθ = K(s0, s0, θ, rbf) 
-    Σθ = K(s, s, θ, rbf) 
-    Bθ = K(s0, s, θ, rbf) 
-    choleskyΣθ = cholesky(Σθ) 
-    choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
-    Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
-    Hθ = X0 - Bθ*(choleskyΣθ\X) 
-    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+
     βhat = choleskyXΣX\(X'*(choleskyΣθ\g(z, λ))) 
     qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
@@ -200,9 +180,9 @@ function partial_lambda(θ, λ, setting)
     jac = z0 -> abs(reduce(*, map(x -> dg(x, λ), z0)))
     qC = qtilde*Cθ 
     detqC = det(qC) 
-    expr = z0 -> (g(z0, λ) - m)
+    expr = z0 -> (g(z0, λ) .- m)
 
-    bilinearform = z0 -> 1 + expr(z0)'*(qC\(expr(z0)))
+    bilinearform = z0 -> 1 .+ expr(z0)'*(qC\(expr(z0)))
 
     #compute derivative of Jacobian
     function djac(z0)
@@ -251,35 +231,64 @@ function partial_lambda(θ, λ, setting)
     #return (qCinv, qC_inv_prime_lambda)
     #return (m, m_prime_lambda)
 end
+"""
+Compute deriative of p(z0|theta, lambda, z) with respect to z0
+"""
+function partial_z0(θ, λ, setting, g = boxCox, dg = boxCoxPrime, dg2 = boxCoxPrime2)
+(s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime) = func(θ, setting)
+
+    βhat = choleskyXΣX\(X'*(choleskyΣθ\g(z, λ))) 
+    qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
+    m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat
+
+    jac = z0 -> abs(reduce(*, map(x -> dg(x, λ), z0)))
+
+    djac = z0 ->(local n = length(z0);
+                reshape(
+                (local dd = map(x->dg(x, λ), z0); 
+                local p = abs(reduce(*, dd));
+                (f = i -> (dd[i] !=0 ? p/dd[i]*sign(dd[i])*(-1)^(((sign(dd[mod(i+1, n)+1])+1)/2)+1)* 
+                dg2(z0[i], λ) : 0) ; 
+                map(f, collect(1:n)))), n, 1))
+
+    qC = qtilde*Cθ
+    detqC = det(qC)
+    
+    ccc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2)/detqC^(1/2) #constant 
+
+    expr = z0 -> (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m))
+
+    dexpr = z0 -> (local n = length(z0);
+                    2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m));
+                    )
+
+    #expr2 = z0 -> (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2)
+    #dexpr2 = z0 -> (-(n-p+k)/2) * (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k+2)/2) * 2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m))
+
+    expr3 = z0 -> ccc*jac(z0)*(1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2)
+    dexpr3 = z0 -> ccc*(jac(z0)*(-(n-p+k)/2) * (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k+2)/2) * 2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m)) 
+                    + djac(z0)*(1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2))
+
+    #return (z0 -> g(z0, λ), z0 -> [dg(z0, λ)[1] 0 ; 0 dg(z0, λ)[2]])
+    #return (expr, dexpr)
+    #return (jac, djac)
+    return (expr3, dexpr3)
+end
 
 """
 Compute derivative of p(theta, lambda| z) with respect to theta
 """
 function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
-    s = setting.s 
-    s0 = setting.s0 
-    X = setting.X
-    X0 = setting.X0 
-    z = setting.z
-    g = boxCox #boxCox by default
+    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime) = func(θ, setting)
+
+    g = boxCox
     dg = boxCoxPrime
-    n = size(X, 1) 
-    p = size(X, 2) 
-    k = size(X0, 1) 
-    Eθ = K(s0, s0, θ, rbf) 
-    Σθ = K(s, s, θ, rbf) 
-    Bθ = K(s0, s, θ, rbf) 
-    choleskyΣθ = cholesky(Σθ) 
-    choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
-    Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
-    Hθ = X0 - Bθ*(choleskyΣθ\X) 
-    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+
     βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
     qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
 
     Σθ_inv_X = Σθ\X #precomputation 
-    Σθ_prime = K(s, s, θ, rbf_prime) 
     Σθ_inv_X = Σθ\X #precomputation 
 
     #compute betahat_prime_theta
@@ -310,13 +319,66 @@ function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
 
     #main = EXPR1*EXPR2*EXPR3*EXPR4
     #dmain = dEXPR1 * EXPR2 * EXPR3 * EXPR4 + dEXPR2 * EXPR1 * EXPR3 * EXPR4 
-    #        + dEXPR3 * EXPR1 * EXPR2 * EXPR4 + dEXPR4 * EXPR1 * EXPR2 * EXPR3 
+    #    + dEXPR3 * EXPR1 * EXPR2 * EXPR4 + dEXPR4 * EXPR1 * EXPR2 * EXPR3 
     main = EXPR1*EXPR2*EXPR3*EXPR4
     dmain = dEXPR1 * EXPR2 * EXPR3 * EXPR4 + dEXPR2*EXPR1*EXPR3*EXPR4 + dEXPR3*EXPR1*EXPR2*EXPR4 + dEXPR4*EXPR1*EXPR2*EXPR3
 
     return (main, dmain)
 end
   
+
+"""
+Compute derivative of p(theta, lambda| z) with respect to theta
+"""
+function posterior_lambda(θ, λ, pθ, pλ, dpλ, setting)
+    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Bθ_prime) = func(θ, setting)
+
+    g = boxCox
+    dg = boxCoxPrime
+    dgλ = boxCoxPrime_lambda
+    dgλx = boxCoxMixed_lambda_z
+
+    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
+    qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
+
+    #compute βhat_prime_lambda
+    dgλz = dgλ(z, λ) 
+    gλz = g(z, λ) 
+    βhat_prime_lambda = choleskyXΣX\(X'*(choleskyΣθ\dgλz))
+
+    #compute qtilde_prime_lambda
+    AA = dgλz - X*βhat_prime_lambda
+    BB = gλz - X*βhat 
+    qtilde_prime_lambda = 2*AA'*(choleskyΣθ\BB) 
+
+    jac = z0 -> (abs(reduce( *, map(x -> dg(x, λ), z0))))
+    jacz = jac(z)
+
+    #compute derivative of Jacobian
+    function djac(z0)
+        dgλx_vec = z0 -> map(zi -> dgλx(zi, λ), z0)
+        dg_vec = z0 -> map(zi -> dg(zi, λ), z0)
+        local prod = z0 -> reduce(*, dg_vec(z0))
+        local p = prod(z0) 
+        p != 0 ? (AAA = dgλx_vec(z0);
+        BBB = dg_vec(z0);
+        ff = i -> p * AAA[i]/BBB[i] ;
+        ee = reduce(+, map(ff, collect(1:length(z0))));
+        dg(2, 2) < 0 ? (-1)^(length(z0))*ee : ee) : 0
+    end
+
+    ccc = det(choleskyΣθ)^(-1/2)*det(choleskyXΣX)^(-1/2)*pθ(θ)
+    EXPR1 = qtilde^(-(n-p)/2)
+    EXPR2 = jacz^(1-p/n)
+    EXPR3 = pλ(λ)
+    dEXPR1 = -(n-p)/2*qtilde^(-(n-p+2)/2)*qtilde_prime_lambda
+    dEXPR2 = (1-p/n)*jacz^(-p/n)*djac(z)
+    dEXPR3 = dpλ(λ)
+    main = ccc * EXPR1*EXPR2*EXPR3 
+    dmain = ccc*(dEXPR1*EXPR2*EXPR3 + dEXPR2*EXPR1*EXPR3 + dEXPR3*EXPR1*EXPR2)
+    return (main, dmain)
+end
+    
 """
 Use Taylor's Theorem with Remainder to check  
 validity of computed derivative. More specifically, check 
@@ -326,18 +388,25 @@ function checkDerivative(f, df, x0)
     f0 = f(x0)
     df0 = df(x0) 
     dx = rand(size(x0, 1), size(x0, 2))
-    h = zeros(10)
+    h = zeros(8)
     for i=1:length(h)
-        h[i] = 2. ^(-i-8) 
+        h[i] = 2. ^(-i-7) 
     end
     A = zeros(length(h))
     for i = 1:length(h) 
         fi = f(x0 + h[i]*dx)
-        A[i] = norm(fi .- f0 .- df0 * (h[i] * dx))
+        if true #debug
+            println("fi: ", fi)
+            println("f0: ", f0)
+            println("df0: ", df0)
+            println("increment", h[i]*dx)
+        end
+        A[i] = norm((fi .- f0) .- df0' * (h[i] * dx))
     end
     #println(A)
     #println(h)
-    display(plot(log.(h), log.(A)))
+    display(plot(log.(h), log.(A), xlabel = "x", ylabel = "y"))
+
     return (log.(h), log.(A))
 end
 

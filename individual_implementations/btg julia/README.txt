@@ -10,4 +10,4 @@ Synthetic: 1-dimensional artificially generated time series dataset
  "model.jl" implements the math from the paper 
 
 
--Leo
+-Leo Huang

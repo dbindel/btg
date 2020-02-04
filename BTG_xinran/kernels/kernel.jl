@@ -1,6 +1,6 @@
 using LinearAlgebra
 
-function GenExpCor(r, theta)
+function Kernel_SE(r, theta)
     @assert length(theta) == 2
     return theta[1]^(r^(theta[2]))
 end

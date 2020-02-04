@@ -31,8 +31,8 @@ end
 
 
 function pdf_z0_ij(theta_sample, lambda_sample, x0, z0, trainBasicInfo, sideInfo, Gamma)
-    x = trainBasicInfo.traindata.idx
-    z = trainBasicInfo.traindata.val
+    x = trainBasicInfo.data[1]
+    z = trainBasicInfo.data[2]
     g = trainBasicInfo.nonlintrans.fun
     dg = trainBasicInfo.nonlintrans.deriv
     kernel = trainBasicInfo.kernel

@@ -1,12 +1,15 @@
 
 using LinearAlgebra
 
-include("param_prior.jl")
-include("kernel.jl")
-include("mean_basis.jl")
-include("nonlinfun.jl")
-
+include("../param/param_prior.jl")
+include("../kernels/kernel.jl")
+include("../kernels/mean_basis.jl")
+include("../transform/nonlinfun.jl")
+ 
 function weight_comp(param_gridInfo, param_priorInfo, trainBasicInfo)
+    # extract training data info
+    n = size(trainBasicInfo.data[2], 1)
+    
     # extract param grid and pdf info
     theta_grid = param_gridInfo.theta.grid
     wt_theta = param_gridInfo.theta.wt
@@ -53,8 +56,8 @@ end
 # function h = p(z|eta)p(eta), 
 # after integrating out beta and tau
 function hfun(theta, lambda, trainBasicInfo)
-    x = trainBasicInfo.traindata.idx
-    z = trainBasicInfo.traindata.val
+    x = trainBasicInfo.data[1]
+    z = trainBasicInfo.data[2]
     g = trainBasicInfo.nonlintrans.fun
     dg = trainBasicInfo.nonlintrans.deriv
     kernel = trainBasicInfo.kernel

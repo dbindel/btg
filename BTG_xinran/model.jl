@@ -7,7 +7,7 @@ using SpecialFunctions
 
 include("kernels/kernel.jl")
 include("kernels/mean_basis.jl")
-include("funs/nonlinfun.jl")
+include("transform/nonlinfun.jl")
 include("quadrature/quadgrid.jl")
 include("param/param_prior.jl")
 include("computation/param_grid_comp.jl")
@@ -16,7 +16,7 @@ include("computation/weight_comp.jl")
 include("computation/distribution_comp.jl")
 
 # Inputs:
-    # x0: where to predict
+    # x0: where to predict, testing data
     # training_data: including features/index/x and labels/values/z
     # kernel: a specific RBF kernel
     # nonlinfun: a specific nonlinear transformation, parameterized
@@ -63,7 +63,7 @@ function model(x0, training_data, kernel, nonlinfun, p = 1)
 
     # compute alpha_ij = w_i w_j h_ij for theta_i and lambda_j
     alpha, sideSetInfo = weight_comp(param_gridInfo, param_priorInfo, trainBasicInfo)
-
+  
     # compute distribution of z0 at x0
     distribution_z0 = distribution_comp(x0, trainBasicInfo, sideSetInfo, param_gridInfo, alpha, Gamma)
     

@@ -1,6 +1,6 @@
 using LinearAlgebra
 
-include("quadgrid.jl")
+include("../quadrature/quadgrid.jl")
 
 function param_grid_comp(n_param, param_priorInfo)
     # extract param info

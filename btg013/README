@@ -1,0 +1,53 @@
+This is the README file for the btg spatial prediction program.
+
+To install, your system must have
+	UNIX compatible OS
+	g++ and gcc
+	Tcl/Tk
+
+To install binaries for your system, go to the btg013 subdirectory where
+this README file is found and type
+
+make
+
+at the Unix prompt.  The make program will compile a binary for your
+system, and then will prompt you for the location to install the text
+engine program files (btg and tkbtg)  and the online help file
+(btghelp.txt).  Please make sure that the directory used is appropriate
+for your setup; the installation script cannot copy files to a directory
+that does not exist!
+
+If you have a Digital Alpha with the extended math libraries, or a Sun
+machine (SunOS 5) with the Sun performance libraries for the LAPACK and
+BLAS routines, you may want to do "make install-alphaperf" or
+"make install-sunperf" to use the optimized binaries for your platform
+included with the program.
+
+To run the tkbtg program, change to the installation directory and type
+
+tkbtg
+
+at the Unix prompt.
+
+By default, tkbtg will look for data files in a directory called
+~/btg_data.  If you wish to use another directory, create a file called
+.btgrc in your home directory containing the line
+
+set btg_data ~/MyDataPath
+
+where ~/MyDataPath should be replaced by the name of the data directory.
+
+-------------------------------------------------------
+
+For advanced users:
+
+To compile optimized binaries for your system, modify the Makefile in the
+src subdirectory to fit your configuration.  Note that you must link in
+the LAPACK and BLAS routines.  Those routines used by the program are
+included in the lapack subdirectory (taken from the CLAPACK source at
+Netlib (http://www.netlib.org/)).  The program has been compiled using the
+Sun CC/cc compilers and Digital cxx/cc compilers, so it is not strictly
+necessary to use the GNU compilers.  Once you have a binary for the
+btg program, modify the beginning of the tkbtg script to reflect your
+installation preferences, and move the btg, tkbtg, and btghelp.txt files
+to wherever you intend to install them.

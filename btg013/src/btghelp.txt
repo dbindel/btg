@@ -1,0 +1,152 @@
+1) Opening a data file
+
+To open a data file, click on the "Open Data" button and
+select a file using the file selection box.  Data files
+should be formatted as text files consisting of point
+coordinates, separated by spaces.
+
+2) Updating settings
+
+To use the currently displayed settings, click the
+"Update Settings" button.  If you change settings and
+do not click "Update Settings," the old settings will
+remain in effect.
+
+3) Console settings
+
+Range of z0:
+
+The range of z0 should be set to include the probable
+range of values for the quantity of interest (z0).
+The program only considers points in this range.  If
+predictions overflow this range (for instance, if a 95%
+prediction interval is not contained in the specified
+range), they will be truncated.
+
+The program normalizes data using the Box-Cox family of
+transformations for positive data.  If the range of z0
+is allowed to extend into the negative numbers, or if z0
+is allowed to be too close to zero, the program will
+probably report an error.
+
+Mesh size:
+
+The mesh size is the number of points to use in the
+discretization of the effective range of z0.  Plots
+of densities will have this number of points in them.
+
+The mesh size also governs the precision to which the
+program attempts to determine predictions.  For
+instance, if the default value of 1000 is used for
+an interval from 0.1 to 100, the program will try to
+determine the prediction to a precision of 0.1.
+Note that increasing the precision will not necessarily
+make answers more accurate.
+
+Sample size:
+
+The btg program uses a Monte Carlo integration algorithm
+to integrate out transformation and correlation parameters
+when it approximates the predictive density function.  See
+the manual for more information on this algorithm.
+
+The sample size setting controls the size of the sample
+used by this Monte Carlo integration algorithm.  Larger
+sample sizes decrease approximation error introduced in
+the Monte Carlo integration, but they increase the time
+and memory needed to do predictions.
+
+Lambda range:
+
+The parameter lambda governs which member of the Box-Cox
+transformation will be used to normalize data.  In the btg
+model, the parameter lambda is assumed to be random.  See
+the manual for more information.
+
+The btg model uses a uniform prior distribution for lambda.
+The lambda range setting controls the support for this
+distribution.  The default range from -3 to 3 includes the
+values corresponding to logarithmic transformation
+(lambda = 0) and to no transformation (lambda = 1).
+
+A single transformation can be chosen by restricting the
+lambda range to a single value.  For instance, if the
+lambda range is chosen to be from 0 to 0, the logarithmic
+transformation will always be used.
+
+Correlation:
+
+The correlation settings governs which family of isotropic
+correlation functions should be used.  See the paper for
+details.
+
+Trend order:
+
+The program currently assumes that the expected value of
+the underlying Gaussian field is polynomial in the point
+coordinates.  The trend order setting governs the order of
+this underlying polynomial.
+
+The default trend order of zero corresponds to a field with
+constant mean.
+
+4) File menu
+
+Load script:
+Save script:
+
+The load/save script commands allow settings used in one
+session to be saved for future use.  To save the currently
+displayed settings, select the save command and enter a file
+name.  The settings can be reloaded using the load command.
+
+When settings are saved, the currently displayed settings
+will be written out, even if the settings that are being used
+have not been updated (see the section on the "Update settings"
+button).  Settings are automatically updated when they are
+loaded from file.
+
+Quit:
+
+Exits the program.
+
+5) Compute menu
+
+Plot density:
+
+The plot density command writes a plot of the predictive
+density p(z0 | z) at a point to disk.  If gnuplot is available,
+the output graph is displayed.
+
+Predict:
+
+The predict command computes the prediction at a point and
+the 95% prediction interval.
+
+Phi:
+
+The phi command estimates the maximum standard Monte Carlo
+error in the computation of p(z0 | z) at an indicated point.
+
+Estimate parameters:
+
+The estimate parameter command computes the maximum
+a posteriori parameter estimates for the transformation
+parameter lambda and the correlation parameters.  See the
+manual for more information on the parameterizations of the
+transformation and correlation functions.
+
+Cross-validate:
+
+The cross-validate command performs single-point deletion
+cross-validation for each point in the data set.  Output is
+written to a file.  When the cross-validation is done, the
+output file is displayed in a pop-up browser window.
+
+Map:
+
+The map command maps the prediction and uncertainty values
+at each point on a grid over a rectangular region.  The
+results are written to file as matrices, with the top row
+corresponding to the bottom of the grid, and the first column
+corresponding to the left side of the grid.

@@ -14,7 +14,7 @@ data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shuck
 target = convert(Array, df[:, 9]) #age
 
 #pick training points
-ind = 1:40
+ind = 1:30
 s = data[ind, :] 
 #X = data[ind, :] 
 #X = ones(length(data))[ind]
@@ -30,14 +30,20 @@ pθ = x -> 1
 range_theta = [100 300]
 range_lambda = [-3 3]
 
-if false # use this blockcxsanity check + plot data
+if true #look at eigenspectrum of kernel matrix
+    θ = 200
+    gm = K(s, s, θ, rbf) 
+    display(plot(sort(eigvals(gm))))
+end
+
+if true # use this blockcxsanity check + plot data
     @printf("hi")
     i = 240
     s0 = data[i:i,:] #covariates and coordinates
     X0  = data[i:i, 1:3]
     pdff, cdff = model(X, X0, s, s0, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda)
     constant = cdff(30)
-    pdfn = x -> pdff(x)/constant
+    pdfn = x -> pdff(x)/constant 
     cdfn = x -> cdff(x)/constant 
     #cdf = z0 ->  int1D(pdf, 0, z0, "3") 
     #@time begin
@@ -51,7 +57,7 @@ if false # use this blockcxsanity check + plot data
     #println(med)
 end
 
-if false #cross validation on training set
+if true #cross validation on training set
     _, Xs, Ys = cross_validate(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 500, 2, 24)
     display(plot(Xs, Ys, 
     layout = length(z), 
@@ -65,11 +71,11 @@ if false #cross validation on training set
     xtickfont = Plots.font(4, "Courier"), 
     ytickfont = Plots.font(4, "Courier"), 
     lw=0.5))
-    savefig("results//abalone//abalone_cross_validation13.pdf")
+    savefig("results//abalone//abalone_cross_validation20.pdf")
 end
 
 
-if true #delete one group cross validation
+if false #delete one group cross validation
     Xs, Ys = cross_validate_groups(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 5, 500, 2, 24)
     display(plot(Xs, Ys, 
     layout = length(z), 

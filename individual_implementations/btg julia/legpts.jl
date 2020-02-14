@@ -28,7 +28,7 @@ INPUTS:
 f is a function handle, a and b are integration endpoints (a<b), and n 
 is the number of quadrature nodes (defaults to 10)
 """
-function int1D(f, a, b, num="1")
+function int1D(f, a, b, num="3")
     if num=="1"
         x, w= dm, wm
     elseif num=="2"
@@ -44,6 +44,29 @@ function int1D(f, a, b, num="1")
         int = int + f(expr)*w[i]
     end
     int = (b-a)/2*int
+end
+
+"""
+INPUTS:
+f is a function handle, a and b are integration endpoints (a<b), and n 
+is the number of quadrature nodes (defaults to 10)
+"""
+function int1D(f, arr, num="1")
+    if num=="1"
+        x, w= dm, wm
+    elseif num=="2"
+        x, w= dm2, wm2
+    elseif num=="0"
+        x, w = dm0, wm0
+    else 
+        x, w = dm3, wm3
+    end
+    int = 0.0
+    for i = 1:length(x)
+        expr = (arr[2]-arr[1])/2*x[i] + (arr[1]+arr[2])/2
+        int = int + f(expr)*w[i]
+    end
+    int = (arr[2]-arr[1])/2*int
 end
 
 """

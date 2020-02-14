@@ -23,7 +23,7 @@ weights = convert(Matrix, data[:, 2:end]) #integration weights
 #f =  x -> x^70+
 #df = x -> 70* x^69
 #df2 = x -> 4830*x^68
-
+#test
 #f = x -> sin.(exp.(3 .-x))
 #df = x -> -exp.(3 .-x) .* cos.(exp.(3 .-x))
 #df2 = x -> exp.(3 .-2*x) .*(exp.(x) .* cos.(exp.(3 .-x)).-exp(3) .* sin.(exp.(3 .-x)))

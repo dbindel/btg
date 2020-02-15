@@ -1,13 +1,7 @@
-Use drivers to see examples of workflow.
+Use drivers to test datasets. 
 
-Abalone: 7-dimensional abalone dataset (from Warped GP paper)  http://www.gatsby.ucl.ac.uk/~snelson/gpwarp.pdf
-
-Treasury: 1-dimensional macroeconomics time series dataset (from Box-Cox GP paper)
-(https://arxiv.org/pdf/1803.07102.pdf
-
+Abalone: 7-dimensional abalone dataset
+Treasury: 1-dimensional macroeconomics time series dataset
 Synthetic: 1-dimensional artificially generated time series dataset 
 
- "model.jl" implements the math from the paper 
-
-
--Leo Huang
+Most, if not all, functionality of the program comes from "model.jl". 

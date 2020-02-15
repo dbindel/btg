@@ -387,20 +387,29 @@ that error of linear approximation decays like O(h^2)
 function checkDerivative(f, df, x0)
     f0 = f(x0)
     df0 = df(x0) 
-    dx = rand(size(x0, 1), size(x0, 2))
+    if size(x0, 2)>1
+        dx = rand(size(x0, 1), size(x0, 2))
+    else
+        dx = rand(size(x0, 1))
+    end
     h = zeros(8)
     for i=1:length(h)
         h[i] = 2. ^(-i-7) 
     end
     A = zeros(length(h))
     for i = 1:length(h) 
-        fi = f(x0 + h[i]*dx)
-        if true #debug
+        println(x0)
+        println(h[i]*dx)
+        fi = f(x0 .+ h[i]*dx)
+
+        if false #debug
+            println("dx: ", dx)
             println("fi: ", fi)
             println("f0: ", f0)
             println("df0: ", df0)
             println("increment", h[i]*dx)
         end
+        
         A[i] = norm((fi .- f0) .- df0' * (h[i] * dx))
     end
     #println(A)

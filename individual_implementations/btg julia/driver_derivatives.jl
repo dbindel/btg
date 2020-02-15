@@ -41,6 +41,7 @@ else
 end
 
 
+
 ##Example 1
 if false
     f = x -> [x.^2; x.^3]

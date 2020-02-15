@@ -57,7 +57,7 @@ if true # use this blockcxsanity check + plot data
     #println(med)
 end
 
-if true #cross validation on training set
+if false #cross validation on training set
     _, Xs, Ys = cross_validate(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 500, 2, 24)
     display(plot(Xs, Ys, 
     layout = length(z), 

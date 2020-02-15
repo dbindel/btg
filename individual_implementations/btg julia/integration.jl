@@ -1,4 +1,5 @@
 using LinearAlgebra
+using DataFrames
 """
 Uses the Golub-Welsch eigenvalue method to compute
 Gauss-Legendre quadrature nodes and weights for the domain [-1, 1]
@@ -88,6 +89,26 @@ function int2D(f, arr)
     end
     int = int*avg1*avg2
 end
+
+data = DataFrame(CSV.File("nodes_weights_50.csv"))
+nodes = convert(Array, data[:,1]) #integration nodes for Gauss-Turan Quadrature
+weights = convert(Matrix, data[:, 2:end]) #integration weights 
+
+"""
+Gauss-Turan integration
+INPUTS:
+arr contains enpoints of integration interval
+"""
+function Gauss_Turan(f, df, df2, arr, nodes, weights)
+    a = arr[1]
+    b = arr[2]
+    nodes = (b-a)/2 .* nodes .+ (b+a)/2
+    fn = f.(nodes)
+    dfn = df.(nodes)
+    df2n = df2.(nodes)
+    return (fn'*weights[:, 1] + dfn'*weights[:, 2] + df2n'*weights[:, 3])*(b-a)/2
+end
+
 
 """
 n-dimensional Gauss-Legendre integration

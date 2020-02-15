@@ -3,6 +3,7 @@ using CSV
 using Random   
 using Plots
 using PDMats
+using Printf
 include("transforms.jl")
 include("statistics.jl")
 include("validation.jl")
@@ -43,7 +44,7 @@ range_lambda = [-5 5]
 results = Array{Float64}(undef, length(test_x))#preallocate space for medians and interval widths
 intwidths = Array{Float64}(undef, length(test_x))
 
-if false #test and time pdfn and cdfn functions
+if true #test and time pdfn and cdfn functions
 pdf = model(X, X0, train_x, [test_x[6]], boxCox, boxCoxPrime, pθ, pλ, train_y, range_theta, range_lambda)
 cdf = z0 ->  int1D(pdf, 0, z0, "0") 
 @time begin

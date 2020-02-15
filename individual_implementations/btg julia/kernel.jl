@@ -5,7 +5,7 @@ using LinearAlgebra
 Gaussian/RBF/Squared Exponential correlation function
 """
 function rbf(x, y, θ=1.0)
-    1/sqrt(2*pi)*exp(-θ*0.5*(norm(x .- y))^2)
+    1/sqrt(2*pi)*exp.(-θ*0.5*(norm(x .- y))^2)
 end
 
 """
@@ -13,9 +13,16 @@ Derivative of Gaussian/RBF/Squared Exponential correlation function
 with respect to hyperparameter theta
 """
 function rbf_prime(x, y, θ=1.0)
-    - 1/sqrt(2*pi) * 0.5 * norm(x.-y)^2 * exp(-θ*0.5*(norm(x .- y))^2)
+    - 1/sqrt(2*pi) * 0.5 * norm(x.-y)^2 * exp.(-θ*0.5*(norm(x .- y))^2)
 end
 
+"""
+Second derivative of Gaussian/RBF/Squared Exponential correlation function
+with respect to hyperparameter theta
+"""
+function rbf_prime2(x, y, θ=1.0)
+    1/sqrt(2*pi) * 0.25 * norm(x.-y)^4 * exp.(-θ*0.5*(norm(x .- y))^2)
+end
 
 """
 Builds cross-covariance matrix using corr kernel function.

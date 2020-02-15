@@ -1,4 +1,5 @@
 include("btgDerivatives.jl")
+include("kernel.jl")
 
 using Distributions
 using Printf
@@ -31,7 +32,7 @@ else
     data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
     target = convert(Matrix, df[:, 9:9]) #age
 
-    ind = 5:10
+    ind = [100, 105, 110]
     ind0 = 11:12
     
     #s = [3 1; 4 1; 2 1; 5 6]; s0 = [1 1; 2 1; 3 1]; X = [3 4; 9 5; 7 13; 7 8]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13;3]
@@ -75,14 +76,14 @@ if false
 end
 
 #Example 4: Check main derivative
-if false
+if true
     #z0 = [1;2;3]
     z0 = rand(size(s0, 1))
     f = θ -> [partial_theta(θ[1], 2, example)[1](z0)]  
     df = θ -> partial_theta(θ[1], 2, example)[2](z0)
     θ0 = [2.1]
     (h, A) = checkDerivative(f, df, θ0)
-    println("partial_theta function return value")
+    println("partial theta of p(z0|theta, lambda, z)")
     println(polyfit(h, A, 1)) 
 end
 
@@ -136,18 +137,19 @@ end
 
 #Example 7: Check derivative of sub-variables of posterior_theta. No "sub-functions", because we don't 
 #have a z0 to deal with
-if false
+if true
     θ0 = [.7]
     λ = .4; 
     pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2); pλ = λ -> 1; dpθ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
-    f = θ  -> vec(posterior_theta(θ[1], λ, pθ, dpθ, pλ, example)[1])
-    df = θ -> vec(posterior_theta(θ[1], λ, pθ, dpθ, pλ, example)[2])
+    f = θ  -> posterior_theta(θ[1], λ, pθ, dpθ, pλ, example)[1]
+    df = θ -> posterior_theta(θ[1], λ, pθ, dpθ, pλ, example)[2]
     
     (rr, tt) = checkDerivative(θ -> [pθ(θ[1])], θ -> dpθ(θ[1]), [.5])
+    println("check derivative of prior")
     println(polyfit(rr, tt, 1))
 
     (h, A) = checkDerivative(f, df, θ0)
-    println("partial lambda")
+    println("partial theta of p(theta, lambda|z)")
     println(polyfit(h, A, 1))
 end
 
@@ -161,12 +163,12 @@ if false
     df = λ -> posterior_lambda(θ, λ[1], pθ, pλ, dpλ, example)[2]
     λ0 = [0.6]
     (h, A) = checkDerivative(f, df, λ0)
-    println("partial lambda")
+    println("partial lambda of p(theta, lambda|z)")
     println(polyfit(h, A, 1))
 end
 
 #Example 10: Check various derivatives in partial_z0 function
-if true
+if false
     g = (x, λ) -> -exp.(λ .*x)
     dg = (x, λ) -> -λ .*exp.(λ .*x)
     dg2 = (x, λ) -> -λ^2 .*exp.(λ .*x)
@@ -174,4 +176,14 @@ if true
    (h, A) = checkDerivative(jac, djac, [1;20])
    println("jac and djac w.r.t z0")
    println(polyfit(h, A, 1)) 
+end
+
+#Example 11: Check derivative of rbf second derivative
+if true
+    x0 = [3, 4]
+    f = theta -> rbf_prime(x0[1], x0[2], theta)
+    df = theta -> rbf_prime2(x0[1], x0[2], theta)
+    (h, A) = checkDerivative(f, df, 3.0)
+    println("first and second derivatives of rbf")
+    println(polyfit(h, A, 1))
 end

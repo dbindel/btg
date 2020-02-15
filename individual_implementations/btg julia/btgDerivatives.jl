@@ -126,8 +126,9 @@ function partial_theta(θ, λ, setting)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
     
     main_deriv = z0 -> [(AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))]
-    #main_deriv = (AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))
     main = z0 -> (detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
+    
+    #main_deriv = (AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))
 
     #return (vec(Σθ), vec(Σθ_prime))
     #return (βhat, βhat_prime_theta)
@@ -392,14 +393,14 @@ function checkDerivative(f, df, x0)
     else
         dx = rand(size(x0, 1))
     end
-    h = zeros(8)
+    h = zeros(10)
     for i=1:length(h)
-        h[i] = 2. ^(-i-7) 
+        h[i] = 2. ^(-i-4) 
     end
     A = zeros(length(h))
     for i = 1:length(h) 
-        println(x0)
-        println(h[i]*dx)
+        #println(x0)
+        #println(h[i]*dx)
         fi = f(x0 .+ h[i]*dx)
 
         if false #debug

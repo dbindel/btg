@@ -54,7 +54,7 @@ if false
 end
 
 #Example 2: rbf
-if false
+if true
     x = [1;2;3;4]
     f =  θ -> vec(K(x, x, θ[1], rbf));
     df = θ -> vec(K(x, x, θ[1], rbf_prime));
@@ -75,8 +75,8 @@ if false
     println(polyfit(h, A, 1)) 
 end
 
-#Example 4: Check main derivative
-if true
+#Example 4: Check derivative of partial_theta
+if false
     #z0 = [1;2;3]
     z0 = rand(size(s0, 1))
     f = θ -> [partial_theta(θ[1], 2, example)[1](z0)]  
@@ -179,7 +179,7 @@ if false
 end
 
 #Example 11: Check derivative of rbf second derivative
-if true
+if false
     x0 = [3, 4]
     f = theta -> rbf_prime(x0[1], x0[2], theta)
     df = theta -> rbf_prime2(x0[1], x0[2], theta)
@@ -187,3 +187,17 @@ if true
     println("first and second derivatives of rbf")
     println(polyfit(h, A, 1))
 end
+
+#Example 12: Check that derivative of trace is trace of derivative
+if false
+    s1 = [1;2;3]
+    s2 = [5;6;7]
+    f = θ -> tr(K(s1, s2, θ, rbf))
+    df = θ -> tr(K(s1, s2, θ, rbf_prime))
+
+    (h, A) = checkDerivative(f, df, .5)
+    println("derivative of trace")
+    println(polyfit(h, A, 1))
+end
+
+

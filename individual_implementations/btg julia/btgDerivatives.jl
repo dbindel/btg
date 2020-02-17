@@ -39,6 +39,44 @@ function func(θ, setting)
 end
 
 """
+Compute derivative of beta hat with respect to theta
+"""
+function compute_betahat_prime_theta(choleskyΣθ, choleskyXΣX, expr_mid, Σθ_prime, X, gλz, Σθ_inv_X)
+    AA = choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(choleskyΣθ\gλz)))
+    BB = - (choleskyXΣX\(X'*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\gλz)))))
+    βhat_prime_theta = AA + BB
+    βhat_prime_theta = reshape(βhat_prime_theta, size(βhat_prime_theta, 1), size(βhat_prime_theta, 2)) #turn 1D array into 2D array
+end
+"""
+Compute second derivative of beta hat
+Q: - derivative of Sigma_theta^-1 (function handle)
+dQ: derivative of Q (function handle)
+gλz: g_lambda(z)
+"""
+function compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
+    XQX = X'*Q(X) #precompute
+    Qgλz = Q(gλz) #precompute
+    βhatEPXR1 = - (choleskyXΣX\(-expr_mid * (choleskyXΣX\((XQX * (choleskyXΣX\(X'*(choleskyΣθ\gλz))))))))
+    βhatEPXR2 = choleskyXΣX\((X'*dQ(X*(choleskyXΣX\(X'*(choleskyΣθ\gλz))))))
+    βhatEPXR3  = - (choleskyXΣX\((XQX*(choleskyXΣX\(-expr_mid * (choleskyXΣX\(X'*(choleskyΣθ\(gλz)))))))))
+    βhatEPXR4 = - (choleskyXΣX\(XQX*(choleskyXΣX\(X'*Qgλz))))
+    βhatEPXR5 = (choleskyXΣX\(-expr_mid * (choleskyXΣX\(X'*Qgλz))))
+    βhatEPXR6 = - (choleskyXΣX\(X'*dQ(gλz)))
+    βhat_prime2_theta = βhatEPXR1 + βhatEPXR2 + βhatEPXR3 + βhatEPXR4 + βhatEPXR5 + βhatEPXR6
+end 
+"""
+Compute second derivative of qtilde with respect to theta
+"""
+function compute_qtilde_prime_theta(gλz, X, βhat, βhat_prime_theta, choleskyΣθ, Σθ_prime)
+    meanvv = gλz - X*βhat
+    rr = X*βhat_prime_theta
+    AA = (-rr)' * (choleskyΣθ \ meanvv)
+    BB = - meanvv' * (choleskyΣθ \ (Σθ_prime * (choleskyΣθ \ meanvv)))
+    CC =  meanvv' * (choleskyΣθ \ (-rr))
+    qtilde_prime_theta = AA .+ BB .+ CC
+end
+
+"""
 p(z0| theta, lambda, z)
 """
 function prob(θ, λ, setting)
@@ -120,15 +158,22 @@ function partial_theta(θ, λ, setting)
     qC_prime_theta =  qtilde_prime_theta*Cθ + qtilde*C_theta_prime
     AA = -0.5 * detqC^(-1/2) * tr(qC\(qC_prime_theta)) 
     qC_inv_prime_theta = - qC\(qC_prime_theta * qC_inv)
+
     BB = z0 -> -m_prime_theta'*(qC\(expr(z0)))
     CC = z0 -> expr(z0)' * qC_inv_prime_theta * expr(z0)
     DD = z0 -> -expr(z0)'*(qC\m_prime_theta)
     EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
     
-    main_deriv = z0 -> [(AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))]
+    dmain = z0 -> [(AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))]
     main = z0 -> (detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
-    
+
+    tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X  #precompute X'Sigma^-1 dSigma Sigma^-1 X 
+
+
+    dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
+    Q = Y -> (Σθ\(Σθ_prime*(Σθ\(Y))))
+
     #main_deriv = (AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))
 
     #return (vec(Σθ), vec(Σθ_prime))
@@ -142,7 +187,7 @@ function partial_theta(θ, λ, setting)
     #return (vec(Dθ), vec(D_theta_prime))
     #return (vec(Cθ), vec(C_theta_prime))
     
-    return (main, main_deriv)
+    return (main, dmain)
     #return (vec(qC_inv), vec(qC_inv_prime_theta))
     #return ([detqC^(-1/2)], [AA])
     #return (bilinearform, z0 -> BB(z0) + CC(z0) + DD(z0))
@@ -282,30 +327,21 @@ Compute derivative of p(theta, lambda| z) with respect to theta
 """
 function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Σθ_prime2, Bθ_prime) = func(θ, setting)
-
     g = boxCox
     dg = boxCoxPrime
     gλz = g(z, λ)
-
     βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\gλz)) 
     qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\gλz) + Hθ*βhat 
-
-    Σθ_inv_X = Σθ\X #precomputation 
+    Σθ_inv_X = Σθ\X #precompute
+    meanvv = gλz - X*βhat #precompute
 
     #compute betahat_prime_theta
-    expr_mid = X'*(Σθ\Σθ_prime)*(Σθ_inv_X)
-    AA = choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(Σθ\gλz)))
-    BB = - (choleskyXΣX\(X'*(Σθ\(Σθ_prime*(Σθ\gλz)))))
-    βhat_prime_theta = AA + BB
-    βhat_prime_theta = reshape(βhat_prime_theta, size(βhat_prime_theta, 1), size(βhat_prime_theta, 2)) #turn 1D array into 2D array
+    expr_mid = X'*(choleskyΣθ\Σθ_prime)*(Σθ_inv_X)
+    βhat_prime_theta = compute_betahat_prime_theta(choleskyΣθ, choleskyXΣX, expr_mid, Σθ_prime, X, gλz, Σθ_inv_X)
+
     #compute qtilde_prime_theta
-    meanvv = gλz - X*βhat
-    rr = X*βhat_prime_theta
-    AA = (-rr)' * (Σθ \ meanvv)
-    BB = - meanvv' * (Σθ \ (Σθ_prime * (Σθ \ meanvv)))
-    CC =  meanvv' * (Σθ \ (-rr))
-    qtilde_prime_theta = AA .+ BB .+ CC
+    qtilde_prime_theta  = compute_qtilde_prime_theta(gλz, X, βhat, βhat_prime_theta, choleskyΣθ, Σθ_prime)
 
     jac = y -> (abs(reduce( *, map(x -> dg(x, λ), y))))
     jacz = jac(z)
@@ -334,17 +370,7 @@ function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     d2EXPR2 = 0.25 * EXPR2 * trexpr^2 .+ 0.5*EXPR2*tr(dPinv(XΣdΣΣX) .+ choleskyXΣX\(X'*dQ(X)))
 
     Q = Y -> (Σθ\(Σθ_prime*(Σθ\(Y))))
-    #expr_mid is -dthetaP 
-    βhatEPXR1 = - (choleskyXΣX\(-expr_mid * (choleskyXΣX\((X'*Q(X)) * (choleskyXΣX\(X'*(Σθ\gλz)))))))
-    βhatEPXR2 = choleskyXΣX\((X'*dQ(X*(choleskyXΣX\(X'*(Σθ\gλz))))))
-    βhatEPXR3  = - (choleskyXΣX\((X'*Q(X*(choleskyXΣX\(-expr_mid * (choleskyXΣX\(X'*(Σθ\(gλz))))))))))
-    βhatEPXR4 = - (choleskyXΣX\(X'*Q(X*(choleskyXΣX\(X'*Q(gλz))))))
-    
-    βhatEPXR5 = (choleskyXΣX\(-expr_mid * (choleskyXΣX\(X'*Q(gλz)))))
-    βhatEPXR6 = - (choleskyXΣX\(X'*dQ(gλz)))
-
-    βhat_prime2_theta = βhatEPXR1 + βhatEPXR2 + βhatEPXR3 + βhatEPXR4 + βhatEPXR5 + βhatEPXR6
-    
+    βhat_prime2_theta = compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
     #meanvv is gλz - X*βhat
     Xdβ = X*βhat_prime_theta
 
@@ -362,12 +388,12 @@ function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     d2main = (d2EXPR1*EXPR2*EXPR3*EXPR4 .+ d2EXPR2*EXPR1*EXPR3*EXPR4 .+ d2EXPR3*EXPR1*EXPR2*EXPR4 .+ d2EXPR4*EXPR1*EXPR2*EXPR3 
                 .+ 2*(dEXPR1*dEXPR2*EXPR3*EXPR4 .+ dEXPR1*EXPR2*dEXPR3*EXPR4 .+ dEXPR1*EXPR2*EXPR3*dEXPR4 .+ EXPR1*dEXPR2*dEXPR3*EXPR4
                 .+ EXPR1*dEXPR2*EXPR3*dEXPR4 .+ EXPR1*EXPR2*dEXPR3*dEXPR4))
-    return (dmain, d2main)
+    #return (dmain, d2main)
     #return (qtilde_prime_theta, qtilde_prime2_theta)
     #return (choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(Σθ\gλz))), βhatEPXR1+βhatEPXR2+βhatEPXR3+βhatEPXR4)
     #return (- (choleskyXΣX\(X'*(Σθ\(Σθ_prime*(Σθ\gλz))))), βhatEPXR5 + βhatEPXR6)
     #return (Q(gλz), dQ(gλz))
-    #return (βhat_prime_theta, βhat_prime2_theta)
+    return (βhat_prime_theta, βhat_prime2_theta)
     #return (vec(choleskyXΣX\X), vec(dPinv(X)))
     #return (Σθ\(Σθ_prime*(Σθ\X)), dQ(X))
     #return (dEXPR2, d2EXPR2)
@@ -442,9 +468,9 @@ function checkDerivative(f, df, x0)
     else
         dx = rand(size(x0, 1))
     end
-    h = zeros(10)
+    h = zeros(8)
     for i=1:length(h)
-        h[i] = 2. ^(-i-10) 
+        h[i] = 2. ^(-i-8) 
     end
     A = zeros(length(h))
     for i = 1:length(h) 

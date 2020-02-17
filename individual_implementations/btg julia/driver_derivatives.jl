@@ -54,7 +54,7 @@ if false
 end
 
 #Example 2: rbf
-if true
+if false
     x = [1;2;3;4]
     f =  θ -> vec(K(x, x, θ[1], rbf));
     df = θ -> vec(K(x, x, θ[1], rbf_prime));

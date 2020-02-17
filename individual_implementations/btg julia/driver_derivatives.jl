@@ -24,7 +24,7 @@ struct setting
     z
 end
 
-if false
+if true
     s = [3; 4; 2]; s0 = [1; 2; 3]; X = [3 4; 9 5; 7 13]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13]
     example = setting(s, s0, X, X0, z)
 else 

@@ -280,7 +280,7 @@ end
 """
 Compute derivative of p(theta, lambda| z) with respect to theta
 """
-function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
+function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime, Σθ_prime, Σθ_prime2, Bθ_prime) = func(θ, setting)
 
     g = boxCox
@@ -298,14 +298,14 @@ function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
     AA = choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(Σθ\gλz)))
     BB = - (choleskyXΣX\(X'*(Σθ\(Σθ_prime*(Σθ\gλz)))))
     βhat_prime_theta = AA + BB
-    
+    βhat_prime_theta = reshape(βhat_prime_theta, size(βhat_prime_theta, 1), size(βhat_prime_theta, 2)) #turn 1D array into 2D array
     #compute qtilde_prime_theta
-    vv = gλz - X*βhat
+    meanvv = gλz - X*βhat
     rr = X*βhat_prime_theta
-    AA = (-rr)' * (Σθ \ vv)
-    BB = - vv' * (Σθ \ (Σθ_prime * (Σθ \ vv)))
-    CC =  vv' * (Σθ \ (-rr))
-    qtilde_prime_theta = AA + BB + CC
+    AA = (-rr)' * (Σθ \ meanvv)
+    BB = - meanvv' * (Σθ \ (Σθ_prime * (Σθ \ meanvv)))
+    CC =  meanvv' * (Σθ \ (-rr))
+    qtilde_prime_theta = AA .+ BB .+ CC
 
     jac = y -> (abs(reduce( *, map(x -> dg(x, λ), y))))
     jacz = jac(z)
@@ -323,7 +323,7 @@ function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
     dEXPR4 = dpθ(θ)*pλ(λ)*jacz^(1-p/n)
 
     main = EXPR1*EXPR2*EXPR3*EXPR4
-    dmain = dEXPR1 * EXPR2 * EXPR3 * EXPR4 + dEXPR2*EXPR1*EXPR3*EXPR4 + dEXPR3*EXPR1*EXPR2*EXPR4 + dEXPR4*EXPR1*EXPR2*EXPR3
+    dmain = dEXPR1 * EXPR2 * EXPR3 * EXPR4 .+ dEXPR2*EXPR1*EXPR3*EXPR4 .+ dEXPR3*EXPR1*EXPR2*EXPR4 .+ dEXPR4*EXPR1*EXPR2*EXPR3
 
     #-====================== dmain2 (second derivative)===============================
     d2EXPR1 = 0.25 * EXPR1 * trΣθqΣθ_prime^2 -0.5 * EXPR1* tr(choleskyΣθ\Σθ_prime2 - choleskyΣθ\(Σθ_prime*(choleskyΣθ\Σθ_prime)))
@@ -331,7 +331,7 @@ function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
     dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
     dPinv = Y -> choleskyXΣX\(X'*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(X*(choleskyXΣX\Y))))))
 
-    d2EXPR2 = 0.25 * EXPR2 * trexpr^2 + 0.5*EXPR2*tr(dPinv(XΣdΣΣX) + choleskyXΣX\(X'*dQ(X)))
+    d2EXPR2 = 0.25 * EXPR2 * trexpr^2 .+ 0.5*EXPR2*tr(dPinv(XΣdΣΣX) .+ choleskyXΣX\(X'*dQ(X)))
 
     Q = Y -> (Σθ\(Σθ_prime*(Σθ\(Y))))
     #expr_mid is -dthetaP 
@@ -345,15 +345,34 @@ function posterior_theta(θ, λ, pθ, dpθ, pλ, setting)
 
     βhat_prime2_theta = βhatEPXR1 + βhatEPXR2 + βhatEPXR3 + βhatEPXR4 + βhatEPXR5 + βhatEPXR6
     
+    #meanvv is gλz - X*βhat
+    Xdβ = X*βhat_prime_theta
+
+    qtildeEXPR1 = -meanvv'*dQ(meanvv)
+    qtildeEXPR2 = 2*(X*βhat_prime_theta)'*Q(meanvv) 
+    qtildeEXPR3 = 2*Xdβ'*(choleskyΣθ\(Xdβ))
+    qtildeEXPR4 = 2*meanvv'*Q(Xdβ)
+    qtildeEXPR5 = -2*meanvv'*(choleskyΣθ\(X*βhat_prime2_theta))
+
+    qtilde_prime2_theta = qtildeEXPR1 .+ qtildeEXPR2 .+ qtildeEXPR3 .+ qtildeEXPR4 .+ qtildeEXPR5
+    #dEXPR3 =  -((n-p)/2)*qtilde^(-(n-p+2)/2)*qtilde_prime_theta
+    d2EXPR3 = ((n-p)/2)*((n-p+2)/2)*qtilde^(-(n-p+4)/2)*qtilde_prime_theta^2 - (n-p)/2 * qtilde^(-(n-p+2)/2)*qtilde_prime2_theta
+    d2EXPR4 = dpθ2(θ)*pλ(λ)*jacz^(1-p/n)
+    
+    d2main = (d2EXPR1*EXPR2*EXPR3*EXPR4 .+ d2EXPR2*EXPR1*EXPR3*EXPR4 .+ d2EXPR3*EXPR1*EXPR2*EXPR4 .+ d2EXPR4*EXPR1*EXPR2*EXPR3 
+                .+ 2*(dEXPR1*dEXPR2*EXPR3*EXPR4 .+ dEXPR1*EXPR2*dEXPR3*EXPR4 .+ dEXPR1*EXPR2*EXPR3*dEXPR4 .+ EXPR1*dEXPR2*dEXPR3*EXPR4
+                .+ EXPR1*dEXPR2*EXPR3*dEXPR4 .+ EXPR1*EXPR2*dEXPR3*dEXPR4))
+    return (dmain, d2main)
+    #return (qtilde_prime_theta, qtilde_prime2_theta)
     #return (choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(Σθ\gλz))), βhatEPXR1+βhatEPXR2+βhatEPXR3+βhatEPXR4)
     #return (- (choleskyXΣX\(X'*(Σθ\(Σθ_prime*(Σθ\gλz))))), βhatEPXR5 + βhatEPXR6)
-    
     #return (Q(gλz), dQ(gλz))
-    return (βhat_prime_theta, βhat_prime2_theta)
+    #return (βhat_prime_theta, βhat_prime2_theta)
     #return (vec(choleskyXΣX\X), vec(dPinv(X)))
     #return (Σθ\(Σθ_prime*(Σθ\X)), dQ(X))
     #return (dEXPR2, d2EXPR2)
     #return (main, dmain)
+
 end
   
 
@@ -425,7 +444,7 @@ function checkDerivative(f, df, x0)
     end
     h = zeros(10)
     for i=1:length(h)
-        h[i] = 2. ^(-i-8) 
+        h[i] = 2. ^(-i-10) 
     end
     A = zeros(length(h))
     for i = 1:length(h) 
@@ -449,8 +468,7 @@ function checkDerivative(f, df, x0)
     end
     #println(A)
     #println(h)
-    display(plot(log.(h), log.(A), xlabel = "x", ylabel = "y"))
-
+    display(plot(log.(h), log.(A), title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error"))
     return (log.(h), log.(A))
 end
 

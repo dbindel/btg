@@ -140,11 +140,13 @@ end
 if true
     θ0 = [.7]
     λ = .4; 
-    pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2); pλ = λ -> 1; dpθ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
-    f = θ  -> posterior_theta(θ[1], λ, pθ, dpθ, pλ, example)[1]
-    df = θ -> posterior_theta(θ[1], λ, pθ, dpθ, pλ, example)[2]
+    pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2); pλ = λ -> 1
+    dpθ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
+    dpθ2 = θ -> -1/(sqrt(2*pi))*exp.(-(θ .-1).^2/2) + (1 .-θ)^2 * 1/sqrt(2*pi) * exp.(-(1 .- θ)^2/2)
+    f = θ  -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example)[1]
+    df = θ -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example)[2]
     
-    (rr, tt) = checkDerivative(θ -> [pθ(θ[1])], θ -> dpθ(θ[1]), [.5])
+    (rr, tt) = checkDerivative(θ -> [dpθ(θ[1])], θ -> dpθ2(θ[1]), [.5])
     println("check derivative of prior")
     println(polyfit(rr, tt, 1))
 

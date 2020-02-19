@@ -8,7 +8,28 @@ using Plots
 using Polynomials
 using DataFrames
 using CSV
-using .btgDeriv
+#using .btgDeriv
+
+
+function normalize(X)
+    for j = 1:size(X, 2)
+        col = X[:, j]
+        mini = minimum(col)
+        maxi = maximum(col)
+        if mini == maxi
+            col = col/maxi
+        else
+            col = (col .- mini)/(maxi-mini)
+        end
+        X[:, j] = col
+    end
+    return X
+end
+
+function squash(X)
+    maxi = maximum(X)
+    return X ./ maxi
+end
 
 
 """
@@ -25,23 +46,27 @@ struct setting
 end
 
 if true
-    s = [3; 4; 2]; s0 = [1; 2; 3]; X = [3 4; 9 5; 7 13]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13]
+    #s = [3; 4; 2]; s0 = [1; 2; 3]; X = [3 4; 9 5; 7 13]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13]
+    s = [3 6 1 3; 4 2 3 2; 2 1 1 5; 1 4 2 3;5 6 7 8]
+    s0 = [1 2 3 2; 2 4 2 1; 3 1 2 6; 1 9 4 2; 2 3 8 6]
+    X = [3 4 4; 9 3 5; 1 7 13; 4 1 2; 5 6 14]
+    X0 = [1 1 2 ; 3 2 1; 4 -1 3; 5 5 4; 8 -3 5]
+    z = [9; 11; 13; 6; 7]
+
     example = setting(s, s0, X, X0, z)
 else 
     df = DataFrame(CSV.File("data//abalone.csv"))
-    data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
-    target = convert(Matrix, df[:, 9:9]) #age
+    data = convert(Matrix, df[:,2:9]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight, age
+    #target = convert(Matrix, df[:, 9:9]) #age
 
-    ind = [100, 105, 110]
-    ind0 = 11:12
-    
+    #ind = 200:230
+    ind = 220:230
+    ind0 = 23:24
+    block = vcat(data[ind, :], data[ind0, :]) #block contains training vectors and test vectors (values and labels)
     #s = [3 1; 4 1; 2 1; 5 6]; s0 = [1 1; 2 1; 3 1]; X = [3 4; 9 5; 7 13; 7 8]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13;3]
-    s = data[ind, :]; s0 = data[ind0, :]; X = data[ind, 1:3]; X0 = data[ind0, 1:3]; z = target[ind]
-
+    s = block[1:length(ind), 1:3]; s0 = block[length(ind)+1:end, 1:3]; X = block[1:length(ind), 1:1]; X0 = block[length(ind)+1:end, 1:1]; z = squash(block[1:length(ind), 8])
     example = setting(s, s0, X, X0, z)
 end
-
-
 
 ##Example 1
 if false
@@ -76,15 +101,25 @@ if false
 end
 
 #Example 4: Check derivative of partial_theta
-if false
+if true
     #z0 = [1;2;3]
-    z0 = rand(size(s0, 1))
-    f = θ -> [partial_theta(θ[1], 2, example)[1](z0)]  
-    df = θ -> partial_theta(θ[1], 2, example)[2](z0)
-    θ0 = [2.1]
-    (h, A) = checkDerivative(f, df, θ0)
+    #z0 = rand(size(s0, 1))
+    z0 = [.5;.5]
+    #f = θ -> partial_theta(θ[1], 2, example)[1](z0)
+    #df = θ -> partial_theta(θ[1], 2, example)[2](z0)
+    f = θ -> partial_theta(θ[1], 2, example)[1]
+    df = θ -> partial_theta(θ[1], 2, example)[2]
+    θ0 = [1.0]
+    (h, A) = checkDerivative(f, df, θ0, 4, 15, 10)
+    plt1 = plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
+    #plot(polyfit(h, A, 1), reuse = true)
     println("partial theta of p(z0|theta, lambda, z)")
     println(polyfit(h, A, 1)) 
+    nums = collect(.1:.1:20)
+    g = x -> f(x)[1]
+    plt2 = plot(nums, g.(nums),xlabel = "theta", ylabel = "p(z0|theta, lambda, z)", fontfamily=font(48, "Courier") ,title = "theta vs p(z0| theta, lambda, z)")
+    display(plot(plt1, plt2, fontfamily=font(48, "Courier") ))
+    gui()
 end
 
 #Example 5: Check derivative of Box Cox
@@ -137,22 +172,47 @@ end
 
 #Example 7: Check derivative of sub-variables of posterior_theta. No "sub-functions", because we don't 
 #have a z0 to deal with
-if true
-    θ0 = [.7]
-    λ = .4; 
-    pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2); pλ = λ -> 1
+if false
+    println("loading some simple functions")
+    @time begin
+    θ0 = [2]
+    λ = 3; 
+    pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2)
     dpθ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
     dpθ2 = θ -> -1/(sqrt(2*pi))*exp.(-(θ .-1).^2/2) + (1 .-θ)^2 * 1/sqrt(2*pi) * exp.(-(1 .- θ)^2/2)
+    pλ = λ -> 1
+    end
+    println("defining posterior theta and derivative")
+    @time begin
     f = θ  -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example)[1]
     df = θ -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example)[2]
-    
-    (rr, tt) = checkDerivative(θ -> [dpθ(θ[1])], θ -> dpθ2(θ[1]), [.5])
+    end
+    (rr, tt) = checkDerivative(θ -> [dpθ(θ[1])], θ -> dpθ2(θ[1]), [.5], 5, 12)
     println("check derivative of prior")
     println(polyfit(rr, tt, 1))
-
-    (h, A) = checkDerivative(f, df, θ0)
+    println("Check derivative by eval f and df at 10 points")
+    @time begin
+    (h, A) = checkDerivative(f, df, θ0, 10, 14)
+    end
     println("partial theta of p(theta, lambda|z)")
-    println(polyfit(h, A, 1))
+    pfit = polyfit(h, A, 1)
+    println(pfit)
+    println("Plotting")
+    @time begin
+    plt1 = plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",
+    label = [string(pfit)], fontfamily=font(48, "Courier") , reuse = false)
+    end
+    nums = collect(.2:.2:2)
+    g = x -> f(x)[1]
+    println("Evaluating f at about 25 points")
+    @time begin
+    gnums = g.(nums)
+    end
+    plt2 = plot(nums, gnums,xlabel = "theta", ylabel = "p(theta, lambda| z)", fontfamily=font(48, "Courier") ,title = "theta vs p(theta, lambda| z)")
+    display(plot(plt1, plt2, fontfamily=font(48, "Courier") ))
+    #display(plot(plt1))
+    gui()
+    
 end
 
 #Example 8: Check derivative of posterior_lambda

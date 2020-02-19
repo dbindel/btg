@@ -1,9 +1,10 @@
-println(p2(5))
+using Plots
 
-function p1(x)
-    return 2*x
+plt1= plot([1, 2], [3, 4])
+plt2= plot([3, 2], [3, 4], reuse=false)
+@time begin
+display(plot(plt1, plt2))
 end
-
-function p2(x)
-    return 3*x
-end
+#display(plot(plt1))
+#display(plot(plt2))
+gui()

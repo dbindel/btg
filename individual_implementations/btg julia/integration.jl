@@ -95,7 +95,7 @@ nodes = convert(Array, data[:,1]) #integration nodes for Gauss-Turan Quadrature
 weights = convert(Matrix, data[:, 2:end]) #integration weights 
 
 """
-Gauss-Turan integration
+Gauss-Turan integration with 2 derivatives
 INPUTS:
 arr contains enpoints of integration interval
 """

@@ -62,8 +62,8 @@ function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
     #simultaneously define PDF and CDF - (reuse integration nodes and weights)
     (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
     z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
-
-    (z0 ->  Gauss_Turan(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
+    
+    (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
     z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
 end
 

@@ -219,6 +219,7 @@ function partial_theta(θ, λ, setting)
     βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
     qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
+    meanvv = gλz - X*βhat
 
     Σθ_inv_X = Σθ\X #precomputation 
     tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X  #precompute X'Sigma^-1 dSigma Sigma^-1 X 
@@ -243,6 +244,7 @@ function partial_theta(θ, λ, setting)
 
     #second derivatives
     βhat_prime2_theta  = compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
+    qtilde_prime2_theta = compute_qtilde_prime2_theta(choleskyΣθ, X, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
     Hθ_prime2 = compute_Hθ_prime2(Bθ, Bθ_prime, Bθ_prime2, Σθ_inv_X, choleskyΣθ, X, Q, dQ)
     m_prime2_theta = compute_m_prime2_theta(Bθ, Bθ_prime, Bθ_prime2, choleskyΣθ, Σθ_prime, gλz, βhat, βhat_prime_theta, 
     βhat_prime2_theta, Hθ, Hθ_prime, Hθ_prime2, Q, dQ)
@@ -253,34 +255,36 @@ function partial_theta(θ, λ, setting)
     expr = z0 -> g(z0, λ) .- m
     qC = qtilde*Cθ 
     bilinearform = z0 -> 1 .+ expr(z0)'*(qC\(expr(z0)))
-    qC_inv = qC\I
     detqC = det(qC) 
     qC_prime_theta =  qtilde_prime_theta .* Cθ + qtilde .* Cθ_prime
     AA = -0.5 * detqC^(-1/2) * tr(qC\(qC_prime_theta)) 
-    qC_inv_prime_theta = - qC\(qC_prime_theta * qC_inv)  
+    qC_inv_prime_theta = Y -> - qC\(qC_prime_theta * (qC\Y))  
 
-    BB = z0 -> -m_prime_theta'*(qC\(expr(z0)))
-    CC = z0 -> expr(z0)' * qC_inv_prime_theta * expr(z0)
-    DD = z0 -> -expr(z0)'*(qC\m_prime_theta)
+    dbilinearform = z0 -> -m_prime_theta'*(qC\(expr(z0))) .+ expr(z0)' * qC_inv_prime_theta(expr(z0)) .- expr(z0)'*(qC\m_prime_theta)
     EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
     
-    dmain = z0 -> [(AA*EE(z0) .+ FF(z0)*(BB(z0) .+ CC(z0) .+ DD(z0)))]
+    dmain = z0 -> [(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0)))]
     main = z0 -> (detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
 
-    if false 
-        println("Σθ")
-        println(Σθ)
-        println("Σθ_prime")
-        println(Σθ_prime)
-        println("Σθ_prime2")
-        println(Σθ_prime2)
-        println("Bθ_prime")
-        println(Bθ_prime)
-        println("Bθ_prime2")
-        println(Bθ_prime2)
-    end
-    return (Cθ_prime, Cθ_prime2)
+    #compute second derivative of main expression
+    qC_prime2_theta = qtilde_prime2_theta .* Cθ + qtilde .* Cθ_prime2 + 2* Cθ_prime .* qtilde_prime_theta 
+    qC_inv_prime2_theta = Y -> 2*(qC\(qC_prime_theta*(qC\(qC_prime_theta*(qC\Y))))) - qC\(qC_prime2_theta*(qC\Y))
+    
+    PP = 0.25 * (detqC)^(-1/2) * (tr(qC\qC_prime_theta))^2 
+    QQ = -0.5*detqC^(-1/2) * tr(qC_inv_prime_theta(qC_prime_theta) + qC\(qC_prime2_theta)) 
+    dAA = PP+QQ #second derivative of det(qC)^-1/2
+
+    d2bilinearform = z0 -> (- m_prime2_theta'*(qC\expr(z0)) .- expr(z0)'*(qC\m_prime2_theta) .+ expr(z0)'*qC_inv_prime2_theta(expr(z0))
+                            .+ 2*(m_prime_theta'*(qC\(m_prime_theta)) .- m_prime_theta'*(qC_inv_prime_theta(expr(z0))) .- expr(z0)'*(qC_inv_prime_theta(m_prime_theta)))
+    )
+
+    return (dbilinearform, d2bilinearform)
+    #return (qC_prime_theta, qC_prime2_theta)
+end
+    #return (vec(qC_inv_prime_theta(I)), vec(qC_inv_prime2_theta(I)))
+    #return (qtilde_prime_theta, qtilde_prime2_theta)
+    #return (Cθ_prime, Cθ_prime2)
     #return (vec(Bθ_prime), vec(Bθ_prime2))
     #return (m_prime_theta, m_prime2_theta)
     #return (vec(Eθ_prime), vec(Eθ_prime2))
@@ -307,7 +311,7 @@ function partial_theta(θ, λ, setting)
     #return (vec(qC_inv), vec(qC_inv_prime_theta))
     #return ([detqC^(-1/2)], [AA])
     #return (bilinearform, z0 -> BB(z0) + CC(z0) + DD(z0))
-end
+
 
 """
 Compute derivative of p(z0|theta, lambda, z) w.r.t lambda

@@ -249,8 +249,6 @@ function partial_theta(θ, λ, setting)
     Dθ_prime2 = compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
     Cθ_prime2 = compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
     
-
-
     #compute derivative of main expression
     expr = z0 -> g(z0, λ) .- m
     qC = qtilde*Cθ 
@@ -282,9 +280,9 @@ function partial_theta(θ, λ, setting)
         println("Bθ_prime2")
         println(Bθ_prime2)
     end
+    return (Cθ_prime, Cθ_prime2)
     #return (vec(Bθ_prime), vec(Bθ_prime2))
     #return (m_prime_theta, m_prime2_theta)
-
     #return (vec(Eθ_prime), vec(Eθ_prime2))
     #return (vec(Bθ), vec(Bθ_prime))
     #return (vec(Bθ_prime), vec(Bθ_prime2))
@@ -294,7 +292,6 @@ function partial_theta(θ, λ, setting)
     #return (vec(dP(X')), vec(d2P(X')))
     #return (vec(dPinv(X')), vec(d2Pinv(X')))
     #main_deriv = (AA*EE(z0) + FF(z0)*(BB(z0) + CC(z0) + DD(z0)))
-
     #return (vec(Σθ), vec(Σθ_prime))
     #return (βhat, βhat_prime_theta)
     #return ([qtilde], [qtilde_prime_theta])

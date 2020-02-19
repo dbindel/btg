@@ -109,8 +109,8 @@ if true
     #df = θ -> partial_theta(θ[1], 2, example)[2](z0)
     f = θ -> partial_theta(θ[1], 2, example)[1]
     df = θ -> partial_theta(θ[1], 2, example)[2]
-    θ0 = [.2]
-    (h, A) = checkDerivative(f, df, θ0, 4, 15, 10)
+    θ0 = [1.5]
+    (h, A) = checkDerivative(f, df, θ0, 3, 15, 10)
     plt1 = plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
     println("partial theta of p(z0|theta, lambda, z)")

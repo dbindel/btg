@@ -5,9 +5,24 @@ using LinearAlgebra
 Gaussian/RBF/Squared Exponential correlation function
 """
 function rbf(x, y, θ=1.0)
-    1/sqrt(2*pi)*exp(-θ*0.5*(norm(x .- y))^2)
+    1/sqrt(2*pi)*exp.(-θ*0.5*(norm(x .- y))^2)
 end
 
+"""
+Derivative of Gaussian/RBF/Squared Exponential correlation function
+with respect to hyperparameter theta
+"""
+function rbf_prime(x, y, θ=1.0)
+    - 1/sqrt(2*pi) * 0.5 * norm(x.-y)^2 * exp.(-θ*0.5*(norm(x .- y))^2)
+end
+
+"""
+Second derivative of Gaussian/RBF/Squared Exponential correlation function
+with respect to hyperparameter theta
+"""
+function rbf_prime2(x, y, θ=1.0)
+    1/sqrt(2*pi) * 0.25 * norm(x.-y)^4 * exp.(-θ*0.5*(norm(x .- y))^2)
+end
 
 """
 Builds cross-covariance matrix using corr kernel function.
@@ -16,11 +31,12 @@ Ex. RBF, exponential, Matern
 Inputs are assumed to be 1D arrays or 2D column vectors.
 Returns matrix of size len(s1) times len(s2)
 """
-function K(s1, s2, θ, corr)  
+function K(s1, s2, θ, corr=rbf)  
     K = zeros(size(s1, 1), size(s2, 1))
     for i = 1:size(s1, 1)
         for j = 1:size(s2, 1)
-            K[i, j] = corr(s1[i, :], s2[j, :], θ)
+            cur = corr(s1[i, :], s2[j, :], θ)
+            K[i, j] = isa(cur, Array) ? cur[1] : cur 
         end
     end   
     return size(s1, 1)==size(s2, 1) ? K+UniformScaling(1e-8) : K

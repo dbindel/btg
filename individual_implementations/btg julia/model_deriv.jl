@@ -4,6 +4,7 @@ using SpecialFunctions
 using PDMats
 using Printf
 include("kernel.jl")
+include("integration.jl")
 
 """
 Define prediction/inference problem by supplying known parameters, including design matrices, 
@@ -59,6 +60,9 @@ function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
         return post*Distributions.pdf(t, g(z0, λ))*jac, post*Distributions.cdf(t, g(z0, λ))*jac  
     end   
     #simultaneously define PDF and CDF - (reuse integration nodes and weights)
+    (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
+    z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
+    
     (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
     z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
 end

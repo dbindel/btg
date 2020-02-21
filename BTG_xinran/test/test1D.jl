@@ -1,6 +1,6 @@
 # This is a 1D simple test
-include("../BTG_main.jl")
-include("../validation.jl")
+include("../src/BTG_main.jl")
+include("../src/validation.jl")
 
 function test_fun_1d(x)
     return sin(x) + 1.1
@@ -22,8 +22,8 @@ kernel = Kernel_SE
 nonlinfun = BoxCox
 
 # cross validation
-print("STARTING CROSS VALIDATION \n")
-cross_validation(training_data, kernel, nonlinfun)
+# print("STARTING CROSS VALIDATION \n")
+# cross_validation(training_data, kernel, nonlinfun)
 
 # call the BTG model 
 print("STARTING PREDICTION \n")

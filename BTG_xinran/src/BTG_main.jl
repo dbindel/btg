@@ -22,7 +22,10 @@ function BTG_main(training_data, testing_data)
         println("Current i = $i \n x_pred = $x_test_temp")
         flush(stdout)
         # select indices forming new training data
+        start = time()
         distribution_temp = model(x_test_temp, training_data, kernel, nonlinfun)
+        elapsed = time() - start
+        print("time taken for single point prediction is $elapsed \n")
         PyPlot.clf()
         plot_distribution_single(distribution_temp, x_test_temp, z_true_temp)
         PyPlot.savefig("figures/test_$i.pdf")

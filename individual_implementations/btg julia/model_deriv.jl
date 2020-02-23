@@ -5,6 +5,7 @@ using PDMats
 using Printf
 include("kernel.jl")
 include("integration.jl")
+include("btgDerivatives.jl")
 
 """
 Define prediction/inference problem by supplying known parameters, including design matrices, 
@@ -35,19 +36,7 @@ function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
     n = size(X, 1) 
     p = size(X, 2) 
     k = size(X0, 1) 
-
-    function func(θ) 
-        Eθ = K(s0, s0, θ, rbf) 
-        Σθ = K(s, s, θ, rbf) 
-        Bθ = K(s0, s, θ, rbf) 
-        choleskyΣθ = cholesky(Σθ) #precompute Cholesky decomposition of Sigma
-        choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) #precompute Cholesky decomposition of XSigma\X
-        Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
-        Hθ = X0 - Bθ*(choleskyΣθ\X) 
-        Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
-        args = [Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ]
-        return args
-    end
+    
     function density(λ, z0, args)
         Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ = args
         βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
@@ -62,7 +51,7 @@ function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
     #simultaneously define PDF and CDF - (reuse integration nodes and weights)
     (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
     z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
-    
+
     (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
     z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
 end

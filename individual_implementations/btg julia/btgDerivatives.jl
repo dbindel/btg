@@ -12,6 +12,19 @@ using LinearAlgebra
 #export prob, partial_theta, partial_lambda, partial_z0, posterior_theta, posterior_lambda, checkDerivative
 
 """
+define inference problem using settings
+s is observed prediction locations, X is matrix of covariates, z is observed values
+X0 is matrix of covariates for prediction location, s0 is prediction location
+"""
+struct setting
+    s
+    s0 
+    X
+    X0 
+    z
+end
+
+"""
 Precompute theta-dependent quantities and assign variable to contents of setting 
 """
 function func(θ, setting)
@@ -230,8 +243,7 @@ function partial_theta(θ, λ, setting)
     dP = Y -> -XQX*Y
     d2P = Y -> -X'*(dQ(X)*Y)
     d2Pinv = Y -> -dPinv(dP(choleskyXΣX\Y)) - (choleskyXΣX\(d2P(choleskyXΣX\Y))) - (choleskyXΣX\(dP(dPinv(Y))))
-
-    #cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
+    cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
     
     expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
     #first derivatives
@@ -264,8 +276,8 @@ function partial_theta(θ, λ, setting)
     EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
     
-    dmain = z0 -> [(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0)))]
-    main = z0 -> (detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
+    dmain = z0 -> cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0)))
+    main = z0 -> cc*(detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
 
     #compute second derivative of main expression
     qC_prime2_theta = qtilde_prime2_theta .* Cθ + qtilde .* Cθ_prime2 + 2* Cθ_prime .* qtilde_prime_theta 
@@ -278,8 +290,17 @@ function partial_theta(θ, λ, setting)
     d2bilinearform = z0 -> (- m_prime2_theta'*(qC\expr(z0)) .- expr(z0)'*(qC\m_prime2_theta) .+ expr(z0)'*qC_inv_prime2_theta(expr(z0))
                             .+ 2*(m_prime_theta'*(qC\(m_prime_theta)) .- m_prime_theta'*(qC_inv_prime_theta(expr(z0))) .- expr(z0)'*(qC_inv_prime_theta(m_prime_theta)))
     )
+    bformpower = z0 -> bilinearform(z0)^(-(n-p+k)/2)
+    dbformpower = z0 -> -((n-p+k)/2)*bilinearform(z0)^(-(n-p+k+2)/2)*dbilinearform(z0)
+    d2bformpower = z0 -> (n-p+k)/2 * (n-p+k+2)/2 * bilinearform(z0)^(-(n-p+k+4)/2)*dbilinearform(z0)^2 - (n-p+k)/2*bilinearform(z0)^(-(n-p+k+2)/2)*d2bilinearform(z0) 
 
-    return (dbilinearform, d2bilinearform)
+    d2main = z0 -> cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0))
+
+    #return (bformpower, dbformpower)
+    return (main, dmain)
+    #return (dmain, d2main)
+    #return (dbformpower, d2bformpower)
+    #return (dbilinearform, d2bilinearform)
     #return (qC_prime_theta, qC_prime2_theta)
 end
     #return (vec(qC_inv_prime_theta(I)), vec(qC_inv_prime2_theta(I)))
@@ -470,6 +491,7 @@ function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     EXPR2 = det(choleskyXΣX)^(-1/2)
     EXPR3 = qtilde^(-(n-p)/2) 
     EXPR4 = pθ(θ)*pλ(λ)*jacz^(1-p/n)
+
     trΣθqΣθ_prime = tr(choleskyΣθ\Σθ_prime) #precompute 
     dEXPR1 = -0.5 * det(choleskyΣθ)^(-1/2)*trΣθqΣθ_prime
     XΣdΣΣX = Σθ_inv_X' * Σθ_prime * Σθ_inv_X  #precompute

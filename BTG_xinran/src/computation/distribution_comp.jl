@@ -86,7 +86,7 @@ else
     # dist_z = (mean = mean_set, median = median_set, 
     #           stdv =  stdv_set, CI = CI_set)
 
-    # do not compute CI
+    # do not compute CI for now
     dist_z = (mean = mean_set, median = median_set, 
               stdv =  stdv_set)
 end

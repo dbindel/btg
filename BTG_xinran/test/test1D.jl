@@ -28,4 +28,5 @@ nonlinfun = BoxCox
 # call the BTG model 
 print("STARTING PREDICTION \n")
 BTG_main(training_data, testing_data)
+println("FINISHING PREDICTION")
 

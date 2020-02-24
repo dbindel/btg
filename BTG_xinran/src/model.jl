@@ -55,7 +55,7 @@ function model(x0, training_data, kernel, nonlinfun, p = 1)
 
     ## compute weights
     # compute quadrature grids and weights
-    n_quad = [4, 4, 4]
+    n_quad = [8, 8, 10] # number of quad nodes for each param, could increase if needed
     n_theta = [n_quad[1], n_quad[2]]
     n_lambda = n_quad[3]
     n_param = (theta = n_theta, lambda = n_lambda)

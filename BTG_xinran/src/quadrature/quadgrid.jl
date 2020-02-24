@@ -1,8 +1,20 @@
-# given an interval, return quadrature points and weights
+# given an 1D interval, return quadrature nodes and weights
 
 using LinearAlgebra
+using FastGaussQuadrature
 
 function quadgrid(xmin, xmax, n)
+    # get nodes and weights in reference coord [-1, 1]
+    x, w = gausslegendre(n)
+    # map nodes and weights to current interval
+    dist = (xmax - xmin)/2
+    center = (xmax + xmin)/2
+    weights = dist .* w
+    nodes = dist .* x .+ center
+    return nodes, weights
+end
+
+function quadgrid_old(xmin, xmax, n)
     dist = (xmax - xmin)/2
     center = (xmax + xmin)/2
     if n == 1
@@ -32,4 +44,5 @@ function quadgrid(xmin, xmax, n)
     # int = dot(w_new, fx)
 
     return x_new, w_new
+
 end

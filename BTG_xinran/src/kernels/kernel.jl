@@ -1,4 +1,5 @@
 using LinearAlgebra
+using Distances
 
 function Kernel_SE(r, theta)
     @assert length(theta) == 2

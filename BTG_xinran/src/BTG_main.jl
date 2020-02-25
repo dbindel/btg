@@ -1,8 +1,10 @@
 # testing a set of points
 # 1d case
+using Cubature
 
 include("model.jl")
 include("plotting/plot_distribution_single.jl")
+include("root_finding/zero_finding.jl")
 
 function BTG_main(training_data, testing_data)
     # training points
@@ -21,15 +23,24 @@ function BTG_main(training_data, testing_data)
         z_true_temp = z_true[i]
         println("Current i = $i \n x_pred = $x_test_temp")
         flush(stdout)
-        # select indices forming new training data
+        # single point prediction
         start = time()
         distribution_temp = model(x_test_temp, training_data, kernel, nonlinfun)
         elapsed = time() - start
-        print("time taken for single point prediction is $elapsed \n")
+        print("time taken for single point prediction: $elapsed \n")
+
+        # check pdf integral == 1
+        # get the current pdf
+        pdf_temp = distribution_temp.pdf
+        # get the upper bound for integral
+        b = distribution_temp.upperbd
+        int_temp = hquadrature(pdf_temp, 1e-6, b)[1]
+        print("Current integral interval: [0, $b], int(pdf) = $int_temp \n")
+
+        # plot 
         PyPlot.clf()
         plot_distribution_single(distribution_temp, x_test_temp, z_true_temp)
         PyPlot.savefig("figures/test_$i.pdf")
-        println("------------------------=")
+        println("------------------------")
     end
-    println("FINISHING PREDICTION")
 end

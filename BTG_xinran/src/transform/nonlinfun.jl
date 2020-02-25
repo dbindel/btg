@@ -3,9 +3,9 @@ function BoxCox(x, lambda, IFinv = 0)
         if lambda == 0
             return [log(x), 1/x]
         else
-            return [(x^lambda - 1)/lambda, x^(lambda - 1)]
+            return [(expm1(lambda * log(x)))/lambda, x^(lambda - 1)]
         end
-    else 
+    else # compute the inverse function and inverse derivative
         if lambda == 0
             return [exp(x), exp(x)]
         else

@@ -3,23 +3,24 @@ using PyPlot
 function plot_distribution_single(distribution_z0, x0, z0_true)
     pdf0 = distribution_z0.pdf
     mean = distribution_z0.mean
-    median = distribution_z0.median
+    # median = distribution_z0.median
     # CI = distribution_z0.CI
     # CI_left = CI[2]
     # CI_right = CI[3]
     
     # determine the range of plotting
-    right = 10
-    while pdf0(right) > 1e-4
-        right += 1
-    end
+    kmax = 20
+    tol = 1e-3
+    b0 = 5.0
+    b, iter = zero_finding(pdf0, kmax, tol, b0)
+
     # plot pdf
-    z_grid = range(1e-5, stop = right, step = 0.01)
+    z_grid = range(1e-5, stop = b, step = 0.01)
     p_grid = pdf0.(z_grid);
     PyPlot.plot(z_grid, p_grid, label = "probability density function")
     # plot mean median and true value
     PyPlot.vlines(mean, 0, pdf0(mean), label = "mean", colors = "k")
-    PyPlot.vlines(median, 0, pdf0(median), label = "median",  colors = "b")
+    # PyPlot.vlines(median, 0, pdf0(median), label = "median",  colors = "b")
     PyPlot.vlines(z0_true, 0, pdf0(z0_true), label = "true value",  colors = "r")
     # plot CI
     # CI_x_range = range(CI_left, stop = CI_right, step = 0.01)

@@ -1,5 +1,6 @@
 using LinearAlgebra
 using DataFrames
+using CSV
 """
 Uses the Golub-Welsch eigenvalue method to compute
 Gauss-Legendre quadrature nodes and weights for the domain [-1, 1]
@@ -27,9 +28,11 @@ dm3, wm3 = gausslegpts(100)
 """
 INPUTS:
 f is a function handle, a and b are integration endpoints (a<b), and n 
-is the number of quadrature nodes (defaults to 10)
+is the number of quadrature nodes (defaults to 10). Note that f can be
+multi-output, in which case int1D integrates each entry individually. This way,
+the function lends itself to being composed with Gauss-Turan integration.  
 """
-function int1D(f, a, b, num="3")
+function int1D(f, arr, num="2")
     if num=="1"
         x, w= dm, wm
     elseif num=="2"
@@ -39,20 +42,18 @@ function int1D(f, a, b, num="3")
     else 
         x, w = dm3, wm3
     end
-    int = 0.0
+    sample = f(arr[1])
+    res = zeros(size(sample))
     for i = 1:length(x)
-        expr = (b-a)/2*x[i] + (b+a)/2
-        int = int + f(expr)*w[i]
+        expr = (arr[2]-arr[1])/2 * x[i] .+ (arr[1]+arr[2])/2
+        #println(res)
+        #println(f(expr) .* w[i])
+        res = res .+ f(expr) .* w[i]
     end
-    int = (b-a)/2*int
+    res = (arr[2]-arr[1])/2 .* res
 end
 
-"""
-INPUTS:
-f is a function handle, a and b are integration endpoints (a<b), and n 
-is the number of quadrature nodes (defaults to 10)
-"""
-function int1D(f, arr, num="1")
+function int1D_print(f, arr, num="0")
     if num=="1"
         x, w= dm, wm
     elseif num=="2"
@@ -62,12 +63,15 @@ function int1D(f, arr, num="1")
     else 
         x, w = dm3, wm3
     end
-    int = 0.0
+    sample = f(arr[1])
+    res = zeros(size(sample))
     for i = 1:length(x)
-        expr = (arr[2]-arr[1])/2*x[i] + (arr[1]+arr[2])/2
-        int = int + f(expr)*w[i]
+        expr = (arr[2]-arr[1])/2 * x[i] .+ (arr[1]+arr[2])/2
+        println(res)
+        println(f(expr) .* w[i])
+        res = res .+ f(expr) .* w[i]
     end
-    int = (arr[2]-arr[1])/2*int
+    res = (arr[2]-arr[1])/2 .* res
 end
 
 """
@@ -99,16 +103,22 @@ Gauss-Turan integration with 2 derivatives
 INPUTS:
 arr contains enpoints of integration interval
 """
-function Gauss_Turan(f, df, df2, arr, nodes, weights)
+function Gauss_Turan(F, arr, nodes = nodes, weights=weights)
     a = arr[1]
     b = arr[2]
     nodes = (b-a)/2 .* nodes .+ (b+a)/2
-    fn = f.(nodes)
-    dfn = df.(nodes)
-    df2n = df2.(nodes)
-    return (fn'*weights[:, 1] + dfn'*weights[:, 2] + df2n'*weights[:, 3])*(b-a)/2
+    T = zeros(length(nodes), 3)
+    time = @elapsed begin
+    for i = 1:length(nodes)
+        (T[i, 1], T[i, 2], T[i, 3]) = F(nodes[i])
+    end
+    end
+    println(time)
+    fn = T[:, 1]
+    dfn = T[:, 2]
+    d2fn = T[:, 3]
+    return (fn'*weights[:, 1] + dfn'*weights[:, 2] + d2fn'*weights[:, 3])*(b-a)/2
 end
-
 
 """
 n-dimensional Gauss-Legendre integration

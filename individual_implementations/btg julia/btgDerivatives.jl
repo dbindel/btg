@@ -2,6 +2,7 @@
 
 include("kernel.jl")
 include("transforms.jl")
+include("examples.jl")
 using Distributions
 using Printf
 using SpecialFunctions
@@ -10,19 +11,6 @@ using Polynomials
 using LinearAlgebra
 
 #export prob, partial_theta, partial_lambda, partial_z0, posterior_theta, posterior_lambda, checkDerivative
-
-"""
-define inference problem using settings
-s is observed prediction locations, X is matrix of covariates, z is observed values
-X0 is matrix of covariates for prediction location, s0 is prediction location
-"""
-struct setting
-    s
-    s0 
-    X
-    X0 
-    z
-end
 
 """
 Precompute theta-dependent quantities and assign variable to contents of setting 
@@ -218,14 +206,19 @@ function prob(θ, λ, setting)
     #cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
     expr = z0 -> g(z0, λ) .- m
     return z0 -> (det(qtilde*Cθ)^(-1/2))*(1+expr(z0)'*((qtilde*Cθ)\expr(z0)))^(-(n-p+k)/2)
-    
 end
 
 """
 Compute derivative of p(z0|theta, lambda, z) w.r.t theta
 """
-function partial_theta(θ, λ, setting)
-    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
+function partial_theta(θ, λ, setting, theta_params = nothing)
+    if theta_params == nothing
+        println("WARNING: recompute theta_params in partial_theta")
+        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
+    else
+        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = theta_params
+    end
+    
     g = boxCox #boxCox by default
     gλz = g(z, λ)
 
@@ -276,7 +269,7 @@ function partial_theta(θ, λ, setting)
     EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
     
-    dmain = z0 -> cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0)))
+    dmain = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1]
     main = z0 -> cc*(detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
 
     #compute second derivative of main expression
@@ -294,10 +287,10 @@ function partial_theta(θ, λ, setting)
     dbformpower = z0 -> -((n-p+k)/2)*bilinearform(z0)^(-(n-p+k+2)/2)*dbilinearform(z0)
     d2bformpower = z0 -> (n-p+k)/2 * (n-p+k+2)/2 * bilinearform(z0)^(-(n-p+k+4)/2)*dbilinearform(z0)^2 - (n-p+k)/2*bilinearform(z0)^(-(n-p+k+2)/2)*d2bilinearform(z0) 
 
-    d2main = z0 -> cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0))
+    d2main = z0 -> (cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0)))[1]
 
     #return (bformpower, dbformpower)
-    return (main, dmain)
+    return (main, dmain, d2main)
     #return (dmain, d2main)
     #return (dbformpower, d2bformpower)
     #return (dbilinearform, d2bilinearform)
@@ -466,8 +459,13 @@ end
 """
 Compute derivative of p(theta, lambda| z) with respect to theta
 """
-function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
-    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
+function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting, theta_params = nothing)
+    if theta_params == nothing
+        println("WARNING: recompute theta_params in partial_theta")
+        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
+    else
+        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = theta_params
+    end
     g = boxCox
     dg = boxCoxPrime
     gλz = g(z, λ)
@@ -501,7 +499,7 @@ function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     dEXPR4 = dpθ(θ)*pλ(λ)*jacz^(1-p/n)
 
     main = EXPR1*EXPR2*EXPR3*EXPR4
-    dmain = dEXPR1 * EXPR2 * EXPR3 * EXPR4 .+ dEXPR2*EXPR1*EXPR3*EXPR4 .+ dEXPR3*EXPR1*EXPR2*EXPR4 .+ dEXPR4*EXPR1*EXPR2*EXPR3
+    dmain = (dEXPR1 * EXPR2 * EXPR3 * EXPR4 .+ dEXPR2*EXPR1*EXPR3*EXPR4 .+ dEXPR3*EXPR1*EXPR2*EXPR4 .+ dEXPR4*EXPR1*EXPR2*EXPR3)[1]
 
     #-====================== dmain2 (second derivative)===============================
     d2EXPR1 = 0.25 * EXPR1 * trΣθqΣθ_prime^2 -0.5 * EXPR1* tr(choleskyΣθ\Σθ_prime2 - choleskyΣθ\(Σθ_prime*(choleskyΣθ\Σθ_prime)))
@@ -530,8 +528,10 @@ function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
     
     d2main = (d2EXPR1*EXPR2*EXPR3*EXPR4 .+ d2EXPR2*EXPR1*EXPR3*EXPR4 .+ d2EXPR3*EXPR1*EXPR2*EXPR4 .+ d2EXPR4*EXPR1*EXPR2*EXPR3 
                 .+ 2*(dEXPR1*dEXPR2*EXPR3*EXPR4 .+ dEXPR1*EXPR2*dEXPR3*EXPR4 .+ dEXPR1*EXPR2*EXPR3*dEXPR4 .+ EXPR1*dEXPR2*dEXPR3*EXPR4
-                .+ EXPR1*dEXPR2*EXPR3*dEXPR4 .+ EXPR1*EXPR2*dEXPR3*dEXPR4))
-                if true
+                .+ EXPR1*dEXPR2*EXPR3*dEXPR4 .+ EXPR1*EXPR2*dEXPR3*dEXPR4))[1]
+    
+
+                if false
                     println("===============================================================")
                     println("theta");println(θ);println("betahat");println(βhat);println("glambdaz");println(gλz);println("qtilde")
                     println(qtilde);println("m");println(m);println("expr_mid");println(expr_mid);println("βhat_prime2_theta")
@@ -546,7 +546,7 @@ function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting)
                     println("===============================================================")
                 end
 
-    return (dmain, d2main)
+    return (main, dmain, d2main)
     #return (qtilde_prime_theta, qtilde_prime2_theta)
     #return (choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(Σθ\gλz))), βhatEPXR1+βhatEPXR2+βhatEPXR3+βhatEPXR4)
     #return (- (choleskyXΣX\(X'*(Σθ\(Σθ_prime*(Σθ\gλz))))), βhatEPXR5 + βhatEPXR6)

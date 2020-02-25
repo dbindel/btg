@@ -1,4 +1,5 @@
 include("model.jl")
+include("model_deriv.jl")
 include("statistics.jl")
 include("transforms.jl")
 include("plotting.jl")
@@ -25,6 +26,8 @@ z = target[ind]
 #prior marginals are assumed constant
 pλ = x -> 1 
 pθ = x -> 1
+dpθ = x -> 0 
+dpθ2 = x -> 0
 
 #define ranges for theta and lambda
 range_theta = [100 300]
@@ -55,6 +58,8 @@ if true # use this blockcxsanity check + plot data
     #display(plot!(target[i], seriestype = :vline))
     #med = bisection(x -> cdfn(x)-0.5, 1e-3, 25, 1e-3, 10) 
     #println(med)
+    ff = model_deriv(X, X0, s, s0, pθ, dpθ, dpθ2, pλ, z, range_theta, range_lambda)
+    gg = x -> ff(x)/constant
 end
 
 if false #cross validation on training set

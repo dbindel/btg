@@ -32,19 +32,6 @@ function squash(X)
 end
 
 
-"""
-define inference problem using settings
-s is observed prediction locations, X is matrix of covariates, z is observed values
-X0 is matrix of covariates for prediction location, s0 is prediction location
-"""
-struct setting
-    s
-    s0 
-    X
-    X0 
-    z
-end
-
 if true
     #s = [3; 4; 2]; s0 = [1; 2; 3]; X = [3 4; 9 5; 7 13]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13]
     s = [3 6 1 3; 4 2 3 2; 2 1 1 5; 1 4 2 3;5 6 7 8]
@@ -102,14 +89,13 @@ end
 
 #Example 4: Check derivative of partial_theta
 if true
-    #z0 = [1;2;3]
-    #z0 = rand(size(s0, 1))
-    z0 = [2;4;3;1;2]
     #f = θ -> partial_theta(θ[1], 2, example)[1](z0)
     #df = θ -> partial_theta(θ[1], 2, example)[2](z0)
-    f = θ -> partial_theta(θ[1], 2, example)[1](z0)
-    df = θ -> partial_theta(θ[1], 2, example)[2](z0)
-    θ0 = [1.5]
+    example2 = getExample(1, 25, 1, 1, 10)
+    z0 = [0.4];
+    f = θ -> partial_theta(θ[1], 2, example2)[1](z0)
+    df = θ -> partial_theta(θ[1], 2, example2)[2](z0)
+    θ0 = [10]
     (h, A) = checkDerivative(f, df, θ0, 3, 8, 10)
     plt1 = plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)

@@ -2,10 +2,11 @@ using LinearAlgebra
 using Distributions
 using SpecialFunctions
 using PDMats
-using Printf
+using CSV
 include("kernel.jl")
 include("integration.jl")
 include("btgDerivatives.jl")
+include("examples.jl")
 
 """
 Define prediction/inference problem by supplying known parameters, including design matrices, 
@@ -30,31 +31,40 @@ z0: unobserved random vector
 
 OUTPUTS:
 probability density function z0 -> f(z_0|z) 
-cumulative density function z0 -> F(z0|z)
 """
-function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
+function model_deriv(X, X0, s, s0, pθ, dpθ, dpθ2, pλ, z, rangeθ, rangeλ)
     n = size(X, 1) 
     p = size(X, 2) 
-    k = size(X0, 1) 
-    
-    function density(λ, z0, args)
-        Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ = args
-        βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
-        qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
-        m = Bθ*(cholesky(Σθ)\g(z, λ)) + Hθ*βhat 
-        J = λ -> abs(reduce(*, map(x -> gprime(x, λ), z))) 
-        post = det(cholesky(Σθ))^(-0.5)*det(choleskyXΣX)^(-0.5)*qtilde[1]^(-(n-p)/2)*J(λ)^(1-p/n)*pθ(θ)*pλ(λ) 
-        jac = abs(reduce(*, map(x -> gprime(x, λ), z0)))
-        t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
-        return post*Distributions.pdf(t, g(z0, λ))*jac, post*Distributions.cdf(t, g(z0, λ))*jac  
-    end   
-    #simultaneously define PDF and CDF - (reuse integration nodes and weights)
-    (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
-    z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
-
-    (z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[1], rangeλ)), rangeθ),  
-    z0 ->  int1D(θ -> (args = func(θ); int1D(λ -> density(λ, z0, args)[2], rangeλ)), rangeθ))
+    k = size(X0, 1)
+    example = setting(s, s0, X, X0, z)
+    function define_fs(θ, λ, theta_params)
+        time = @elapsed begin
+        (main, dmain, d2main) = partial_theta(θ, λ, example, theta_params)
+        (main1, dmain1, d2main1) = posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, example, theta_params)
+        f = z0 -> (main(z0)*main1); df = z0 -> (main(z0)*dmain1 .+ dmain(z0)*main1); d2f = z0 -> (d2main(z0)*main1 .+ main(z0)*d2main1 .+ 2*dmain(z0)*dmain1)
+        end
+        println("define_fs time: %s\n", time)
+        return (f, df, d2f)
+    end
+    z0 ->  Gauss_Turan(θ -> (theta_params = func(θ, example); int1D( λ -> ((g, dg, d2g) = define_fs(θ, λ, theta_params); [g(z0), dg(z0), d2g(z0)]), rangeλ)), rangeθ)
 end
 
 
-    
+if false
+
+function define_fs(θ, λ, theta_params)
+    (main, dmain, d2main) = partial_theta(θ, λ, example, theta_params)
+    (main1, dmain1, d2main1) = posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, example, theta_params)
+    f = z0 -> (main(z0)*main1); df = z0 -> (main(z0)*dmain1 .+ dmain(z0)*main1); d2f = z0 -> (d2main(z0)*main1 .+ main(z0)*d2main1 .+ 2*dmain(z0)*dmain1)
+    return (f, df, d2f)
+end
+    θ=2.2
+    rangeλ =[1 2]
+    example = getExample(1, 25, 1, 1, 2)
+    theta_params = func(θ, example);
+    z0 = 5
+    λ = 4
+    (g, dg, d2g) = define_fs(θ, λ, theta_params)
+    #y = z0 -> int1D( λ -> ((g, dg, d2g) = define_fs(θ, λ, theta_params); 
+    #[g(z0), dg(z0), d2g(z0)]), rangeλ)
+end

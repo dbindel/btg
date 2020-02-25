@@ -6,7 +6,6 @@ include("btgDerivatives.jl")
 include("integration.jl")    
 using Polynomials
 
-using .btgDeriv
 
 data = DataFrame(CSV.File("nodes_weights_50.csv"))
 nodes = convert(Array, data[:,1]) #integration nodes for Gauss-Turan Quadrature
@@ -32,6 +31,7 @@ f = x-> sin.(x .+pi/2)
 df = x-> cos.(x .+pi/2)
 df2 = x -> -sin.(x .+pi/2)
 
+
 (h, A) = checkDerivative(df, df2, .5)
 println(polyfit(h, A, 1))
 
@@ -42,10 +42,10 @@ function eval_Gauss_Turan(f, df, df2, nodes, weights)
     return fn'*weights[:, 1] + dfn'*weights[:, 2] + df2n'*weights[:, 3]
 end
 
-res1 = int1D(f, -1.5, 1.5, "3")
+res1 = int1D(f, [-1.5, 1.5], "3")
 println("Gauss error: ", abs(res1-1.99499))
 
-res = Gauss_Turan(f, df, df2, [-1.5, 1.5], nodes, weights)
+F = x -> [f(x); df(x); df2(x)]
+res = Gauss_Turan(F, [-1.5, 1.5], nodes, weights)
 println("Turan error: ", abs(res - 1.99499))
-
 

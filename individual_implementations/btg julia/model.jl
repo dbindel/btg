@@ -3,7 +3,9 @@ using Distributions
 using SpecialFunctions
 using PDMats
 using Printf
+
 include("kernel.jl")
+include("examples.jl")
 
 """
 Define prediction/inference problem by supplying known parameters, including design matrices, 
@@ -30,7 +32,9 @@ OUTPUTS:
 probability density function z0 -> f(z_0|z) 
 cumulative density function z0 -> F(z0|z)
 """
-function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
+
+function model(setting, g, gprime, pθ, pλ, rangeθ, rangeλ)
+    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z;
     n = size(X, 1) 
     p = size(X, 2) 
     k = size(X0, 1) 
@@ -64,4 +68,6 @@ function model(X, X0, s, s0, g, gprime, pθ, pλ, z, rangeθ, rangeλ)
 end
 
 
-    
+if false
+
+end

@@ -44,7 +44,9 @@ if true # use this blockcxsanity check + plot data
     i = 240
     s0 = data[i:i,:] #covariates and coordinates
     X0  = data[i:i, 1:3]
-    pdff, cdff = model(X, X0, s, s0, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda)
+    example = setting(s, s0, X, X0, z)#abalone data
+    example2 = getExample(1, 50, 1, 1, 2)
+    pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
     constant = cdff(30)
     pdfn = x -> pdff(x)/constant 
     cdfn = x -> cdff(x)/constant 
@@ -58,7 +60,7 @@ if true # use this blockcxsanity check + plot data
     #display(plot!(target[i], seriestype = :vline))
     #med = bisection(x -> cdfn(x)-0.5, 1e-3, 25, 1e-3, 10) 
     #println(med)
-    ff = model_deriv(X, X0, s, s0, pθ, dpθ, dpθ2, pλ, z, range_theta, range_lambda)
+    ff = model_deriv(example2, pθ, dpθ, dpθ2, pλ, range_theta, range_lambda)
     gg = x -> ff(x)/constant
 end
 

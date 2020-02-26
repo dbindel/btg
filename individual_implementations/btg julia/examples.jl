@@ -1,18 +1,6 @@
 using LinearAlgebra
 include("kernel.jl")
 
-"""
-define inference problem using settings
-s is observed prediction locations, X is matrix of covariates, z is observed values
-X0 is matrix of covariates for prediction location, s0 is prediction location
-"""
-struct setting{T<:Array{Float64}}
-    s::T
-    s0::T
-    X::T
-    X0::T
-    z::T
-end
 
 function sample(K)
     n = size(K, 1)
@@ -28,7 +16,6 @@ function getExample(dim, n, a, b, θ)
         X = [3 4 4; 9 3 5; 1 7 13; 4 1 2; 5 6 14]
         X0 = [1 1 2 ; 3 2 1; 4 -1 3; 5 5 4; 8 -3 5]
         z = [9; 11; 13; 6; 7]
-        z = reshape(z, length(z), 1)
         example = setting(s, s0, X, X0, z)
     else 
         #s = [3 6 1 3; 4 2 3 2; 2 1 1 5; 1 4 2 3;5 6 7 8]
@@ -39,8 +26,8 @@ function getExample(dim, n, a, b, θ)
         #X0 = [1 1 2]
         X = rand(n, b)*100
         kernelm = K(s, s, θ)
-        z = sample(kernelm)
-        z = reshape(z, length(z), 1)
+        z = sample(kernelm) 
+        z = reshape(z, length(z))
         #z = [9; 11; 13; 6; 7;]
         example = setting(s, s0, X, X0, z)
     end

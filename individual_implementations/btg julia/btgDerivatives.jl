@@ -3,6 +3,8 @@
 include("kernel.jl")
 include("transforms.jl")
 include("examples.jl")
+include("structures.jl")
+
 using Distributions
 using Printf
 using SpecialFunctions
@@ -15,18 +17,15 @@ using LinearAlgebra
 """
 Precompute theta-dependent quantities and assign variable to contents of setting 
 """
-function func(θ, setting)
-    s = setting.s 
-    s0 = setting.s0 
+function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}})
+    s = setting.s
+    s0 = setting.s0
     X = setting.X
-    X0 = setting.X0 
+    X0 = setting.X0
     z = setting.z
-    n = size(X, 1) 
-    p = size(X, 2) 
-    k = size(X0, 1) 
-    Eθ = K(s0, s0, θ, rbf) 
-    Σθ = K(s, s, θ, rbf) 
-    Bθ = K(s0, s, θ, rbf) 
+    Eθ = K(s0, s0, θ, rbf)
+    Σθ =  K(s, s, θ, rbf)
+    Bθ =  K(s0, s, θ, rbf)
     choleskyΣθ = cholesky(Σθ) 
     choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
     Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
@@ -38,13 +37,13 @@ function func(θ, setting)
     Σθ_prime2 = K(s, s, θ, rbf_prime2) 
     Bθ_prime = K(s0, s, θ, rbf_prime) 
     Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
-    return (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2)
+    return θ_params(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX)
 end
 
 """
 Compute derivative of beta hat with respect to theta
 """
-function compute_betahat_prime_theta(choleskyΣθ, choleskyXΣX, expr_mid, Σθ_prime, X, gλz, Σθ_inv_X)
+function compute_betahat_prime_theta(choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}, expr_mid, Σθ_prime, X::Array{Float64,2}, gλz, Σθ_inv_X)
     AA = choleskyXΣX\(expr_mid)*(choleskyXΣX\(X'*(choleskyΣθ\gλz)))
     BB = - (choleskyXΣX\(X'*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\gλz)))))
     βhat_prime_theta = AA + BB
@@ -57,7 +56,7 @@ Q: - derivative of Sigma_theta^-1 (function handle)
 dQ: derivative of Q (function handle)
 gλz: g_lambda(z)
 """
-function compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
+function compute_βhat_prime2_theta(choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, expr_mid, X::Array{Float64,2}, Q, dQ, gλz)
     XQX = X'*Q(X) #precompute
     Qgλz = Q(gλz) #precompute
     βhatEPXR1 = - (choleskyXΣX\(-expr_mid * (choleskyXΣX\((XQX * (choleskyXΣX\(X'*(choleskyΣθ\gλz))))))))
@@ -72,7 +71,7 @@ end
 """
 First derivative of qtilde with respect to theta
 """
-function compute_qtilde_prime_theta(gλz, X, βhat, βhat_prime_theta, choleskyΣθ, Σθ_prime)
+function compute_qtilde_prime_theta(gλz, X::Array{Float64,2}, βhat, βhat_prime_theta, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Σθ_prime::Array{Float64,2})
     meanvv = gλz - X*βhat
     rr = X*βhat_prime_theta
     AA = (-rr)' * (choleskyΣθ \ meanvv)
@@ -84,7 +83,7 @@ end
 """
 Second derivative of qtilde with respect to theta
 """
-function compute_qtilde_prime2_theta(choleskyΣθ, X, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
+function compute_qtilde_prime2_theta(choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, X::Array{Float64,2}, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
     Xdβ = X*βhat_prime_theta
     qtildeEXPR1 = -meanvv'*dQ(meanvv)
     qtildeEXPR2 = 2*(X*βhat_prime_theta)'*Q(meanvv) 
@@ -97,7 +96,7 @@ end
 """
 First derivative of Htheta with respect to theta
 """
-function compute_Hθ_prime(Bθ_prime, Σθ_inv_X, choleskyΣθ, Σθ_prime, Bθ, X)
+function compute_Hθ_prime(Bθ_prime::Array{Float64,2}, Σθ_inv_X::Array{Float64,2}, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Σθ_prime::Array{Float64,2}, Bθ::Array{Float64,2}, X::Array{Float64,2})
     #compute Hθ_prime 
     AA = -Bθ_prime*Σθ_inv_X 
     #BB = Bθ*Σθ\(Σθ_prime*(Σθ\X)) displaying the bug
@@ -108,7 +107,7 @@ end
 """
 Second derivative of Htheta with respect to theta
 """
-function compute_Hθ_prime2(Bθ, Bθ_prime, Bθ_prime2, Σθ_inv_X, choleskyΣθ, X, Q, dQ)
+function compute_Hθ_prime2(Bθ::Array{Float64,2}, Bθ_prime::Array{Float64,2}, Bθ_prime2::Array{Float64,2}, Σθ_inv_X, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, X, Q, dQ)
     AA = - Bθ_prime2*(choleskyΣθ\X)
     BB = 2*Bθ_prime*Q(X)
     CC = Bθ*dQ(X)
@@ -118,7 +117,7 @@ end
 """
 First derivative of m_theta with respect to theta
 """
-function compute_m_prime_theta(Bθ, Bθ_prime, choleskyΣθ,Σθ_prime, gλz, βhat, βhat_prime_theta,Hθ, Hθ_prime)
+function compute_m_prime_theta(Bθ::Array{Float64,2}, Bθ_prime::Array{Float64,2}, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Σθ_prime::Array{Float64,2}, gλz, βhat, βhat_prime_theta,Hθ::Array{Float64,2}, Hθ_prime::Array{Float64,2})
     AA = Bθ_prime*(choleskyΣθ\gλz)
     BB = - Bθ*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\gλz)))
     CC = Hθ_prime*βhat
@@ -129,7 +128,7 @@ end
 """
 First derivative of m_theta with respect to theta
 """
-function compute_m_prime2_theta(Bθ, Bθ_prime, Bθ_prime2, choleskyΣθ, Σθ_prime, gλz, βhat, βhat_prime_theta, 
+function compute_m_prime2_theta(Bθ::Array{Float64,2}, Bθ_prime::Array{Float64,2}, Bθ_prime2::Array{Float64,2}, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Σθ_prime::Array{Float64,2}, gλz, βhat, βhat_prime_theta, 
     βhat_prime_theta2, Hθ, Hθ_prime, Hθ_prime2, Q, dQ)
     AA = Bθ_prime2*(choleskyΣθ\gλz) - 2*Bθ_prime*(Q(gλz))
     BB = -Bθ*(dQ(gλz))
@@ -142,7 +141,7 @@ end
 """
 First derivative of D_theta with respect to theta
 """
-function compute_Dθ_prime(choleskyΣθ, Bθ, Eθ_prime, Σθ_prime, Bθ_prime)
+function compute_Dθ_prime(choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Bθ::Array{Float64,2}, Eθ_prime::Array{Float64,2}, Σθ_prime::Array{Float64,2}, Bθ_prime::Array{Float64,2})
     sigma_inv_B = choleskyΣθ \ Bθ' #precomputation
     AA = Eθ_prime - Bθ_prime * sigma_inv_B 
     BB = sigma_inv_B' * Σθ_prime * sigma_inv_B
@@ -153,7 +152,7 @@ end
 """
 Second derivative of D_theta with respect to theta
 """
-function compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
+function compute_Dθ_prime2(choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Bθ::Array{Float64,2}, Bθ_prime::Array{Float64,2}, Bθ_prime2::Array{Float64,2}, Eθ_prime2::Array{Float64,2}, Q, dQ)
     AA = Eθ_prime2 - Bθ_prime2*(choleskyΣθ\Bθ') - Bθ*(choleskyΣθ\Bθ_prime2')
     BB = Bθ*dQ(Bθ') + 2*Bθ*Q(Bθ_prime') + 2*Bθ_prime*Q(Bθ')
     CC = -2*Bθ_prime*(choleskyΣθ\Bθ_prime')
@@ -163,7 +162,7 @@ end
 """
 First derivative of C_theta with respect to theta
 """
-function compute_Cθ_prime(Dθ_prime,Hθ,  Hθ_prime, choleskyXΣX, Σθ_inv_X, Σθ_prime)
+function compute_Cθ_prime(Dθ_prime::Array{Float64,2}, Hθ::Array{Float64,2},  Hθ_prime::Array{Float64,2}, choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}, Σθ_inv_X::Array{Float64,2}, Σθ_prime::Array{Float64,2})
     AA = Dθ_prime + Hθ_prime*(choleskyXΣX\Hθ')
     BB = Hθ*(choleskyXΣX\(Σθ_inv_X'*Σθ_prime*Σθ_inv_X))*(choleskyXΣX\Hθ')
     CC = Hθ*(choleskyXΣX\(Hθ_prime'))
@@ -173,7 +172,7 @@ end
 """
 Second derivative of C_theta with respect to theta
 """
-function compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
+function compute_Cθ_prime2(Dθ_prime2::Array{Float64,2}, Hθ::Array{Float64,2}, Hθ_prime::Array{Float64,2}, Hθ_prime2::Array{Float64,2}, choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}, dPinv, d2Pinv)
     AA = Dθ_prime2 + Hθ_prime2 * (choleskyXΣX\Hθ')
     BB = Hθ * (choleskyXΣX\Hθ_prime2') 
     CC = Hθ*(d2Pinv(Hθ'))
@@ -184,7 +183,6 @@ end
 function test()
     #P, dP_inv, 
 end
-
 
 #"""
 #Derivative of H_theta with respect to theta
@@ -211,14 +209,30 @@ end
 """
 Compute derivative of p(z0|theta, lambda, z) w.r.t theta
 """
-function partial_theta(θ, λ, setting, theta_params = nothing)
-    if theta_params == nothing
-        println("WARNING: recompute theta_params in partial_theta")
-        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
-    else
-        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = theta_params
+function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing}=nothing)
+    if theta_params === nothing
+        #println("WARNING: recompute theta_params in partial_theta")
+        theta_params = func(θ, setting)
+        #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
+        #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
-    
+    Eθ = theta_params.Eθ
+    Σθ = theta_params.Σθ 
+    Bθ = theta_params.Bθ
+    Dθ = theta_params.Dθ
+    Hθ = theta_params.Hθ
+    Cθ = theta_params. Cθ
+    Eθ_prime = theta_params.Eθ_prime
+    Eθ_prime2 = theta_params.Eθ_prime2
+    Σθ_prime = theta_params.Σθ_prime
+    Σθ_prime2 = theta_params.Σθ_prime2
+    Bθ_prime = theta_params.Bθ_prime
+    Bθ_prime2 = theta_params.Bθ_prime2
+    choleskyΣθ = theta_params.choleskyΣθ
+    choleskyXΣX = theta_params.choleskyXΣX
+
+    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) 
+
     g = boxCox #boxCox by default
     gλz = g(z, λ)
 
@@ -289,7 +303,7 @@ function partial_theta(θ, λ, setting, theta_params = nothing)
 
     d2main = z0 -> (cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0)))[1]
 
-    #return (bformpower, dbformpower)
+    #return (vec(Bθ_prime), vec(Bθ_prime2))
     return (main, dmain, d2main)
     #return (dmain, d2main)
     #return (dbformpower, d2bformpower)
@@ -325,7 +339,6 @@ end
     #return (vec(qC_inv), vec(qC_inv_prime_theta))
     #return ([detqC^(-1/2)], [AA])
     #return (bilinearform, z0 -> BB(z0) + CC(z0) + DD(z0))
-
 
 """
 Compute derivative of p(z0|theta, lambda, z) w.r.t lambda
@@ -459,13 +472,30 @@ end
 """
 Compute derivative of p(theta, lambda| z) with respect to theta
 """
-function posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, setting, theta_params = nothing)
-    if theta_params == nothing
-        println("WARNING: recompute theta_params in partial_theta")
-        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
-    else
-        (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = theta_params
+function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64,2}}}, Nothing}=nothing)
+    if theta_params === nothing
+        #println("WARNING: recompute theta_params in partial_theta")
+        theta_params = func(θ, setting)
+        #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
+        #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
+    Eθ = theta_params.Eθ
+    Σθ = theta_params.Σθ 
+    Bθ = theta_params.Bθ
+    Dθ = theta_params.Dθ
+    Hθ = theta_params.Hθ
+    Cθ = theta_params. Cθ
+    Eθ_prime = theta_params.Eθ_prime
+    Eθ_prime2 = theta_params.Eθ_prime2
+    Σθ_prime = theta_params.Σθ_prime
+    Σθ_prime2 = theta_params.Σθ_prime2
+    Bθ_prime = theta_params.Bθ_prime
+    Bθ_prime2 = theta_params.Bθ_prime2
+    choleskyΣθ = theta_params.choleskyΣθ
+    choleskyXΣX = theta_params.choleskyXΣX
+
+    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) 
+
     g = boxCox
     dg = boxCoxPrime
     gλz = g(z, λ)

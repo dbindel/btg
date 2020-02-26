@@ -4,7 +4,7 @@ using SpecialFunctions
 using PDMats
 using CSV
 using Profile
-using ProfileView
+#using ProfileView
 include("kernel.jl")
 include("integration.jl")
 include("btgDerivatives.jl")
@@ -34,35 +34,47 @@ z0: unobserved random vector
 OUTPUTS:
 probability density function z0 -> f(z_0|z) 
 """
-function define_fs(θ, λ, theta_params, example::setting)
+function define_fs(θ::Float64, λ::Float64, theta_params::θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, example::setting{Array{Float64, 2}})
     time = @elapsed begin
     pθ = x->1 
     dpθ = x->0
     dpθ2 = x->0
     pλ = x->1
-    (main, dmain, d2main) = partial_theta(θ, λ, example, theta_params)
-    (main1, dmain1, d2main1) = posterior_theta(θ, λ, pθ, dpθ, dpθ2, pλ, example, theta_params)
+    (main, dmain, d2main) = partial_theta(float(θ), float(λ), example, theta_params)
+    (main1, dmain1, d2main1) = posterior_theta(float(θ), float(λ), pθ, dpθ, dpθ2, pλ, example, theta_params)
     f = z0 -> (main(z0)*main1); df = z0 -> (main(z0)*dmain1 .+ dmain(z0)*main1); d2f = z0 -> (d2main(z0)*main1 .+ main(z0)*d2main1 .+ 2*dmain(z0)*dmain1)
     end
     #println("define_fs time: %s\n", time)
     return (f, df, d2f)
 end
-function model_deriv(setting, pθ, dpθ, dpθ2, pλ, rangeθ, rangeλ)
-    n = size(X, 1) 
-    p = size(X, 2) 
-    k = size(X0, 1)
-    z0 ->  Gauss_Turan(θ -> (theta_params = func(θ, example); int1D( λ -> ((g, dg, d2g) = define_fs(θ, λ, theta_params, setting); [g(z0), dg(z0), d2g(z0)]), rangeλ)), rangeθ)
+
+function model_deriv(example::setting{Array{Float64, 2}, Array{Float64, 1}}, pθ, dpθ, dpθ2, pλ, rangeθ, rangeλ)
+    #z0 ->  Gauss_Turan(θ -> (theta_params = func(θ, example); int1D( λ -> ((g, dg, d2g) = define_fs(θ, λ, theta_params, example); [g(z0), dg(z0), d2g(z0)]), rangeλ)), rangeθ)
+    function nested(theta_params::θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, θ::Float64, z0)
+        function intlambda(z0::Array{Float64, 1}, λ::Float64)
+            (g, dg, d2g) = define_fs(θ, λ, theta_params, example)
+            [g(z0), dg(z0), d2g(z0)]
+        end
+        int1D(λ -> intlambda(z0, float(λ)), rangeλ)
+    end
+    function density(z0::Array{Float64, 1})
+        function int(θ::Float64)
+            theta_params = func(θ, example)
+            nested(theta_params, θ, z0)
+        end
+        Gauss_Turan(int, rangeθ)
+    end
+    return density
 end
 
-
-function test_model_deriv()
+function test_model_deriv(nn=25)
     θ=2.2
     rangeλ =[1 2]
-    example = getExample(1, 25, 1, 1, 2)
+    example = getExample(1, nn, 1, 1, 2)
     println("time to compute theta-dependent params")
     println(@elapsed theta_params = func(θ, example))
-    z0 = 5
-    λ = 4
+    z0 = [5.0]
+    λ = 4.0
     println("time to define g, dg, d2g")
     println(@elapsed (g, dg, d2g) = define_fs(θ, λ, theta_params, example))
 

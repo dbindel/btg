@@ -33,12 +33,12 @@ end
 
 
 if true
-    #s = [3; 4; 2]; s0 = [1; 2; 3]; X = [3 4; 9 5; 7 13]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13]
-    s = [3 6 1 3; 4 2 3 2; 2 1 1 5; 1 4 2 3;5 6 7 8]
-    s0 = [1 2 3 2; 2 4 2 1; 3 1 2 6; 1 9 4 2; 2 3 8 6]
-    X = [3 4 4; 9 3 5; 1 7 13; 4 1 2; 5 6 14]
-    X0 = [1 1 2 ; 3 2 1; 4 -1 3; 5 5 4; 8 -3 5]
-    z = [9; 11; 13; 6; 7]
+    #s = [3.0; 4; 2]; s0 = [1; 2; 3]; X = [3 4; 9 5; 7 13]; X0 = [1 1; 2 1; -1 3]; z = [10; 11; 13]
+    s = [3.0 6 1 3; 4 2 3 2; 2 1 1 5; 1 4 2 3;5 6 7 8]
+    s0 = [1.0 2 3 2; 2 4 2 1; 3 1 2 6; 1 9 4 2; 2 3 8 6]
+    X = [3.0 4 4; 9 3 5; 1 7 13; 4 1 2; 5 6 14]
+    X0 = [1.0 1 2 ; 3 2 1; 4 -1 3; 5 5 4; 8 -3 5]
+    z = [9.0; 11; 13; 6; 7]
 
     example = setting(s, s0, X, X0, z)
 else 
@@ -92,11 +92,12 @@ if true
     #f = θ -> partial_theta(θ[1], 2, example)[1](z0)
     #df = θ -> partial_theta(θ[1], 2, example)[2](z0)
     example2 = getExample(1, 25, 1, 1, 10)
-    z0 = [0.4];
-    f = θ -> partial_theta(θ[1], 2, example2)[1](z0)
-    df = θ -> partial_theta(θ[1], 2, example2)[2](z0)
-    θ0 = [10]
-    (h, A) = checkDerivative(f, df, θ0, 3, 8, 10)
+    θ0 = [1.0]
+    z0 = [6];
+    f = θ -> partial_theta(θ[1], 2.0, example2)[2](z0)
+    df = θ -> partial_theta(θ[1], 2.0, example2)[3](z0)
+   
+    (h, A) = checkDerivative(f, df, θ0, 5, 14, 10)
     plt1 = plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
     println("partial theta of p(z0|theta, lambda, z)")
@@ -104,7 +105,7 @@ if true
     nums = collect(.1:.1:20) 
     g = x -> f(x)[1]
     plt2 = plot(nums, g.(nums),xlabel = "theta", ylabel = "p(z0|theta, lambda, z)", fontfamily=font(48, "Courier") ,title = "theta vs p(z0| theta, lambda, z)")
-    display(plot(plt1, plt2, fontfamily=font(48, "Courier") ))
+    display(plot(plt1, plt2, fontfamily=font(48, "Courier")))
     gui()
 end
 
@@ -166,11 +167,11 @@ end
 
 #Example 7: Check derivative of sub-variables of posterior_theta. No "sub-functions", because we don't 
 #have a z0 to deal with
-if false
+if true
     println("loading some simple functions")
     @time begin
-    θ0 = [2]
-    λ = 3; 
+    θ0 = [2.0]
+    λ = 3.0; 
     pθ = θ -> 1/sqrt(2*pi)*exp.(-(θ .- 1) .^2/2)
     dpθ = θ -> (1 .- θ)/sqrt(2*pi)*exp.(-(1 .- θ) .^2/2)
     dpθ2 = θ -> -1/(sqrt(2*pi))*exp.(-(θ .-1).^2/2) + (1 .-θ)^2 * 1/sqrt(2*pi) * exp.(-(1 .- θ)^2/2)
@@ -178,15 +179,15 @@ if false
     end
     println("defining posterior theta and derivative")
     @time begin
-    f = θ  -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example)[1]
-    df = θ -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example)[2]
+    f = θ  -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example2)[1]
+    df = θ -> posterior_theta(θ[1], λ, pθ, dpθ, dpθ2, pλ, example2)[2]
     end
     (rr, tt) = checkDerivative(θ -> [dpθ(θ[1])], θ -> dpθ2(θ[1]), [.5], 5, 12)
     println("check derivative of prior")
     println(polyfit(rr, tt, 1))
     println("Check derivative by eval f and df at 10 points")
     @time begin
-    (h, A) = checkDerivative(f, df, θ0, 10, 14)
+    (h, A) = checkDerivative(f, df, θ0, 5, 11)
     end
     println("partial theta of p(theta, lambda|z)")
     pfit = polyfit(h, A, 1)

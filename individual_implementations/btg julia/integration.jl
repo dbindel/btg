@@ -97,6 +97,9 @@ end
 data = DataFrame(CSV.File("nodes_weights_50.csv"))
 nodes = convert(Array, data[:,1]) #integration nodes for Gauss-Turan Quadrature
 weights = convert(Matrix, data[:, 2:end]) #integration weights 
+data2 = DataFrame(CSV.File("nodes_weights_20.csv"))
+nodes20  = convert(Array, data2[:,1])
+weights20 = convert(Array, data2[:,2:end])
 
 """
 Gauss-Turan integration with 2 derivatives

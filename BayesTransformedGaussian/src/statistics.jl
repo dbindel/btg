@@ -54,28 +54,21 @@ end
 
 @doc raw"""
 """
-function credible_interval(
-    btg::BTG,
-    x::AbstractVector{R};
-    mode=:narrow
-) where R <: Real
-    return credible_interval(btg, x, Val(mode))
+function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R; mode=:narrow) where R <: Real
+    return credible_interval(btg, x, wp, Val(mode))
 end
 
-function credible_interval(
-    btg::BTG,
-    x::AbstractVector{R},
-    ::Val{:equal},
-) where R <: Real
-    # TODO
+function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:equal}) where R <: Real
+    lower_qp = (1 - wp) / 2
+    upper_qp = 1 - lower_qp
+    lower_quant = quantile(btg, x, p=lower_qp)
+    upper_quant = quantile(btg, x, p=upper_qp)
+    return [lower_quant, upper_quant]
 end
 
-function credible_interval(
-    btg::BTG,
-    x::AbstractVector{R},
-    ::Val{:narrow},
-) where R <: Real
+function credible_interval(btg::BTG, x::AbstractVector{R}, ::Val{:narrow}) where R <: Real
     # TODO
+    
 end
 
 @doc raw"""

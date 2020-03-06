@@ -22,7 +22,6 @@ function distribution_comp(x_pred, trainBasicInfo, sideSetInfo, param_gridInfo, 
     b0 = 30.0 # initial guess of the interval [0, b0] for the pdf integral
     kmax = 20
     tol = 1e-9
-    b0 = 30.0
     b, iter = zero_finding(pdf, kmax, tol, b0)
 
     # compute mean, median, standard deviation, etc.

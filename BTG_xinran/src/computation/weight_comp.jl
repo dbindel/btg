@@ -69,22 +69,6 @@ function hfun(theta, lambda, trainBasicInfo)
     n = size(x, 1)
     @assert size(x, 1) == size(X, 1)
 
-#= OLD VERSION
-    Sigma = KernelMat(x, x, kernel, theta)
-    L_Sigma = cholesky(Sigma).U # L' * L = S
-    invL = inv(L_Sigma)
-    invSigma = invL * invL'
-    XSigmaX = X' * Sigma * X
-    invXSigmaX = inv(XSigmaX)
-    gz = g.(z, lambda)
-    Beta = invXSigmaX * X' * invSigma * gz
-    gzminusXbeta = gz - X*Beta
-    q = gzminusXbeta' * invSigma * gzminusXbeta
-    dg_new = z -> dg(z, lambda)
-    J = DetJ(z, dg_new)
-    h = det(invL) * det(XSigmaX)^(-1/2) * q^((p - n)/2) * J^(1-p/n)
- =#
-
     Sigma = KernelMat(x, x, kernel, theta)
     L_Sigma = cholesky(Sigma).L # L * L' = S
     XSigmaX = dot(L_Sigma\X, L_Sigma\X)

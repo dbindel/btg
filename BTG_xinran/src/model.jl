@@ -55,7 +55,7 @@ function model(x0, training_data, kernel, nonlinfun, p = 1)
 
     ## compute weights
     # compute quadrature grids and weights
-    n_quad = [8, 8, 10] # number of quad nodes for each param, could increase if needed
+    n_quad = [8, 8, 8] # number of quad nodes for each param, could increase if needed
     n_theta = [n_quad[1], n_quad[2]]
     n_lambda = n_quad[3]
     n_param = (theta = n_theta, lambda = n_lambda)
@@ -66,7 +66,7 @@ function model(x0, training_data, kernel, nonlinfun, p = 1)
   
     # compute distribution of z0 at x0
     distribution_z0 = distribution_comp(x0, trainBasicInfo, sideSetInfo, param_gridInfo, alpha, Gamma)
-    
-    return distribution_z0
+
+    return distribution_z0, alpha
 end
 

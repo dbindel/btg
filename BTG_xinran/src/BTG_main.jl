@@ -6,7 +6,7 @@ include("model.jl")
 include("plotting/plot_distribution_single.jl")
 include("root_finding/zero_finding.jl")
 
-function BTG_main(training_data, testing_data)
+function BTG_main(training_data, testing_data, kernel, nonlinfun)
     # training points
     x_train = training_data[1]
     z_train = training_data[2]
@@ -25,8 +25,9 @@ function BTG_main(training_data, testing_data)
         flush(stdout)
         # single point prediction
         start = time()
-        distribution_temp = model(x_test_temp, training_data, kernel, nonlinfun)
+        distribution_temp, alpha = model(x_test_temp, training_data, kernel, nonlinfun)
         elapsed = time() - start
+        # print("Alpha = $alpha")
         print("time taken for single point prediction: $elapsed \n")
 
         # check pdf integral == 1

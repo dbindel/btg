@@ -10,10 +10,10 @@ function prior_pdf_theta(theta, thetamin, thetamax)
     return 1/(l1*l2)
 end
 
-thetamin = [0, 0]
-thetamax = [1, 2]
-lambdamin = -3
-lambdamax = 3
+thetamin = [0., 0.]
+thetamax = [1., 2.]
+lambdamin = -3.
+lambdamax = 3.
 
 pdf_lambda = lambda -> prior_pdf_lambda(lambda, lambdamin, lambdamax)
 pdf_theta = theta -> prior_pdf_theta(theta, thetamin, thetamax)

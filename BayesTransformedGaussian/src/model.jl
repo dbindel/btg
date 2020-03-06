@@ -10,6 +10,7 @@ mutable struct BTG{
     K<:Parameterized{},
     B<:Buffer{}
 }
+    S0::M
     X0::M
     Y0::V
     g::G

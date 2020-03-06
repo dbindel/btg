@@ -10,6 +10,5 @@ Pkg.add("Polynomials")
 Pkg.add("MATLAB")
 Pkg.add("DataFrames")
 Pkg.add("SpecialFunctions")
-Pkg.add("Prinf") 
 
  

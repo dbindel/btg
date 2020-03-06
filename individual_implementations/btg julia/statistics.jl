@@ -1,4 +1,4 @@
-include("legpts.jl")
+
 
 """
 Find root of h(x) in the interval [a, b] using binary search

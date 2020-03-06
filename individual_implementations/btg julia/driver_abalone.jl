@@ -1,4 +1,5 @@
 include("model.jl")
+include("model_deriv.jl")
 include("statistics.jl")
 include("transforms.jl")
 include("plotting.jl")
@@ -8,6 +9,8 @@ using DataFrames
 using CSV
 using StatsBase
 using Plots
+using Profile
+using ProfileView
 
 df = DataFrame(CSV.File("data//abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
@@ -20,11 +23,12 @@ s = data[ind, :]
 #X = ones(length(data))[ind]
 #choose a subset of variables to be regressors for the mean
 X = data[ind, 1:3] 
-z = target[ind]
-
+z = float(target[ind])
 #prior marginals are assumed constant
 pλ = x -> 1 
 pθ = x -> 1
+dpθ = x -> 0 
+dpθ2 = x -> 0
 
 #define ranges for theta and lambda
 range_theta = [100 300]
@@ -41,7 +45,9 @@ if true # use this blockcxsanity check + plot data
     i = 240
     s0 = data[i:i,:] #covariates and coordinates
     X0  = data[i:i, 1:3]
-    pdff, cdff = model(X, X0, s, s0, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda)
+    example = setting(s, s0, X, X0, z)#abalone data
+    example2 = getExample(1, 10, 1, 1, 2)
+    pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
     constant = cdff(30)
     pdfn = x -> pdff(x)/constant 
     cdfn = x -> cdff(x)/constant 
@@ -55,6 +61,9 @@ if true # use this blockcxsanity check + plot data
     #display(plot!(target[i], seriestype = :vline))
     #med = bisection(x -> cdfn(x)-0.5, 1e-3, 25, 1e-3, 10) 
     #println(med)
+    ff = model_deriv(example, pθ, dpθ, dpθ2, pλ, range_theta, range_lambda)
+    gg = x -> ff(x)/constant
+    @profview gg([2.0])
 end
 
 if false #cross validation on training set

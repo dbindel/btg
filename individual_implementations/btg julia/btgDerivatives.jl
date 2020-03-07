@@ -23,9 +23,9 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
     X = setting.X
     X0 = setting.X0
     z = setting.z
-    Eθ = K(s0, s0, θ, rbf)
-    Σθ =  K(s, s, θ, rbf)
-    Bθ =  K(s0, s, θ, rbf)
+    Eθ = fastK(s0, s0, θ, rbf_single)
+    Σθ =  fastK(s, s, θ, rbf_single)
+    Bθ =  fastK(s0, s, θ, rbf_single)
     choleskyΣθ = cholesky(Σθ) 
     choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
     Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
@@ -33,10 +33,38 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
     Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
     Eθ_prime = K(s0, s0, θ, rbf_prime)
     Eθ_prime2 = K(s0, s0, θ, rbf_prime2)  
-    Σθ_prime = K(s, s, θ, rbf_prime) 
-    Σθ_prime2 = K(s, s, θ, rbf_prime2) 
+    Σθ_prime = fastK(s, s, θ, rbf_prime_single) 
+    Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
     Bθ_prime = K(s0, s, θ, rbf_prime) 
     Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
+    return θ_params(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX)
+end
+
+function time_func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}})
+    s = setting.s
+    s0 = setting.s0
+    X = setting.X
+    X0 = setting.X0
+    z = setting.z
+    reset_timer!()
+    @timeit "Eθ" Eθ = K(s0, s0, θ, rbf)
+    @timeit "Σθ" Σθ =  K(s, s, θ, rbf)
+    @timeit "fasterΣθ" Σθ =  fastK(s, s, θ, rbf_single)
+    @timeit "Bθ" Bθ =  K(s0, s, θ, rbf)
+    @timeit "choleskyΣθ" choleskyΣθ = cholesky(Σθ) 
+    @timeit "choleskyXΣX" choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
+    @timeit "Dθ" Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
+    @timeit "Hθ" Hθ = X0 - Bθ*(choleskyΣθ\X) 
+    @timeit "Cθ" Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+    @timeit "Eθ_prime" Eθ_prime = K(s0, s0, θ, rbf_prime)
+    @timeit "Eθ_prime2" Eθ_prime2 = K(s0, s0, θ, rbf_prime2)  
+    @timeit "Σθ_prime" Σθ_prime = K(s, s, θ, rbf_prime) 
+    @timeit "Σθ_prime_faster" Σθ_prime = fastK(s, s, θ, rbf_prime_single) 
+    @timeit "Σθ_prime2" Σθ_prime2 = K(s, s, θ, rbf_prime2) 
+    @timeit "Σθ_prime2_faster" Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
+    @timeit "Bθ_prime" Bθ_prime = K(s0, s, θ, rbf_prime) 
+    @timeit "Bθ_prime2" Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
+    print_timer()
     return θ_params(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX)
 end
 
@@ -366,7 +394,6 @@ function partial_lambda(θ, λ, setting)
     AA = dgλz - X*βhat_prime_lambda
     BB = gλz - X*βhat 
     qtilde_prime_lambda = 2*AA'*(choleskyΣθ\BB)  
-
     #compute m_prime_lambda
     m_prime_lambda = Bθ*(choleskyΣθ\dgλz)+Hθ*βhat_prime_lambda
 

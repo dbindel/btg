@@ -32,7 +32,7 @@ is the number of quadrature nodes (defaults to 10). Note that f can be
 multi-output, in which case int1D integrates each entry individually. This way,
 the function lends itself to being composed with Gauss-Turan integration.  
 """
-function int1D(f, arr, num="2")
+function int1D(f, arr, num="1")
     if num=="1"
         x, w= dm, wm
     elseif num=="2"
@@ -94,19 +94,24 @@ function int2D(f, arr)
     int = int*avg1*avg2
 end
 
-data = DataFrame(CSV.File("nodes_weights_50.csv"))
-nodes = convert(Array, data[:,1]) #integration nodes for Gauss-Turan Quadrature
-weights = convert(Matrix, data[:, 2:end]) #integration weights 
-data2 = DataFrame(CSV.File("nodes_weights_20.csv"))
-nodes20  = convert(Array, data2[:,1])
-weights20 = convert(Array, data2[:,2:end])
+data50 = DataFrame(CSV.File("nodes_weights_50.csv"))
+nodes50 = convert(Array, data50[:,1]) #integration nodes for Gauss-Turan Quadrature
+weights50 = convert(Matrix, data50[:, 2:end]) #integration weights 
+
+data20 = DataFrame(CSV.File("nodes_weights_20.csv"))
+nodes20  = convert(Array, data20[:,1])
+weights20 = convert(Array, data20[:,2:end])
+
+data12 = DataFrame(CSV.File("nodes_weights_12.csv"))
+nodes12  = convert(Array, data12[:,1])
+weights12 = convert(Array, data12[:,2:end])
 
 """
 Gauss-Turan integration with 2 derivatives
 INPUTS:
 arr contains enpoints of integration interval
 """
-function Gauss_Turan(F, arr, nodes = nodes, weights=weights)
+function Gauss_Turan(F, arr, nodes = nodes12, weights=weights12)
     a = arr[1]
     b = arr[2]
     nodes = (b-a)/2 .* nodes .+ (b+a)/2

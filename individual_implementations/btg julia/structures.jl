@@ -1,3 +1,4 @@
+using TimerOutputs
 
 """
 define inference problem using settings
@@ -46,22 +47,26 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
     X = setting.X
     X0 = setting.X0
     z = setting.z
+    
     #zeroth order expressions and easily computed higher derivatives (building blocks)
-    Eθ = fastK(s0, s0, θ, rbf_single)
-    Σθ =  fastK(s, s, θ, rbf_single)
-    Bθ =  fastK(s0, s, θ, rbf_single)
-    choleskyΣθ = cholesky(Σθ) 
-    choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
-    Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
-    Hθ = X0 - Bθ*(choleskyΣθ\X) 
-    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
-    Eθ_prime = K(s0, s0, θ, rbf_prime)
-    Eθ_prime2 = K(s0, s0, θ, rbf_prime2)  
-    Σθ_prime = fastK(s, s, θ, rbf_prime_single) 
-    Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
-    Bθ_prime = K(s0, s, θ, rbf_prime) 
-    Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
+    #@timeit "zero order" begin
+        Eθ = fastK(s0, s0, θ, rbf_single)
+        Σθ =  fastK(s, s, θ, rbf_single)
+        Bθ =  fastK(s0, s, θ, rbf_single)
+        @time choleskyΣθ = cholesky(Σθ) 
+        choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
+        Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
+        Hθ = X0 - Bθ*(choleskyΣθ\X) 
+        Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+        Eθ_prime = K(s0, s0, θ, rbf_prime)
+        Eθ_prime2 = K(s0, s0, θ, rbf_prime2)  
+        Σθ_prime = fastK(s, s, θ, rbf_prime_single) 
+        Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
+        Bθ_prime = K(s0, s, θ, rbf_prime) 
+        Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
+    #end
 
+   
     #abstractions used to compute higher derivatives
     dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
     Q = Y -> (choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))
@@ -71,45 +76,23 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
     d2P = Y -> -X'*(dQ(X)*Y)
     d2Pinv = Y -> -dPinv(dP(choleskyXΣX\Y)) - (choleskyXΣX\(d2P(choleskyXΣX\Y))) - (choleskyXΣX\(dP(dPinv(Y))))
 
+    #@timeit "auxiliary" begin
     #auxiliary expressions
     Σθ_inv_X = choleskyΣθ\X
     tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X
+    #end
 
     #higher derivatives 
-    Hθ_prime = compute_Hθ_prime(Bθ_prime, Σθ_inv_X, choleskyΣθ, Σθ_prime, Bθ, X)
-    Dθ_prime = compute_Dθ_prime(choleskyΣθ, Bθ, Eθ_prime, Σθ_prime, Bθ_prime)
-    Cθ_prime = compute_Cθ_prime(Dθ_prime,Hθ,  Hθ_prime, choleskyXΣX, Σθ_inv_X, Σθ_prime)
-    Hθ_prime2 = compute_Hθ_prime2(Bθ, Bθ_prime, Bθ_prime2, Σθ_inv_X, choleskyΣθ, X, Q, dQ)
-    Dθ_prime2 = compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
-    Cθ_prime2 = compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
-    
-    x = [1 0; 0 .1]
-    c = cholesky(x)
-
-    println(typeof(Eθ))
-    println(typeof(Eθ_prime))
-    println(typeof(Eθ_prime2))
-    println(typeof(Σθ))
-    println(typeof(Σθ_prime))
-    println(typeof(Σθ_prime2))
-    println(typeof(Bθ))
-    println(typeof(Bθ_prime))
-    println(typeof(Bθ_prime2))
-    println(typeof(Dθ))
-    println(typeof(Dθ_prime))
-    println(typeof(Dθ_prime2))
-    println(typeof(Hθ))
-    println(typeof(Hθ_prime))
-    println(typeof(Hθ_prime2))
-    println(typeof(Cθ))
-    println(typeof(Cθ_prime))
-    println(typeof(Cθ_prime2))
-    println(typeof(Σθ_inv_X))
-    println(typeof(tripleΣ))
-    println(typeof(choleskyΣθ))
-    println(typeof(choleskyXΣX))
-
+    @timeit "higher derivs" begin
+        Hθ_prime = compute_Hθ_prime(Bθ_prime, Σθ_inv_X, choleskyΣθ, Σθ_prime, Bθ, X)
+        Dθ_prime = compute_Dθ_prime(choleskyΣθ, Bθ, Eθ_prime, Σθ_prime, Bθ_prime)
+        Cθ_prime = compute_Cθ_prime(Dθ_prime,Hθ,  Hθ_prime, choleskyXΣX, Σθ_inv_X, Σθ_prime)
+        Hθ_prime2 = compute_Hθ_prime2(Bθ, Bθ_prime, Bθ_prime2, Σθ_inv_X, choleskyΣθ, X, Q, dQ)
+        Dθ_prime2 = compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
+        Cθ_prime2 = compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
+    end
+   
     θ_params(Eθ, Eθ_prime, Eθ_prime2, Σθ, Σθ_prime, Σθ_prime2, Bθ, Bθ_prime, Bθ_prime2, Dθ, Dθ_prime, Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, Cθ, Cθ_prime, Cθ_prime2, Σθ_inv_X, tripleΣ, choleskyΣθ, choleskyXΣX)
-    
+
     #θ_params(Eθ, Eθ_prime, Eθ_prime2, Σθ, Σθ_prime, x, Bθ, Bθ_prime, Bθ_prime2, x, Dθ_prime, x, x, Hθ_prime, x, x, x, x, x, x, c, c)
 end

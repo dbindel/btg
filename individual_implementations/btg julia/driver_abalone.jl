@@ -18,8 +18,8 @@ target = convert(Array, df[:, 9]) #age
 
 #pick training points
 #ind = 1:30
-ind = 1:30
-#ind = 1:4176
+#ind = 1:30
+ind = 1:100
 s = data[ind, :] 
 #X = data[ind, :] 
 #X = ones(length(data))[ind]
@@ -50,39 +50,29 @@ end
     example2 = getExample(1, 10, 1, 1, 2)
 
 if true # use this blockcxsanity check + plot data
+    if false
     @printf("sanity check and plotting block")
     pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
     constant = cdff(30)
     pdfn = x -> pdff(x)/constant 
     cdfn = x -> cdff(x)/constant 
-    #cdf = z0 ->  int1D(pdf, 0, z0, "3") 
-    #@time begin
-    #un = cdf(30)
-    #end
-    #cdfn = x -> cdf(x)/un #normalized cdf
-    #pdfn = x -> pdf(x)/un #normalized pdf
-    @time begin plt(pdfn, 0, 20) end
-    #display(plot!(target[i], seriestype = :vline))
-    #med = bisection(x -> cdfn(x)-0.5, 1e-3, 25, 1e-3, 10) 
-    #println(med)
+    @time begin plt(pdfn, 0, 30) end
+end
     reset_timer!()
-    #@timeit "define pred density" ff = model_deriv(example, pθ, dpθ, dpθ2, pλ, range_theta, range_lambda)
-    #@timeit "define pred density" ff = getBtgDensity(example, range_theta, range_lambda)
+    choleskytime = 0
+
     ff = getBtgDensity(example, range_theta, range_lambda)
-    locs = [0.0 for i = 1:1:20]
-    gg = x -> ff(x)/constant
-    if false
-    for i = 1:1:20
+    locs = [0.0 for i = 1:1:30]
+    #gg = x -> ff(x)/constant
+    gg = ff
+    if true
+    for i = 1:1:30
         println("iteration: ", i)
-        #@timeit "eval" locs[i] = gg([float(i)])
-        input = [float(i)]
-        println(typeof(input))
-        println(input)
-        locs[i] = gg(input)
+        @timeit "eval" locs[i] = gg([float(i)])
     end
     print_timer()
     #@profview gg([2.0])
-    plot!(1:1:20, locs)
+    plot(1:1:30, locs)
 end
 end
 

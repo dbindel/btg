@@ -64,17 +64,25 @@ function createTensorGrid(example::setting{Array{Float64, 2}, Array{Float64, 1}}
     for i=1:l1
         theta_param_list[i] = func_fixed(meshθ[i])
     end
-    function evalTgrid(z0)
-        tgrid = zeros(l1, l2, 3) #tensor grid, layers are for higher derivatives
-        for i = 1:l1
-            for j = 1:l2 
-                (f, df, d2f) = define_fs(meshθ[i], meshλ[j], theta_param_list[i], example)
-                tgrid[i, j, 1] = f(z0)
-                tgrid[i, j, 2] = df(z0)
-                tgrid[i, j, 3] = d2f(z0)
-            end
+    tgrid = Array{Any, 3}(undef, l1, l2, 3) #tensor grid, layers are for higher derivatives
+    for i = 1:l1
+        for j = 1:l2 
+            (f, df, d2f) = define_fs(meshθ[i], meshλ[j], theta_param_list[i], example)
+            tgrid[i, j, 1] = f
+            tgrid[i, j, 2] = df
+            tgrid[i, j, 3] = d2f
         end
-        return tgrid
+    end
+    function evalTgrid(z0)
+        res = Array{Float64, 3}(undef, l1, l2, 3)
+        for i=1:l1
+            for j = 1:l2
+                for k =1:3
+                    res[i, j, k] = tgrid[i, j, k](z0)
+                end
+            end
+        end 
+        return res
     end
     return evalTgrid
 end

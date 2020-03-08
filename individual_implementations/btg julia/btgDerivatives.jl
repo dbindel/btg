@@ -310,7 +310,6 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
     dbilinearform = z0 -> -m_prime_theta'*(qC\(expr(z0))) .+ expr(z0)' * qC_inv_prime_theta(expr(z0)) .- expr(z0)'*(qC\m_prime_theta)
     EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
-    
     dmain = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1]
     main = z0 -> cc*(detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
     end
@@ -581,18 +580,8 @@ function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, settin
 
     Q = Y -> (choleskyΣθ\(Σθ_prime*(Σθ\(Y))))
     βhat_prime2_theta = compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
-    #meanvv is gλz - X*βhat
-    #Xdβ = X*βhat_prime_theta
-    #qtildeEXPR1 = -meanvv'*dQ(meanvv)
-    #qtildeEXPR2 = 2*(X*βhat_prime_theta)'*Q(meanvv) 
-    #qtildeEXPR3 = 2*Xdβ'*(choleskyΣθ\(Xdβ))
-    #qtildeEXPR4 = 2*meanvv'*Q(Xdβ)
-    #qtildeEXPR5 = -2*meanvv'*(choleskyΣθ\(X*βhat_prime2_theta))
-
-    #qtilde_prime2_theta = qtildeEXPR1 .+ qtildeEXPR2 .+ qtildeEXPR3 .+ qtildeEXPR4 .+ qtildeEXPR5
     qtilde_prime2_theta = compute_qtilde_prime2_theta(choleskyΣθ, X, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
     
-    #dEXPR3 =  -((n-p)/2)*qtilde^(-(n-p+2)/2)*qtilde_prime_theta
     d2EXPR3 = ((n-p)/2)*((n-p+2)/2)*qtilde^(-(n-p+4)/2)*qtilde_prime_theta^2 - (n-p)/2 * qtilde^(-(n-p+2)/2)*qtilde_prime2_theta
     d2EXPR4 = dpθ2(θ)*pλ(λ)*jacz^(1-p/n)
     

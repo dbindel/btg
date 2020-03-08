@@ -33,8 +33,8 @@ dpθ = x -> 0
 dpθ2 = x -> 0
 
 #define ranges for theta and lambda
-range_theta = [100 300]
-range_lambda = [-3 3]
+range_theta = [100.0, 300.0]
+range_lambda = [-3.0, 3.0]
 
 if false #look at eigenspectrum of kernel matrix
     θ = 200
@@ -66,14 +66,24 @@ if true # use this blockcxsanity check + plot data
     #med = bisection(x -> cdfn(x)-0.5, 1e-3, 25, 1e-3, 10) 
     #println(med)
     reset_timer!()
-    @timeit "define pred density" ff = model_deriv(example, pθ, dpθ, dpθ2, pλ, range_theta, range_lambda)
+    #@timeit "define pred density" ff = model_deriv(example, pθ, dpθ, dpθ2, pλ, range_theta, range_lambda)
+    #@timeit "define pred density" ff = getBtgDensity(example, range_theta, range_lambda)
+    ff = getBtgDensity(example, range_theta, range_lambda)
     locs = [0.0 for i = 1:1:20]
     gg = x -> ff(x)/constant
+    if false
     for i = 1:1:20
-        @timeit "eval" locs[i] = gg([float(i)])
+        println("iteration: ", i)
+        #@timeit "eval" locs[i] = gg([float(i)])
+        input = [float(i)]
+        println(typeof(input))
+        println(input)
+        locs[i] = gg(input)
     end
     print_timer()
     #@profview gg([2.0])
+    plot!(1:1:20, locs)
+end
 end
 
 if false #cross validation on training set

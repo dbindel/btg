@@ -25,6 +25,10 @@ dm, wm = gausslegpts(12)
 dm2, wm2 = gausslegpts(50)
 dm3, wm3 = gausslegpts(100)
 
+function getGaussQuadraturedata()
+    return (dm, wm)
+end
+
 """
 INPUTS:
 f is a function handle, a and b are integration endpoints (a<b), and n 
@@ -94,17 +98,21 @@ function int2D(f, arr)
     int = int*avg1*avg2
 end
 
-data50 = DataFrame(CSV.File("nodes_weights_50.csv"))
+data50 = DataFrame(CSV.File("nodes_weights_50.csv", header=0))
 nodes50 = convert(Array, data50[:,1]) #integration nodes for Gauss-Turan Quadrature
 weights50 = convert(Matrix, data50[:, 2:end]) #integration weights 
 
-data20 = DataFrame(CSV.File("nodes_weights_20.csv"))
+data20 = DataFrame(CSV.File("nodes_weights_20.csv", header=0))
 nodes20  = convert(Array, data20[:,1])
 weights20 = convert(Array, data20[:,2:end])
 
-data12 = DataFrame(CSV.File("nodes_weights_12.csv"))
+data12 = DataFrame(CSV.File("nodes_weights_12.csv", header=0))
 nodes12  = convert(Array, data12[:,1])
 weights12 = convert(Array, data12[:,2:end])
+
+function getTuranData()
+    return (nodes12, weights12)
+end
 
 """
 Gauss-Turan integration with 2 derivatives

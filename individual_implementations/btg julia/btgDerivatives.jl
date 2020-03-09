@@ -15,32 +15,9 @@ using LinearAlgebra
 #export prob, partial_theta, partial_lambda, partial_z0, posterior_theta, posterior_lambda, checkDerivative
 
 """
-Precompute theta-dependent quantities and assign variable to contents of setting 
+Exemplifies how slow regular K can be (when for loop are used)
 """
-function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}})
-    s = setting.s
-    s0 = setting.s0
-    X = setting.X
-    X0 = setting.X0
-    z = setting.z
-    Eθ = fastK(s0, s0, θ, rbf_single)
-    Σθ =  fastK(s, s, θ, rbf_single)
-    Bθ =  fastK(s0, s, θ, rbf_single)
-    choleskyΣθ = cholesky(Σθ) 
-    choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
-    Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
-    Hθ = X0 - Bθ*(choleskyΣθ\X) 
-    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
-    Eθ_prime = K(s0, s0, θ, rbf_prime)
-    Eθ_prime2 = K(s0, s0, θ, rbf_prime2)  
-    Σθ_prime = fastK(s, s, θ, rbf_prime_single) 
-    Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
-    Bθ_prime = K(s0, s, θ, rbf_prime) 
-    Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
-    return θ_params(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX)
-end
-
-function time_func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}})
+function time_func_artifact(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}})
     s = setting.s
     s0 = setting.s0
     X = setting.X
@@ -157,11 +134,11 @@ end
 First derivative of m_theta with respect to theta
 """
 function compute_m_prime2_theta(Bθ::Array{Float64,2}, Bθ_prime::Array{Float64,2}, Bθ_prime2::Array{Float64,2}, choleskyΣθ::Cholesky{Float64,Array{Float64, 2}}, Σθ_prime::Array{Float64,2}, gλz, βhat, βhat_prime_theta, 
-    βhat_prime_theta2, Hθ, Hθ_prime, Hθ_prime2, Q, dQ)
+    βhat_prime2_theta, Hθ, Hθ_prime, Hθ_prime2, Q, dQ)
     AA = Bθ_prime2*(choleskyΣθ\gλz) - 2*Bθ_prime*(Q(gλz))
     BB = -Bθ*(dQ(gλz))
     CC = Hθ_prime2*βhat+2*Hθ_prime*βhat_prime_theta 
-    DD = Hθ*βhat_prime_theta2
+    DD = Hθ*βhat_prime2_theta
 
     m_prime_theta2 = AA + BB + CC + DD
 end
@@ -208,6 +185,7 @@ function compute_Cθ_prime2(Dθ_prime2::Array{Float64,2}, Hθ::Array{Float64,2},
     AA+BB+CC+DD
 end
 
+
 function test()
     #P, dP_inv, 
 end
@@ -235,7 +213,8 @@ function prob(θ, λ, setting)
 end
 
 """
-Compute derivative of p(z0|theta, lambda, z) w.r.t theta
+Compute derivative of p(z0|theta, lambda, z) w.r.t theta. This function should compute things that depend on BOTH theta and lambda. It
+takes in all pertinent theta-dependent quantities as inputs.
 """
 function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing}=nothing)
     if theta_params === nothing
@@ -244,60 +223,81 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
         #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
         #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
-    Eθ = theta_params.Eθ
-    Σθ = theta_params.Σθ 
-    Bθ = theta_params.Bθ
-    Dθ = theta_params.Dθ
-    Hθ = theta_params.Hθ
-    Cθ = theta_params. Cθ
-    Eθ_prime = theta_params.Eθ_prime
-    Eθ_prime2 = theta_params.Eθ_prime2
-    Σθ_prime = theta_params.Σθ_prime
-    Σθ_prime2 = theta_params.Σθ_prime2
-    Bθ_prime = theta_params.Bθ_prime
-    Bθ_prime2 = theta_params.Bθ_prime2
-    choleskyΣθ = theta_params.choleskyΣθ
-    choleskyXΣX = theta_params.choleskyXΣX
+    @timeit "export θ vals" begin
+        Eθ = theta_params.Eθ
+        Eθ_prime = theta_params.Eθ_prime
+        Eθ_prime2 = theta_params.Eθ_prime2
+        Σθ = theta_params.Σθ 
+        Σθ_prime = theta_params.Σθ_prime
+        Σθ_prime2 = theta_params.Σθ_prime2
+        Bθ = theta_params.Bθ
+        Bθ_prime = theta_params.Bθ_prime
+        Bθ_prime2 = theta_params.Bθ_prime2
+        Dθ = theta_params.Dθ
+        Dθ_prime = theta_params.Dθ_prime
+        Dθ_prime2 = theta_params.Dθ_prime2
+        Hθ = theta_params.Hθ
+        Hθ_prime = theta_params.Hθ_prime
+        Hθ_prime2 = theta_params.Hθ_prime2
+        Cθ = theta_params.Cθ
+        Cθ_prime = theta_params.Cθ_prime
+        Cθ_prime2 = theta_params.Cθ_prime2
+        Σθ_inv_X = theta_params.Σθ_inv_X
+        tripleΣ = theta_params.tripleΣ
+        choleskyΣθ = theta_params.choleskyΣθ
+        choleskyXΣX = theta_params.choleskyXΣX
+    end
 
     s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) 
 
     g = boxCox #boxCox by default
     gλz = g(z, λ)
 
-    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
-    qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
-    m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
+    @timeit "βhat" βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
+    @timeit "qtilde" qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
+    @timeit "m" m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
     meanvv = gλz - X*βhat
 
-    Σθ_inv_X = Σθ\X #precomputation 
-    tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X  #precompute X'Sigma^-1 dSigma Sigma^-1 X 
-    dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
-    Q = Y -> (Σθ\(Σθ_prime*(Σθ\(Y))))
-    dPinv = Y -> choleskyXΣX\(X'*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(X*(choleskyXΣX\Y))))))
-    XQX = X'*Q(X)
-    dP = Y -> -XQX*Y
-    d2P = Y -> -X'*(dQ(X)*Y)
-    d2Pinv = Y -> -dPinv(dP(choleskyXΣX\Y)) - (choleskyXΣX\(d2P(choleskyXΣX\Y))) - (choleskyXΣX\(dP(dPinv(Y))))
-    cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
-    
-    expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
+    #@timeit "precompute + definitions" begin
+    #@timeit "Σθ_inv_X" Σθ_inv_X = choleskyΣθ\X #precomputation 
+    #@timeit "tripleΣ" tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X  #precompute X'Sigma^-1 dSigma Sigma^-1 X 
+    #@timeit "dQ" dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
+    #@timeit "Q" Q = Y -> (choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))
+    #@timeit "dPinv" dPinv = Y -> choleskyXΣX\(X'*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(X*(choleskyXΣX\Y))))))
+    #@timeit "XQX" XQX = X'*Q(X)
+    #@timeit "dP" dP = Y -> -XQX*Y
+    #@timeit "d2P" d2P = Y -> -X'*(dQ(X)*Y)
+    #@timeit "d2Pinv" d2Pinv = Y -> -dPinv(dP(choleskyXΣX\Y)) - (choleskyXΣX\(d2P(choleskyXΣX\Y))) - (choleskyXΣX\(dP(dPinv(Y))))
+    @timeit "cc" cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
+    #end
+  
+    @timeit "expr_mid" expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
     #first derivatives
+    @timeit "some first derivs" begin
     βhat_prime_theta = compute_betahat_prime_theta(choleskyΣθ, choleskyXΣX, expr_mid, Σθ_prime, X, gλz, Σθ_inv_X)
     qtilde_prime_theta = compute_qtilde_prime_theta(gλz, X, βhat, βhat_prime_theta, choleskyΣθ, Σθ_prime)
-    Hθ_prime = compute_Hθ_prime(Bθ_prime, Σθ_inv_X, choleskyΣθ, Σθ_prime, Bθ, X)
+    #Hθ_prime = compute_Hθ_prime(Bθ_prime, Σθ_inv_X, choleskyΣθ, Σθ_prime, Bθ, X)
     m_prime_theta = compute_m_prime_theta(Bθ, Bθ_prime, choleskyΣθ,Σθ_prime, gλz, βhat, βhat_prime_theta,Hθ, Hθ_prime)
-    Dθ_prime = compute_Dθ_prime(choleskyΣθ, Bθ, Eθ_prime, Σθ_prime, Bθ_prime)
-    Cθ_prime = compute_Cθ_prime(Dθ_prime,Hθ,  Hθ_prime, choleskyXΣX, Σθ_inv_X, Σθ_prime)
+    #Dθ_prime = compute_Dθ_prime(choleskyΣθ, Bθ, Eθ_prime, Σθ_prime, Bθ_prime)
+    #Cθ_prime = compute_Cθ_prime(Dθ_prime,Hθ,  Hθ_prime, choleskyXΣX, Σθ_inv_X, Σθ_prime)
+    end
 
-    #second derivatives
-    βhat_prime2_theta  = compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
-    qtilde_prime2_theta = compute_qtilde_prime2_theta(choleskyΣθ, X, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
-    Hθ_prime2 = compute_Hθ_prime2(Bθ, Bθ_prime, Bθ_prime2, Σθ_inv_X, choleskyΣθ, X, Q, dQ)
-    m_prime2_theta = compute_m_prime2_theta(Bθ, Bθ_prime, Bθ_prime2, choleskyΣθ, Σθ_prime, gλz, βhat, βhat_prime_theta, 
-    βhat_prime2_theta, Hθ, Hθ_prime, Hθ_prime2, Q, dQ)
-    Dθ_prime2 = compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
-    Cθ_prime2 = compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
+    #copied from func(theta, examples) in structures.jl
+    dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
+    Q = Y -> (choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))
     
+    #second derivatives
+    #@timeit "second derivs" begin
+    @timeit "βhat_prime2_theta" βhat_prime2_theta  = compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
+    @timeit "qtilde_prime2_theta" qtilde_prime2_theta = compute_qtilde_prime2_theta(choleskyΣθ, X, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
+    #@timeit "Hθ_prime2" Hθ_prime2 = compute_Hθ_prime2(Bθ, Bθ_prime, Bθ_prime2, Σθ_inv_X, choleskyΣθ, X, Q, dQ)
+    @timeit "m_prime2_theta" m_prime2_theta = compute_m_prime2_theta(Bθ, Bθ_prime, Bθ_prime2, choleskyΣθ, Σθ_prime, gλz, βhat, βhat_prime_theta, 
+    βhat_prime2_theta, Hθ, Hθ_prime, Hθ_prime2, Q, dQ) 
+    #@timeit "Dθ_prime2" Dθ_prime2 = compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
+    #@timeit "Cθ_prime2" Cθ_prime2 = compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
+    #end
+
+    @timeit "main deriv partial_theta" begin
     #compute derivative of main expression
     expr = z0 -> g(z0, λ) .- m
     qC = qtilde*Cθ 
@@ -310,10 +310,10 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
     dbilinearform = z0 -> -m_prime_theta'*(qC\(expr(z0))) .+ expr(z0)' * qC_inv_prime_theta(expr(z0)) .- expr(z0)'*(qC\m_prime_theta)
     EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
     FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
-    
     dmain = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1]
     main = z0 -> cc*(detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
-
+    end
+    @timeit "main second deriv partial_theta" begin
     #compute second derivative of main expression
     qC_prime2_theta = qtilde_prime2_theta .* Cθ + qtilde .* Cθ_prime2 + 2* Cθ_prime .* qtilde_prime_theta 
     qC_inv_prime2_theta = Y -> 2*(qC\(qC_prime_theta*(qC\(qC_prime_theta*(qC\Y))))) - qC\(qC_prime2_theta*(qC\Y))
@@ -330,6 +330,8 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
     d2bformpower = z0 -> (n-p+k)/2 * (n-p+k+2)/2 * bilinearform(z0)^(-(n-p+k+4)/2)*dbilinearform(z0)^2 - (n-p+k)/2*bilinearform(z0)^(-(n-p+k+2)/2)*d2bilinearform(z0) 
 
     d2main = z0 -> (cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0)))[1]
+
+    end
 
     #return (vec(Bθ_prime), vec(Bθ_prime2))
     return (main, dmain, d2main)
@@ -506,20 +508,30 @@ function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, settin
         #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
         #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
-    Eθ = theta_params.Eθ
-    Σθ = theta_params.Σθ 
-    Bθ = theta_params.Bθ
-    Dθ = theta_params.Dθ
-    Hθ = theta_params.Hθ
-    Cθ = theta_params. Cθ
-    Eθ_prime = theta_params.Eθ_prime
-    Eθ_prime2 = theta_params.Eθ_prime2
-    Σθ_prime = theta_params.Σθ_prime
-    Σθ_prime2 = theta_params.Σθ_prime2
-    Bθ_prime = theta_params.Bθ_prime
-    Bθ_prime2 = theta_params.Bθ_prime2
-    choleskyΣθ = theta_params.choleskyΣθ
-    choleskyXΣX = theta_params.choleskyXΣX
+    @timeit "export θ vals" begin
+        Eθ = theta_params.Eθ
+        Eθ_prime = theta_params.Eθ_prime
+        Eθ_prime2 = theta_params.Eθ_prime2
+        Σθ = theta_params.Σθ 
+        Σθ_prime = theta_params.Σθ_prime
+        Σθ_prime2 = theta_params.Σθ_prime2
+        Bθ = theta_params.Bθ
+        Bθ_prime = theta_params.Bθ_prime
+        Bθ_prime2 = theta_params.Bθ_prime2
+        Dθ = theta_params.Dθ
+        Dθ_prime = theta_params.Dθ_prime
+        Dθ_prime2 = theta_params.Dθ_prime2
+        Hθ = theta_params.Hθ
+        Hθ_prime = theta_params.Hθ_prime
+        Hθ_prime2 = theta_params.Hθ_prime2
+        Cθ = theta_params.Cθ
+        Cθ_prime = theta_params.Cθ_prime
+        Cθ_prime2 = theta_params.Cθ_prime2
+        Σθ_inv_X = theta_params.Σθ_inv_X
+        tripleΣ = theta_params.tripleΣ
+        choleskyΣθ = theta_params.choleskyΣθ
+        choleskyXΣX = theta_params.choleskyXΣX
+    end
 
     s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) 
 
@@ -566,20 +578,10 @@ function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, settin
 
     d2EXPR2 = 0.25 * EXPR2 * trexpr^2 .+ 0.5*EXPR2*tr(dPinv(XΣdΣΣX) .+ choleskyXΣX\(X'*dQ(X)))
 
-    Q = Y -> (Σθ\(Σθ_prime*(Σθ\(Y))))
+    Q = Y -> (choleskyΣθ\(Σθ_prime*(Σθ\(Y))))
     βhat_prime2_theta = compute_βhat_prime2_theta(choleskyXΣX, choleskyΣθ, expr_mid, X, Q, dQ, gλz)
-    #meanvv is gλz - X*βhat
-    #Xdβ = X*βhat_prime_theta
-    #qtildeEXPR1 = -meanvv'*dQ(meanvv)
-    #qtildeEXPR2 = 2*(X*βhat_prime_theta)'*Q(meanvv) 
-    #qtildeEXPR3 = 2*Xdβ'*(choleskyΣθ\(Xdβ))
-    #qtildeEXPR4 = 2*meanvv'*Q(Xdβ)
-    #qtildeEXPR5 = -2*meanvv'*(choleskyΣθ\(X*βhat_prime2_theta))
-
-    #qtilde_prime2_theta = qtildeEXPR1 .+ qtildeEXPR2 .+ qtildeEXPR3 .+ qtildeEXPR4 .+ qtildeEXPR5
     qtilde_prime2_theta = compute_qtilde_prime2_theta(choleskyΣθ, X, meanvv, Q, dQ, βhat_prime_theta, βhat_prime2_theta)
     
-    #dEXPR3 =  -((n-p)/2)*qtilde^(-(n-p+2)/2)*qtilde_prime_theta
     d2EXPR3 = ((n-p)/2)*((n-p+2)/2)*qtilde^(-(n-p+4)/2)*qtilde_prime_theta^2 - (n-p)/2 * qtilde^(-(n-p+2)/2)*qtilde_prime2_theta
     d2EXPR4 = dpθ2(θ)*pλ(λ)*jacz^(1-p/n)
     
@@ -587,7 +589,6 @@ function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, settin
                 .+ 2*(dEXPR1*dEXPR2*EXPR3*EXPR4 .+ dEXPR1*EXPR2*dEXPR3*EXPR4 .+ dEXPR1*EXPR2*EXPR3*dEXPR4 .+ EXPR1*dEXPR2*dEXPR3*EXPR4
                 .+ EXPR1*dEXPR2*EXPR3*dEXPR4 .+ EXPR1*EXPR2*dEXPR3*dEXPR4))[1]
     
-
                 if false
                     println("===============================================================")
                     println("theta");println(θ);println("betahat");println(βhat);println("glambdaz");println(gλz);println("qtilde")

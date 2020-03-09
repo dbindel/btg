@@ -10,6 +10,7 @@ include("kernel.jl")
 include("integration.jl")
 include("btgDerivatives.jl")
 include("examples.jl")
+include("integration.jl")
 
 """
 Define prediction/inference problem by supplying known parameters, including design matrices, 
@@ -47,6 +48,69 @@ function define_fs(θ::Float64, λ::Float64, theta_params::θ_params{Array{Float
     #end
     #println("define_fs time: %s\n", time)
     return (f, df, d2f)
+end
+
+"""
+This function returns a function of z0 which evaluates the integrand 
+along with its higher derivatives (currently first and second derivatives)
+at prescribed meshgrid locations
+"""
+function createTensorGrid(example::setting{Array{Float64, 2}, Array{Float64, 1}}, meshθ::Array{Float64, 1}, meshλ::Array{Float64, 1})
+    l1 = length(meshθ); l2 = length(meshλ)
+    function func_fixed(θ::Float64)
+        return func(θ, example)
+    end
+    theta_param_list = Array{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}}(undef, l1)
+    for i=1:l1
+        theta_param_list[i] = func_fixed(meshθ[i])
+    end
+    tgrid = Array{Any, 3}(undef, l1, l2, 3) #tensor grid, layers are for higher derivatives
+    for i = 1:l1
+        for j = 1:l2 
+            (f, df, d2f) = define_fs(meshθ[i], meshλ[j], theta_param_list[i], example)
+            tgrid[i, j, 1] = f
+            tgrid[i, j, 2] = df
+            tgrid[i, j, 3] = d2f
+        end
+    end
+    function evalTgrid(z0)
+        res = Array{Float64, 3}(undef, l1, l2, 3)
+        for i=1:l1
+            for j = 1:l2
+                for k =1:3
+                    res[i, j, k] = tgrid[i, j, k](z0)
+                end
+            end
+        end 
+        return res
+    end
+    return evalTgrid
+end
+
+"""
+Combine Gauss Quadrature (used on the lambdas) and Turan Quadrature (used on thetas)
+to marginalize out theta and lambda to obtain Bayesian predictive density
+"""
+function getBtgDensity(example::setting{Array{Float64, 2}, Array{Float64, 1}}, rangeθ::Array{Float64, 1}, rangeλ::Array{Float64, 1})
+    bθ = rangeθ[2]; aθ = rangeθ[1]; bλ = rangeλ[2]; aλ = rangeλ[1]
+    nodes_T, weights_T = getTuranData() #use 12 Gauss-Turan integration nodes and weights by default
+    nodes_T = (bθ-aθ)/2 .* nodes_T .+ (bθ+aθ)/2
+    nodes_G, weights_G = getGaussQuadraturedata()
+    nodes_G = (bλ-aλ)/2 .* nodes_G .+ (bλ+aλ)/2 #transform nodes to span range
+    n1 = length(nodes_T); m1 = size(weights_T, 2); n2 = length(nodes_G)
+    weightsTensorGrid = zeros(n1, n2, m1) #tensor grid of weights
+    for i = 1:n1
+        for j = 1:n2
+            for k = 1:m1
+                weightsTensorGrid[i, j, k] = weights_T[i, k]*weights_G[j]
+            end
+        end
+    end
+    evalTGrid = createTensorGrid(example, nodes_T, nodes_G)
+    function density(z0)
+        dot(evalTGrid(z0), weightsTensorGrid)
+    end
+    return density
 end
 
 function model_deriv(example::setting{Array{Float64, 2}, Array{Float64, 1}}, pθ, dpθ, dpθ2, pλ, rangeθ, rangeλ)

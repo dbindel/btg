@@ -18,8 +18,8 @@ target = convert(Array, df[:, 9]) #age
 
 #pick training points
 #ind = 1:30
-ind = 1:30
-#ind = 1:4176
+#ind = 1:30
+ind = 1:100
 s = data[ind, :] 
 #X = data[ind, :] 
 #X = ones(length(data))[ind]
@@ -33,8 +33,8 @@ dpθ = x -> 0
 dpθ2 = x -> 0
 
 #define ranges for theta and lambda
-range_theta = [100 300]
-range_lambda = [-3 3]
+range_theta = [100.0, 300.0]
+range_lambda = [-3.0, 3.0]
 
 if false #look at eigenspectrum of kernel matrix
     θ = 200
@@ -50,30 +50,30 @@ end
     example2 = getExample(1, 10, 1, 1, 2)
 
 if true # use this blockcxsanity check + plot data
+    if false
     @printf("sanity check and plotting block")
     pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
     constant = cdff(30)
     pdfn = x -> pdff(x)/constant 
     cdfn = x -> cdff(x)/constant 
-    #cdf = z0 ->  int1D(pdf, 0, z0, "3") 
-    #@time begin
-    #un = cdf(30)
-    #end
-    #cdfn = x -> cdf(x)/un #normalized cdf
-    #pdfn = x -> pdf(x)/un #normalized pdf
-    @time begin plt(pdfn, 0, 20) end
-    #display(plot!(target[i], seriestype = :vline))
-    #med = bisection(x -> cdfn(x)-0.5, 1e-3, 25, 1e-3, 10) 
-    #println(med)
+    @time begin plt(pdfn, 0, 30) end
+end
     reset_timer!()
-    @timeit "define pred density" ff = model_deriv(example, pθ, dpθ, dpθ2, pλ, range_theta, range_lambda)
-    locs = [0.0 for i = 1:1:20]
-    gg = x -> ff(x)/constant
-    for i = 1:1:20
+    choleskytime = 0
+
+    ff = getBtgDensity(example, range_theta, range_lambda)
+    locs = [0.0 for i = 1:1:30]
+    #gg = x -> ff(x)/constant
+    gg = ff
+    if true
+    for i = 1:1:30
+        println("iteration: ", i)
         @timeit "eval" locs[i] = gg([float(i)])
     end
     print_timer()
     #@profview gg([2.0])
+    plot(1:1:30, locs)
+end
 end
 
 if false #cross validation on training set

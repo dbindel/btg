@@ -7,6 +7,7 @@ using Cubature
     
 include("../computation/post_prob_comp.jl")
 include("../root_finding/my_bisection.jl")
+include("../root_finding/zero_finding.jl")
 
 # single point prediction
 # given x_pred, compute the pdf of Z at each index

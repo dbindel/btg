@@ -15,6 +15,7 @@ using Plots
 df = DataFrame(CSV.File("data//abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
+target = target/maximum(target) #normalization
 
 #pick training points
 #ind = 1:30
@@ -34,7 +35,7 @@ dpθ2 = x -> 0
 
 #define ranges for theta and lambda
 range_theta = [100.0, 300.0]
-range_lambda = [-3.0, 3.0]
+range_lambda = [-1.0, 1.0]
 
 if false #look at eigenspectrum of kernel matrix
     θ = 200
@@ -49,7 +50,22 @@ end
     example = setting(s, s0, X, X0, z)#abalone data
     example2 = getExample(1, 10, 1, 1, 2)
 
-if true # use this blockcxsanity check + plot data
+#experiment to see how large n has to be for Cholesky to have the most expensive computational cost
+if true
+    data  = repeat(data, 10, 1)
+    times2 = zeros(2, 4)
+    for i = 10000:10000:40000
+        println("iteration: ", i/10000)
+        ind = 1:i
+        s = data[ind, :] 
+        tK = @time K = fastK(s, s, 1.2)
+        tC = @time cholesky(K)
+        times[1, Int64(i/10000)] = tK;
+        times[2, Int64(i/10000)] = tC;
+    end    
+end
+
+if false # use this blockcxsanity check + plot data
     if false
     @printf("sanity check and plotting block")
     pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)

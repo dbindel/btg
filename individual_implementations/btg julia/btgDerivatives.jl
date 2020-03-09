@@ -553,8 +553,10 @@ function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, settin
 
     jac = y -> (abs(reduce( *, map(x -> dg(x, λ), y))))
     jacz = jac(z)
+    #println("jacz: ", jacz)
 
     EXPR1 = det(choleskyΣθ)^(-1/2)
+    #println("det Sigma theta ^-1/2: ", EXPR1)
     EXPR2 = det(choleskyXΣX)^(-1/2)
     EXPR3 = qtilde^(-(n-p)/2) 
     EXPR4 = pθ(θ)*pλ(λ)*jacz^(1-p/n)

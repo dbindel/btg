@@ -16,6 +16,7 @@ end
 """
 function cdf(btg::BTG, x::AbstractVector{R}) where R <: Real
     cdf_point_eval = compute_dists!(btg, x)[2]
+    return cdf_point_eval
 end
 
 @doc raw"""

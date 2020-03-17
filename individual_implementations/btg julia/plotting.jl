@@ -20,4 +20,13 @@ function plt(f, a, b, numpts=100)
     display(plot(x, y))
 end
 
+function plt!(f, a, b, numpts=100)
+    h = (b-a)/(numpts-1)
+    y = zeros(1,numpts)
+    x = collect(a:h:b)
+    y = map(f, x)
+    display(plot!(x, y))
+end
+
+
 

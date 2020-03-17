@@ -1,7 +1,9 @@
 using TimerOutputs
 
+#This file defines buffer structs for passing theta-dependent values, as well as funtions to initialize them
+
 """
-define inference problem using settings
+Define inference problem using settings
 s is observed prediction locations, X is matrix of covariates, z is observed values
 X0 is matrix of covariates for prediction location, s0 is prediction location
 """
@@ -13,7 +15,25 @@ struct setting{T<:Array{Float64, 2}, S<:Array{Float64, 1}}
     z::S
 end
 
+"""
+Buffer of θ-dependent parameters
+"""
 struct θ_params{O<:Array{Float64, 2}, C<:Cholesky{Float64,Array{Float64, 2}}}
+    Eθ::O
+    Σθ::O
+    Bθ::O
+    Dθ::O
+    Hθ::O
+    Cθ::O
+    Σθ_inv_X::O
+    choleskyΣθ::C
+    choleskyXΣX::C
+end
+
+"""
+Buffer of θ-dependent parameters, including derivatives
+"""
+struct θ_param_derivs{O<:Array{Float64, 2}, C<:Cholesky{Float64,Array{Float64, 2}}}
     Eθ::O
     Eθ_prime::O
     Eθ_prime2::O
@@ -38,10 +58,12 @@ struct θ_params{O<:Array{Float64, 2}, C<:Cholesky{Float64,Array{Float64, 2}}}
     choleskyXΣX::C
 end
 
+
 """
-Compute theta-dependent quantities. Unpacks setting, ...
+Compute theta-dependent quantities
+Return a struct of type θ_param_derivs if type is \"Turan\" and a struct of type θ_params if type is \"Gaussian\"
 """
-function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}})
+function funcθ(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}}, type = "Gaussian")
     s = setting.s
     s0 = setting.s0
     X = setting.X
@@ -58,15 +80,16 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
         Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
         Hθ = X0 - Bθ*(choleskyΣθ\X) 
         Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+        Σθ_inv_X = choleskyΣθ\X
+
+    if type == "Turan"
         Eθ_prime = K(s0, s0, θ, rbf_prime)
         Eθ_prime2 = K(s0, s0, θ, rbf_prime2)  
         Σθ_prime = fastK(s, s, θ, rbf_prime_single) 
         Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
         Bθ_prime = K(s0, s, θ, rbf_prime) 
         Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
-    #end
 
-   
     #abstractions used to compute higher derivatives
     dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
     Q = Y -> (choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))
@@ -75,12 +98,7 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
     dP = Y -> -XQX*Y
     d2P = Y -> -X'*(dQ(X)*Y)
     d2Pinv = Y -> -dPinv(dP(choleskyXΣX\Y)) - (choleskyXΣX\(d2P(choleskyXΣX\Y))) - (choleskyXΣX\(dP(dPinv(Y))))
-
-    #@timeit "auxiliary" begin
-    #auxiliary expressions
-    Σθ_inv_X = choleskyΣθ\X
     tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X
-    #end
 
     #higher derivatives 
     @timeit "higher derivs" begin
@@ -91,8 +109,11 @@ function func(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}
         Dθ_prime2 = compute_Dθ_prime2(choleskyΣθ, Bθ, Bθ_prime, Bθ_prime2, Eθ_prime2, Q, dQ)
         Cθ_prime2 = compute_Cθ_prime2(Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, choleskyXΣX, dPinv, d2Pinv)
     end
-   
-    θ_params(Eθ, Eθ_prime, Eθ_prime2, Σθ, Σθ_prime, Σθ_prime2, Bθ, Bθ_prime, Bθ_prime2, Dθ, Dθ_prime, Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, Cθ, Cθ_prime, Cθ_prime2, Σθ_inv_X, tripleΣ, choleskyΣθ, choleskyXΣX)
+        return θ_param_derivs(Eθ, Eθ_prime, Eθ_prime2, Σθ, Σθ_prime, Σθ_prime2, Bθ, Bθ_prime, Bθ_prime2, Dθ, Dθ_prime, Dθ_prime2, Hθ, Hθ_prime, Hθ_prime2, Cθ, Cθ_prime, Cθ_prime2, Σθ_inv_X, tripleΣ, choleskyΣθ, choleskyXΣX)
 
-    #θ_params(Eθ, Eθ_prime, Eθ_prime2, Σθ, Σθ_prime, x, Bθ, Bθ_prime, Bθ_prime2, x, Dθ_prime, x, x, Hθ_prime, x, x, x, x, x, x, c, c)
+    elseif type == "Gaussian"
+        return θ_params(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Σθ_inv_X, choleskyΣθ, choleskyXΣX)
+    else 
+        throw(ArgumentError("Quadrature type undefined. Please use \"Gaussian\" or \"Turan\" for last arg"))
+    end
 end

@@ -196,59 +196,94 @@ end
 #function compute_H
 
 """
-p(z0| theta, lambda, z)
+p(z0| theta, lambda, z). Computes T-Distribution explicitly (and unstably). 
 """
-function prob(θ, λ, setting)
-    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
+function prob_artifact(θ, λ, setting, type = "Gaussian")
+    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
+    theta_params = funcθ(θ, setting, type)
     g = boxCox #boxCox by default
-    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ))) 
+    Eθ = theta_params.Eθ
+    Σθ = theta_params.Σθ
+    Bθ = theta_params.Bθ
+    Dθ = theta_params.Dθ
+    Hθ = theta_params.Hθ
+    Cθ = theta_params.Cθ
+    Σθ_inv_X = theta_params.Σθ_inv_X
+    choleskyΣθ = theta_params.choleskyΣθ
+    choleskyXΣX = theta_params.choleskyXΣX
+
+    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ)))
     qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
-    m = Bθ*(cholesky(Σθ)\g(z, λ)) + Hθ*βhat 
+    m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat  
     #t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
     #p = z0 -> Distributions.pdf(t, g(z0, λ))
     #return p
-    #cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
+    cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
     expr = z0 -> g(z0, λ) .- m
-    return z0 -> (det(qtilde*Cθ)^(-1/2))*(1+expr(z0)'*((qtilde*Cθ)\expr(z0)))^(-(n-p+k)/2)
+    return z0 -> cc*(det(qtilde*Cθ)^(-1/2))*(1+expr(z0)'*((qtilde*Cθ)\expr(z0)))^(-(n-p+k)/2)
+end
+
+"""
+p(z0| theta, lambda, z). Computes T-Distribution PDF stably using built-in function.
+"""
+function likelihood_pdf(θ, λ, setting, theta_params::Union{θ_params{Array{Float64, 2}, 
+    Cholesky{Float64,Array{Float64, 2}}}, Nothing}=nothing, type = "Gaussian")
+    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
+    if theta_params==nothing; theta_params = funcθ(θ, setting, type); end
+    g = boxCox #boxCox by default
+    Bθ = theta_params.Bθ
+    Cθ = theta_params.Cθ
+    Σθ_inv_X = theta_params.Σθ_inv_X
+    choleskyΣθ = theta_params.choleskyΣθ
+    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ)))
+    qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
+    m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat  
+    t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
+    return z0 -> Distributions.pdf(t, g(z0, λ))
 end
 
 """
 Compute derivative of p(z0|theta, lambda, z) w.r.t theta. This function should compute things that depend on BOTH theta and lambda. It
 takes in all pertinent theta-dependent quantities as inputs.
 """
-function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing}=nothing)
+function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, 
+    Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing} = nothing, type = "Gaussian")
     if theta_params === nothing
         #println("WARNING: recompute theta_params in partial_theta")
-        theta_params = func(θ, setting)
+        theta_params = funcθ(θ, setting, type)
         #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
         #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
-    @timeit "export θ vals" begin
+    if type == "Gaussian" || type == "Turan"
         Eθ = theta_params.Eθ
-        Eθ_prime = theta_params.Eθ_prime
-        Eθ_prime2 = theta_params.Eθ_prime2
-        Σθ = theta_params.Σθ 
-        Σθ_prime = theta_params.Σθ_prime
-        Σθ_prime2 = theta_params.Σθ_prime2
+        Σθ = theta_params.Σθ
         Bθ = theta_params.Bθ
-        Bθ_prime = theta_params.Bθ_prime
-        Bθ_prime2 = theta_params.Bθ_prime2
         Dθ = theta_params.Dθ
-        Dθ_prime = theta_params.Dθ_prime
-        Dθ_prime2 = theta_params.Dθ_prime2
         Hθ = theta_params.Hθ
-        Hθ_prime = theta_params.Hθ_prime
-        Hθ_prime2 = theta_params.Hθ_prime2
         Cθ = theta_params.Cθ
-        Cθ_prime = theta_params.Cθ_prime
-        Cθ_prime2 = theta_params.Cθ_prime2
         Σθ_inv_X = theta_params.Σθ_inv_X
-        tripleΣ = theta_params.tripleΣ
         choleskyΣθ = theta_params.choleskyΣθ
         choleskyXΣX = theta_params.choleskyXΣX
+    else
+        throw(ArgumentError("Quadrature type undefined. Please enter \"Gaussian\" or \"Turan\" for last arg."))
+    end
+    if type == "Turan" #load higher derivatives
+        Eθ_prime = theta_params.Eθ_prime
+        Eθ_prime2 = theta_params.Eθ_prime2
+        Σθ_prime = theta_params.Σθ_prime
+        Σθ_prime2 = theta_params.Σθ_prime2
+        Bθ_prime = theta_params.Bθ_prime
+        Bθ_prime2 = theta_params.Bθ_prime2
+        Dθ_prime = theta_params.Dθ_prime
+        Dθ_prime2 = theta_params.Dθ_prime2
+        Hθ_prime = theta_params.Hθ_prime
+        Hθ_prime2 = theta_params.Hθ_prime2
+        Cθ_prime = theta_params.Cθ_prime
+        Cθ_prime2 = theta_params.Cθ_prime2
+        tripleΣ = theta_params.tripleΣ
     end
 
-    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) 
+    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
 
     g = boxCox #boxCox by default
     gλz = g(z, λ)
@@ -258,19 +293,7 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
     @timeit "m" m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
     meanvv = gλz - X*βhat
 
-    #@timeit "precompute + definitions" begin
-    #@timeit "Σθ_inv_X" Σθ_inv_X = choleskyΣθ\X #precomputation 
-    #@timeit "tripleΣ" tripleΣ = Σθ_inv_X' * Σθ_prime * Σθ_inv_X  #precompute X'Sigma^-1 dSigma Sigma^-1 X 
-    #@timeit "dQ" dQ = Y -> (choleskyΣθ\((Σθ_prime2*(choleskyΣθ\Y)))) - 2*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))))
-    #@timeit "Q" Q = Y -> (choleskyΣθ\(Σθ_prime*(choleskyΣθ\(Y))))
-    #@timeit "dPinv" dPinv = Y -> choleskyXΣX\(X'*(choleskyΣθ\(Σθ_prime*(choleskyΣθ\(X*(choleskyXΣX\Y))))))
-    #@timeit "XQX" XQX = X'*Q(X)
-    #@timeit "dP" dP = Y -> -XQX*Y
-    #@timeit "d2P" d2P = Y -> -X'*(dQ(X)*Y)
-    #@timeit "d2Pinv" d2Pinv = Y -> -dPinv(dP(choleskyXΣX\Y)) - (choleskyXΣX\(d2P(choleskyXΣX\Y))) - (choleskyXΣX\(dP(dPinv(Y))))
     @timeit "cc" cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
-    #end
-  
     @timeit "expr_mid" expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
     #first derivatives
     @timeit "some first derivs" begin
@@ -313,6 +336,7 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
     dmain = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1]
     main = z0 -> cc*(detqC^(-1/2))*(bilinearform(z0))^(-(n-p+k)/2)
     end
+
     @timeit "main second deriv partial_theta" begin
     #compute second derivative of main expression
     qC_prime2_theta = qtilde_prime2_theta .* Cθ + qtilde .* Cθ_prime2 + 2* Cθ_prime .* qtilde_prime_theta 
@@ -504,7 +528,7 @@ Compute derivative of p(theta, lambda| z) with respect to theta
 function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64,2}}}, Nothing}=nothing)
     if theta_params === nothing
         #println("WARNING: recompute theta_params in partial_theta")
-        theta_params = func(θ, setting)
+        theta_params = funcθ(θ, setting)
         #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
         #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end

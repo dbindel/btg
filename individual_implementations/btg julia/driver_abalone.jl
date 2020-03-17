@@ -20,7 +20,7 @@ target = target/maximum(target) #normalization
 #pick training points
 #ind = 1:30
 #ind = 1:30
-ind = 1:100
+ind = 1:20
 s = data[ind, :] 
 #X = data[ind, :] 
 #X = ones(length(data))[ind]
@@ -51,7 +51,7 @@ end
     example2 = getExample(1, 10, 1, 1, 2)
 
 #experiment to see how large n has to be for Cholesky to have the most expensive computational cost
-if true
+if false
     data  = repeat(data, 10, 1)
     times2 = zeros(2, 4)
     for i = 10000:10000:40000
@@ -65,7 +65,7 @@ if true
     end    
 end
 
-if false # use this blockcxsanity check + plot data
+if true # use this blockcxsanity check + plot data
     if false
     @printf("sanity check and plotting block")
     pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
@@ -81,14 +81,15 @@ end
     locs = [0.0 for i = 1:1:30]
     #gg = x -> ff(x)/constant
     gg = ff
-    if true
+    if false #timer
     for i = 1:1:30
         println("iteration: ", i)
         @timeit "eval" locs[i] = gg([float(i)])
     end
-    print_timer()
+    #print_timer()
     #@profview gg([2.0])
-    plot(1:1:30, locs)
+    #plot(1:1:30, locs)
+    #use plt to plot
 end
 end
 

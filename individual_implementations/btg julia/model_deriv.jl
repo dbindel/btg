@@ -8,7 +8,7 @@ using CSV
 using TimerOutputs
 include("kernel.jl")
 include("integration.jl")
-include("btgDerivatives.jl")
+include("btgCompute.jl")
 include("examples.jl")
 include("integration.jl")
 
@@ -36,60 +36,82 @@ z0: unobserved random vector
 OUTPUTS:
 probability density function z0 -> f(z_0|z) 
 """
-function define_fs(θ::Float64, λ::Float64, theta_params::θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, example::setting{Array{Float64, 2}})
+function define_posterior(θ::Float64, λ::Float64, theta_params::θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, example::setting{Array{Float64, 2}}, type = "Gaussian")
     #time = @elapsed begin
     pθ = x->1 
     dpθ = x->0
     dpθ2 = x->0
     pλ = x->1
+    if type == "Gaussian"
+    
+    end
+
     (main, dmain, d2main) = partial_theta(float(θ), float(λ), example, theta_params)
     (main1, dmain1, d2main1) = posterior_theta(float(θ), float(λ), pθ, dpθ, dpθ2, pλ, example, theta_params)
     f = z0 -> (main(z0)*main1); df = z0 -> (main(z0)*dmain1 .+ dmain(z0)*main1); d2f = z0 -> (d2main(z0)*main1 .+ main(z0)*d2main1 .+ 2*dmain(z0)*dmain1)
     #end
     #println("define_fs time: %s\n", time)
+    obj = (f, df, d2f)  #named tuple
     return (f, df, d2f)
 end
 
+#"""
+#This function returns a function of z0 which evaluates the integrand 
+#along with its higher derivatives (currently first and second derivatives)
+#at prescribed meshgrid locations
+#"""
+
+
 """
-This function returns a function of z0 which evaluates the integrand 
-along with its higher derivatives (currently first and second derivatives)
-at prescribed meshgrid locations
+    createTensorGrid(example, meshtheta, meshlambda, type)
+
+Define a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} = p(z_0|z, θ_i, λ_j)``, 
+where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Optional arg ``type`` is ""Gaussian""
+by default. If ``type`` is "Turan", then use Gauss-Turan quadrature to integrate out ``0`` variable. 
 """
-function createTensorGrid(example::setting{Array{Float64, 2}, Array{Float64, 1}}, meshθ::Array{Float64, 1}, meshλ::Array{Float64, 1})
-    l1 = length(meshθ); l2 = length(meshλ)
+function createTensorGrid(example::setting{Array{Float64, 2}, Array{Float64, 1}}, meshθ::Array{Float64, 1}, meshλ::Array{Float64, 1}, type = "Gaussian")
+    l1 = length(meshθ); l2 = length(meshλ); l3 = type == "Turan" ? 3 : 1
     function func_fixed(θ::Float64)
-        return func(θ, example)
+        return funcθ(θ, example, type)
     end
-    theta_param_list = Array{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}}(undef, l1)
+    if type=="Gaussian"
+    elseif type == "Turan"
+    else
+        throw(ArgumentError("Quadrature type undefined. Please enter \"Gaussian\" or \"Turan\" for last arg."))
+    end
+    theta_param_list = Array{Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}}}(undef, l1)
     for i=1:l1
         theta_param_list[i] = func_fixed(meshθ[i])
     end
-    tgrid = Array{Any, 3}(undef, l1, l2, 3) #tensor grid, layers are for higher derivatives
+    tgrid = Array{Any, 3}(undef, l1, l2, l3) #tensor grid
     for i = 1:l1
         for j = 1:l2 
-            (f, df, d2f) = define_fs(meshθ[i], meshλ[j], theta_param_list[i], example)
+            (f, df, d2f) = define_posterior(meshθ[i], meshλ[j], theta_param_list[i], example, type)
+            for k = 1:l3
+                tgrid[i, j, k] =2
+            
             tgrid[i, j, 1] = f
             tgrid[i, j, 2] = df
             tgrid[i, j, 3] = d2f
         end
     end
+end
     function evalTgrid(z0)
-        res = Array{Float64, 3}(undef, l1, l2, 3)
+        res = Array{Float64, 3}(undef, l1, l2, l3)
         for i=1:l1
             for j = 1:l2
-                for k =1:3
+                for k =1:l3
                     res[i, j, k] = tgrid[i, j, k](z0)
                 end
             end
         end 
         return res
     end
-    return evalTgrid
+    return evalTgrid 
 end
 
 """
-Combine Gauss Quadrature (used on the lambdas) and Turan Quadrature (used on thetas)
-to marginalize out theta and lambda to obtain Bayesian predictive density
+Marginalize out theta and lambda to obtain Bayesian predictive density
 """
 function getBtgDensity(example::setting{Array{Float64, 2}, Array{Float64, 1}}, rangeθ::Array{Float64, 1}, rangeλ::Array{Float64, 1})
     bθ = rangeθ[2]; aθ = rangeθ[1]; bλ = rangeλ[2]; aλ = rangeλ[1]

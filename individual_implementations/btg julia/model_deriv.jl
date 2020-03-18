@@ -45,9 +45,8 @@ function define_posterior(θ::Float64, λ::Float64, theta_params::θ_params{Arra
     if type == "Gaussian"
     
     end
-
-    (main, dmain, d2main) = partial_theta(float(θ), float(λ), example, theta_params)
-    (main1, dmain1, d2main1) = posterior_theta(float(θ), float(λ), pθ, dpθ, dpθ2, pλ, example, theta_params)
+    (main, dmain, d2main) = partial_theta(float(θ), float(λ), example, theta_params, type)
+    (main1, dmain1, d2main1) = posterior_theta(float(θ), float(λ), pθ, dpθ, dpθ2, pλ, example, theta_params, type)
     f = z0 -> (main(z0)*main1); df = z0 -> (main(z0)*dmain1 .+ dmain(z0)*main1); d2f = z0 -> (d2main(z0)*main1 .+ main(z0)*d2main1 .+ 2*dmain(z0)*dmain1)
     #end
     #println("define_fs time: %s\n", time)
@@ -62,63 +61,25 @@ end
 #"""
 
 
-"""
-    createTensorGrid(example, meshtheta, meshlambda, type)
-
-Define a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} = p(z_0|z, θ_i, λ_j)``, 
-where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Optional arg ``type`` is ""Gaussian""
-by default. If ``type`` is "Turan", then use Gauss-Turan quadrature to integrate out ``0`` variable. 
-"""
-function createTensorGrid(example::setting{Array{Float64, 2}, Array{Float64, 1}}, meshθ::Array{Float64, 1}, meshλ::Array{Float64, 1}, type = "Gaussian")
-    l1 = length(meshθ); l2 = length(meshλ); l3 = type == "Turan" ? 3 : 1
-    function func_fixed(θ::Float64)
-        return funcθ(θ, example, type)
-    end
-    if type=="Gaussian"
-    elseif type == "Turan"
-    else
-        throw(ArgumentError("Quadrature type undefined. Please enter \"Gaussian\" or \"Turan\" for last arg."))
-    end
-    theta_param_list = Array{Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}}}(undef, l1)
-    for i=1:l1
-        theta_param_list[i] = func_fixed(meshθ[i])
-    end
-    tgrid = Array{Any, 3}(undef, l1, l2, l3) #tensor grid
-    for i = 1:l1
-        for j = 1:l2 
-            (f, df, d2f) = define_posterior(meshθ[i], meshλ[j], theta_param_list[i], example, type)
-            for k = 1:l3
-                tgrid[i, j, k] =2
-            
-            tgrid[i, j, 1] = f
-            tgrid[i, j, 2] = df
-            tgrid[i, j, 3] = d2f
-        end
-    end
-end
-    function evalTgrid(z0)
-        res = Array{Float64, 3}(undef, l1, l2, l3)
-        for i=1:l1
-            for j = 1:l2
-                for k =1:l3
-                    res[i, j, k] = tgrid[i, j, k](z0)
-                end
-            end
-        end 
-        return res
-    end
-    return evalTgrid 
-end
 
 """
 Marginalize out theta and lambda to obtain Bayesian predictive density
+Arg \"type\" refers to type of quadrature rule used to integrate out θ, options are 
+    1) Gaussian (does not use derivatives)
+    2) Turan (uses higher derivatives)
+Note: Gaussian quadrature is always used to integrate out λ
 """
-function getBtgDensity(example::setting{Array{Float64, 2}, Array{Float64, 1}}, rangeθ::Array{Float64, 1}, rangeλ::Array{Float64, 1})
+function getBtgDensity(example::setting{Array{Float64, 2}, Array{Float64, 1}}, rangeθ::Array{Float64, 1}, rangeλ::Array{Float64, 1}, type = "Gaussian")
     bθ = rangeθ[2]; aθ = rangeθ[1]; bλ = rangeλ[2]; aλ = rangeλ[1]
-    nodes_T, weights_T = getTuranData() #use 12 Gauss-Turan integration nodes and weights by default
-    nodes_T = (bθ-aθ)/2 .* nodes_T .+ (bθ+aθ)/2
     nodes_G, weights_G = getGaussQuadraturedata()
     nodes_G = (bλ-aλ)/2 .* nodes_G .+ (bλ+aλ)/2 #transform nodes to span range
+    if type == "Turan"
+        nodes_T, weights_T = getTuranData() #use 12 Gauss-Turan integration nodes and weights by default
+        nodes_T = (bθ-aθ)/2 .* nodes_T .+ (bθ+aθ)/2
+    else if type == "Gaussian"
+
+    end
+    
     n1 = length(nodes_T); m1 = size(weights_T, 2); n2 = length(nodes_G)
     weightsTensorGrid = zeros(n1, n2, m1) #tensor grid of weights
     for i = 1:n1
@@ -128,7 +89,7 @@ function getBtgDensity(example::setting{Array{Float64, 2}, Array{Float64, 1}}, r
             end
         end
     end
-    evalTGrid = createTensorGrid(example, nodes_T, nodes_G)
+    evalTGrid = createTensorGrid(example, nodes_T, nodes_G, type)
     function density(z0)
         dot(evalTGrid(z0), weightsTensorGrid)
     end

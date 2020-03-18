@@ -11,4 +11,4 @@ Pkg.add("MATLAB")
 Pkg.add("DataFrames")
 Pkg.add("SpecialFunctions")
 Pkg.add("TimerOutputs")
- 
+Pkg.add("Parameters")

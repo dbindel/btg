@@ -1,6 +1,29 @@
 using LinearAlgebra
 using DataFrames
 using CSV
+
+#This file contains various renditions of  which perform numerical
+#quadrature given integration endpoints and a function handle
+#More importantly, it provides a composite type which stores nodes and weight. 
+
+
+"""
+Data-type which stores quadrature nodes and weights
+"""
+mutable struct nodesWeights{T<:Array{Float64, 2}}
+    nodes::T
+    weights::T  
+end
+
+"""
+Apply affine transformation to nodes to integration over range r (linear change of variables)
+"""
+function affineTransformNodes(nw::nodesWeights{Array{Float64, 2}}, r::Array{<:Real})::nodesWeights{Array{Float64, 2}}
+    b = r[2]; a = r[1]
+    nw.nodes = (b-a)/2 .* nw.nodes .+ (b + a)/2
+end
+
+
 """
 Uses the Golub-Welsch eigenvalue method to compute
 Gauss-Legendre quadrature nodes and weights for the domain [-1, 1]
@@ -26,7 +49,7 @@ dm2, wm2 = gausslegpts(50)
 dm3, wm3 = gausslegpts(100)
 
 function getGaussQuadraturedata()
-    return (dm, wm)
+    return nodesWeights(dm, wm)
 end
 
 """
@@ -110,8 +133,8 @@ data12 = DataFrame(CSV.File("nodes_weights_12.csv", header=0))
 nodes12  = convert(Array, data12[:,1])
 weights12 = convert(Array, data12[:,2:end])
 
-function getTuranData()
-    return (nodes12, weights12)
+function getTuranQuadratureData()
+    return nodesWeights(nodes12, weights12)
 end
 
 """

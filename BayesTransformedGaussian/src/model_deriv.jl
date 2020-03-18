@@ -36,4 +36,3 @@ function getBtgDensity(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, r
     end
     return density
 end
-

@@ -11,11 +11,27 @@ struct nonlinearTransform{T1<:Function, T2<:Function, T3<:Function, T4<:Function
     inv::T7 
 end
 
-"""
+
+@doc raw"""
+    BoxCox(λ::Real)
+
+The Box-Cox power transformation function with parameter λ.
+
+```math
+g_\lambda(x) = \begin{cases} 
+    \frac{x^\lambda - 1}{\lambda} & \lambda \neq 0\\ 
+    \ln(x) & \lambda = 0
+\end{cases}
+```
+
+External links
+* [Power Transform on Wikipedia](https://en.wikipedia.org/wiki/Power_transform)
+
 ...
 # Arguments
 * `x::float64`: evaluation point
 * `lambda::float=1.0`: lambda hyperparameter
+
 """
 function boxCox(x, lambda=1)
     lambda == 0 ? Base.log.(x) : (float(x).^lambda.-1)./lambda
@@ -38,7 +54,7 @@ end
 """
 Derivative of Box-Cox power transformation w.r.t lambda
 """
-function boxCoxPrime_lambda(x, lambda=1) where x
+function boxCoxPrime_lambda(x, lambda=1)
     lambda==0 ? 0 : (lambda * float(x).^lambda .* log.(x) .- float(x).^lambda .+ 1)/lambda^2
 end
 
@@ -66,3 +82,13 @@ end
 
 #define BoxCox Object
 boxCoxObj = nonlinearTransform(boxCox, boxCoxPrime, boxCoxPrime2, boxCoxPrime_lambda, boxCoxPrime_lambda2, boxCoxMixed_lambda_z, invBoxCox)
+
+@doc raw"""
+    TODO Unimplimented
+"""
+struct YeoJohnson{T} <: Function end
+
+@doc raw"""
+    TODO Unimplimented
+"""
+struct ArandaOrdaz{T} end

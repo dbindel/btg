@@ -53,27 +53,13 @@ function pdf_z0_ij(theta_sample, lambda_sample, x0, z0, trainBasicInfo, sideInfo
     B = KernelMat(x0, x, kernel, theta_sample) # k * n
     E = KernelMat(x0, x0, kernel, theta_sample) # k * k
 
-    if (k == 1) && (p == 1)
-    
-        # compute m
-        BinvS = (B / L') / L # k * n
-        H = X0[1] - (BinvS * X)[1] # k * p 
-        m = (BinvS * gz)[1] + H * Beta[1]
-        # compute C 
-        D = E[1] - (BinvS * B')[1]
-        C = D + H / (XSigmaX[1]) * H
-
-    else
-    
-
-        # compute m
-        BinvS = (B / L') / L # k * n
-        H = X0 - BinvS * X # k * p 
-        m = BinvS * gz + H * Beta
-        # compute C 
-        D = E - BinvS * B'
-        C = D + H / XSigmaX * H'
-    end
+    # compute m
+    BinvS = (B / L') / L # k * n
+    H = X0[1] - (BinvS * X)[1] # k * p 
+    m = (BinvS * gz)[1] + H * Beta[1]
+    # compute C 
+    D = E[1] - (BinvS * B')[1]
+    C = D + H / (XSigmaX[1]) * H
 
     # cpmpute p(z0|theta, lambda, z)
     dg_new = z -> dg(z, lambda_sample)

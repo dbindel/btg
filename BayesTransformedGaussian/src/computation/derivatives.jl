@@ -187,15 +187,6 @@ function compute_Cθ_prime2(Dθ_prime2::Array{Float64,2}, Hθ::Array{Float64,2},
 end
 
 
-function test()
-    #P, dP_inv, 
-end
-
-#"""
-#Derivative of H_theta with respect to theta
-#"""
-#function compute_H
-
 """
 p(z0| theta, lambda, z). Computes T-Distribution explicitly (and unstably). 
 """
@@ -224,27 +215,6 @@ function prob_artifact(θ, λ, setting, type = "Gaussian")
     return z0 -> cc*(det(qtilde*Cθ)^(-1/2))*(1+expr(z0)'*((qtilde*Cθ)\expr(z0)))^(-(n-p+k)/2)
 end
 
-"""
-Computes T-Distribution PDF and CDF stably using built-in function.
-Returns:
-    p(z0 | theta, lambda, z) 
-    P(z0 | theta, lambda, z) 
-"""
-function likelihood_pdf(θ, λ, setting, theta_params::Union{θ_params{Array{Float64, 2}, 
-    Cholesky{Float64,Array{Float64, 2}}}, Nothing}=nothing, type = "Gaussian")
-    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
-    if theta_params==nothing; theta_params = funcθ(θ, setting, type); end
-    g = boxCox #boxCox by default
-    Bθ = theta_params.Bθ
-    Cθ = theta_params.Cθ
-    Σθ_inv_X = theta_params.Σθ_inv_X
-    choleskyΣθ = theta_params.choleskyΣθ
-    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\g(z, λ)))
-    qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
-    m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat  
-    t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
-    return z0 -> Distributions.pdf(t, g(z0, λ)), z0 -> Distributions.cdf(t, g(z0, λ))
-end
 
 """
 Compute derivative of p(z0|theta, lambda, z) w.r.t theta. This function should compute things that depend on BOTH theta and lambda. It
@@ -521,15 +491,6 @@ function partial_z0(θ, λ, setting, g = boxCox, dg = boxCoxPrime, dg2 = boxCoxP
     return (expr3, dexpr3)
 end
 
-"""
-Computing Jacobian of vector in a stable way by taking the sum of the log of the entries, shifted by amount 
-to make largest entry zero. Exponentiate result to get scaled Jacobian.   
-"""
-function compute_Jacobian(dg, λ, y)
-    f = x -> dg(x, λ)
-    y = log.(f.(y))
-    return sum(y)
-end
 
 """
 Compute p(theta, lambda| z), possibly in addition to derivatives with respect to theta. Differs from paper in that Jacobian term computation is delayed 
@@ -652,6 +613,7 @@ function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, settin
     #return (Σθ\(Σθ_prime*(Σθ\X)), dQ(X))
     #return (dEXPR2, d2EXPR2)
     #return (main, dmain)
+
 end
   
 """

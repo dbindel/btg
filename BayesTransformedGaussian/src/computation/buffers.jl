@@ -1,19 +1,7 @@
 using TimerOutputs
+using LinearAlgebra
 
 #This file defines buffer structs for passing theta-dependent values, as well as funtions to initialize them
-
-"""
-Define inference problem using settings
-s is observed prediction locations, X is matrix of covariates, z is observed values
-X0 is matrix of covariates for prediction location, s0 is prediction location
-"""
-struct setting{T<:Array{Float64, 2}, S<:Array{Float64, 1}}
-    s::T
-    s0::T
-    X::T
-    X0::T
-    z::S
-end
 
 """
 Buffer of θ-dependent parameters
@@ -63,7 +51,7 @@ end
 Compute theta-dependent quantities
 Return a struct of type θ_param_derivs if type is \"Turan\" and a struct of type θ_params if type is \"Gaussian\"
 """
-function funcθ(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}}, type = "Gaussian")::Union{θ_params{T, C}, θ_param_derivs{T, C}} where T<:Array{Float64, 2} where C<:Cholesky{Float64,Array{Float64, 2}}}
+function funcθ(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}}, type = "Gaussian")::Union{θ_params{T, C}, θ_param_derivs{T, C}} where T<:Array{Float64, 2} where C<:Cholesky{Float64,Array{Float64, 2}}
     s = setting.s
     s0 = setting.s0
     X = setting.X

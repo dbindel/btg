@@ -19,11 +19,8 @@ target = target/maximum(target) #normalization
 
 #pick training points
 #ind = 1:30
-#ind = 1:30
 ind = 1:20
 s = data[ind, :] 
-#X = data[ind, :] 
-#X = ones(length(data))[ind]
 #choose a subset of variables to be regressors for the mean
 X = data[ind, 1:3] 
 z = float(target[ind])
@@ -67,30 +64,30 @@ end
 
 if true # use this blockcxsanity check + plot data
     if false
-    @printf("sanity check and plotting block")
-    pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
-    constant = cdff(30)
-    pdfn = x -> pdff(x)/constant 
-    cdfn = x -> cdff(x)/constant 
-    @time begin plt(pdfn, 0, 30) end
-end
+        @printf("sanity check and plotting block")
+        pdff, cdff = model(example, boxCox, boxCoxPrime, pθ, pλ, range_theta, range_lambda)
+        constant = cdff(30)
+        pdfn = x -> pdff(x)/constant 
+        cdfn = x -> cdff(x)/constant 
+        @time begin plt(pdfn, 0, 30) end
+    end
     reset_timer!()
     choleskytime = 0
 
-    ff = getBtgDensity(example, range_theta, range_lambda)
-    locs = [0.0 for i = 1:1:30]
+    (f, g) = getBtgDensity(example, range_theta, range_lambda)
+    #locs = [0.0 for i = 1:1:30]
     #gg = x -> ff(x)/constant
-    gg = ff
-    if false #timer
-    for i = 1:1:30
-        println("iteration: ", i)
-        @timeit "eval" locs[i] = gg([float(i)])
-    end
+    #gg = ff
+    #if false #timer
+    #for i = 1:1:30
+    #    println("iteration: ", i)
+    #    @timeit "eval" locs[i] = gg([float(i)])
+    #end
     #print_timer()
     #@profview gg([2.0])
     #plot(1:1:30, locs)
     #use plt to plot
-end
+plt
 end
 
 if false #cross validation on training set

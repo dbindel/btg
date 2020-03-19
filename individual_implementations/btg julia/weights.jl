@@ -1,8 +1,10 @@
+include("quadrature.jl")
+
 """
 TODO:
 For multiple length scales, make rangeθ multidimensional
 """
-function getWeightsGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, nodesWeightsθ::T, nodesWeightsλ::T, nonlinearFuncs)::T where T<:Array{Float64, 2}
+function getWeightsGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, priorθ, priorλ, nodesWeightsθ::G, nodesWeightsλ::G, nonlinearFuncs)::Array{Float64} where G <:Union{nodesWeights{Array{Float64, 2}}, nodesWeights{Array{Float64, 1}}}
     #unpack nodesWeights objects and setting object
     nodesθ = nodesWeightsθ.nodes
     weightsθ = nodesWeightsθ.weights
@@ -14,8 +16,9 @@ function getWeightsGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, 
     weightsTensorGrid = zeros(n1, n2, n3) #tensor grid of weights
     for i = 1:n1
         for j = 1:n2
+            funcs = posterior_theta(nodesθ[i], nodesλ[j], priorθ, priorλ, setting, theta_params)
             for k = 1:n3
-                weightsTensorGrid[i, j, k] = weightsθ[i, k]*weightsλ[j]
+                weightsTensorGrid[i, j, k] = weightsθ[i, k]*weightsλ[j]*funcs[k]
             end
         end
     end

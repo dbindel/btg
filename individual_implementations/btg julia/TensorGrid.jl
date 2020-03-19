@@ -1,6 +1,7 @@
 include("quadrature.jl")
 include("Derivatives.jl")
 include("TDist.jl")
+include("transforms.jl")
 
 function define_likelihood(θ::Float64, λ::Float64, theta_params::θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, setting::setting{Array{Float64, 2}}, quadtype = "Gaussian")
     #time = @elapsed begin
@@ -77,11 +78,12 @@ function getTensorGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, p
 
     for i = 1:l1
         for j = 1:l2 
-            funcs = define_likelihood(nodesθ[i], nodesλ[j], theta_param_list[i], setting, quadtype)
+            funcs = partial_theta(nodesθ[i], nodesλ[j], setting, boxCoxObj, theta_param_list[i], quadtype)
+            #funcs = define_likelihood(nodesθ[i], nodesλ[j], theta_param_list[i], setting, quadtype)
             for k = 1:l3
                 #tgrid[i, j, k] = funcs[k]       
-                tgridpdf[i, j, k] = funcs[1]
-                tgridcdf[i, j, k] = funcs[2]
+                tgridpdf[i, j, k] = funcs[1][k]
+                tgridcdf[i, j, k] = funcs[2][k]
             end
         end
     end
@@ -107,7 +109,30 @@ function getTensorGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, p
         end 
         return res
     end
-    return z0 -> dot(evalTgrid_pdf(z0), weightsTensorGrid), z0 -> dot(evalTgrid_cdf(z0), weightsTensorGrid)
+    #product rule loop for Turan quadrature (k>1). In the k=1 case, this reduces to taking the dot
+    # product between the tensor grid and weights grid.
+    function pdf(z0)
+        grid = evalTgrid_pdf(z0)
+        res = 0
+        for i = 1:n3
+            for j = 1:i
+                res = binomial(i, j) * dot(grid[:, :, j],  weightsTensorGrid[:, :, n3-j+1])  
+            end
+        end
+        return res
+    end
+    function cdf(z0)
+        grid = evalTgrid_cdf(z0)
+        res = 0
+        for i = 1:n3
+            for j = 1:i
+                res = binomial(i, j) * dot(grid[:, :, j], weightsTensorGrid[:, :, n3-j+1])  
+            end
+        end
+        return res
+    end
+    return (pdf, cdf)
+    #return z0 -> dot(evalTgrid_pdf(z0), weightsTensorGrid), z0 -> dot(evalTgrid_cdf(z0), weightsTensorGrid)
 end
 
 

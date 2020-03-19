@@ -13,7 +13,6 @@ include("TDist.jl")
 include("examples.jl")
 include("transforms.jl")
 include("settings.jl")
-include("weights.jl")
 include("tensorgrid.jl")
 include("priors.jl")
 

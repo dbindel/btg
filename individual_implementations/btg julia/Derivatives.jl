@@ -223,7 +223,7 @@ takes in all pertinent theta-dependent quantities as inputs.
 
 WARNING: not tested, because want to get rid of cc (the unstably computed constant term), and redo some computations to use built-in cdf and pdf
 """
-function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, 
+function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, transforms, theta_params::Union{θ_params{Array{Float64, 2}, 
     Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing} = nothing, type = "Gaussian")
     if theta_params === nothing
         #println("WARNING: recompute theta_params in partial_theta")
@@ -269,11 +269,17 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
     @timeit "m" m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat 
     meanvv = gλz - X*βhat
 
-    #@timeit "cc" cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
+    dg = transforms.df
+    jac = z0 -> abs(reduce(*, map(x -> dg(x, λ), z0)))
+
+    cc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2) #constant term
     t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
-    main = z0 -> Distributions.pdf(t, g(z0, λ))
-    #This block of code computes first and second derivatives. It does not yet utilize the built-in pdf and cdf functions for the Student-t
-    #If necessary, this block will be re-written in the future to allow for more clean and readable code. 
+    vanillat = LocationScale(0, 1, TDist(n-p))
+    vanillaT_pdf = z0 -> Distributions.pdf.(vanillat, z0)
+    T_pdf = z0 -> Distributions.pdf.(t, g(z0, λ)) #no Jacobian
+    main_pdf = z0 -> Distributions.pdf.(t, g(z0, λ)) * jac(z0)
+    main_cdf = z0 -> Distributions.cdf.(t, g(z0, λ)) 
+    #This block of code computes first and second derivatives. 
     if type == "Turan"
         @timeit "expr_mid" expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
         #first derivatives
@@ -297,6 +303,7 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
         #end
         @timeit "main deriv partial_theta" begin
         #compute derivative of main expression
+
         expr = z0 -> g(z0, λ) .- m
         qC = qtilde*Cθ 
         bilinearform = z0 -> 1 .+ expr(z0)'*(qC\(expr(z0)))
@@ -308,7 +315,8 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
         dbilinearform = z0 -> -m_prime_theta'*(qC\(expr(z0))) .+ expr(z0)' * qC_inv_prime_theta(expr(z0)) .- expr(z0)'*(qC\m_prime_theta)
         EE = z0 -> bilinearform(z0)^(-(n-p+k)/2)
         FF = z0 -> detqC^(-1/2) * (-(n-p+k)/2) * (bilinearform(z0))^(-(n-p+k+2)/2)
-        dmain = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1]
+        dT_pdf = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1]
+        dmain_pdf = z0 -> (cc*(AA*EE(z0) .+ FF(z0)*(dbilinearform(z0))))[1] * jac(z0)
         end
         @timeit "main second deriv partial_theta" begin
         #compute second derivative of main expression
@@ -325,12 +333,34 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
         bformpower = z0 -> bilinearform(z0)^(-(n-p+k)/2)
         dbformpower = z0 -> -((n-p+k)/2)*bilinearform(z0)^(-(n-p+k+2)/2)*dbilinearform(z0)
         d2bformpower = z0 -> (n-p+k)/2 * (n-p+k+2)/2 * bilinearform(z0)^(-(n-p+k+4)/2)*dbilinearform(z0)^2 - (n-p+k)/2*bilinearform(z0)^(-(n-p+k+2)/2)*d2bilinearform(z0) 
-        d2main = z0 -> (cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0)))[1]
+        d2main_pdf = z0 -> (cc* (dAA*bformpower(z0) .+ 2*AA*dbformpower(z0) .+ detqC^(-1/2)*d2bformpower(z0)))[1] * jac(z0)
         end
-        return (main, dmain, d2main)
+
+        #derivatives of g(z0)-m/sqrt(qC/(n-p)) w.r.t theta for chain rule application
+        locationscale = z0 -> expr(z0) ./ sqrt(qC/(n-p))
+        dlocationscale = z0 -> - m_prime_theta ./ sqrt(qC ./ (n-p)) - 0.5 .* expr(z0) ./ (qC ./ (n-p))^1.5 .* qC_prime_theta/(n-p)
+        d2locationscale = z0 ->  - m_prime2_theta ./ sqrt(qC/(n-p)) .+ m_prime_theta ./(qC/(n-p))^1.5 .* qC_prime_theta/(n-p) .+ expr(z0) * sqrt(n-p) .* (0.75*(qC)^(-5/2) .* (qC_prime_theta)^2 - 0.5 * qC^(-3/2) .* qC_prime2_theta)
+        dmain_cdf = z0 -> vanillaT_pdf(expr(z0)/(sqrt(qC/(n-p)))) * dlocationscale(z0) #T_pdf(z0) .* dlocationscale(z0) #+ main_cdf(z0) .* (-0.5 ./ qC .* qC_prime_theta)
+        
+        #Below we write down some helper functions, which will allow us to compute derivatives using the built-in TDist CDF and PDF. 
+        #Observe that d4' = d5 and d6' = d7
+        d4 = z0 -> vanillaT_pdf(expr(z0)/(sqrt(qC/(n-p))))/sqrt(qC/(n-p)) 
+        d5 = z0 -> dT_pdf(z0) 
+        d6 = z0 -> vanillaT_pdf(expr(z0)/(sqrt(qC/(n-p))))
+        d7 = z0 -> sqrt(qC)*(dT_pdf(z0)/sqrt(n-p) .+ 0.5*vanillaT_pdf(expr(z0)/(sqrt(qC/(n-p)))) ./ (qC)^(3/2) .* qC_prime_theta)
+        
+        d2main_cdf = z0 -> d7(z0) .* dlocationscale(z0) .+ vanillaT_pdf(expr(z0)/(sqrt(qC/(n-p))))*d2locationscale(z0)
+        
+        return [[main_pdf, dmain_pdf, d2main_pdf], [main_cdf, dmain_cdf, d2main_cdf]]
+        #return ((main_pdf, dmain_pdf, d2main_pdf), (main_cdf, dmain_cdf, d2main_cdf, d4, d5, d6, d7)) 
+        #return ((main_pdf, dmain_pdf, d2main_pdf), (main_cdf, dmain_cdf, d2main_cdf), (locationscale, dlocationscale, d2locationscale)) 
+        
+        #currently pdf and cdf are decoupled, so that calling one followe by the other results in 
+        #repeated computation of certain quantities. However coupling them would result in extra  
+        #computation if only one is needed.
     end
     #return (vec(Bθ_prime), vec(Bθ_prime2))
-    return main
+    return [[main_pdf], [main_cdf]]
     #return (dmain, d2main)
     #return (dbformpower, d2bformpower)
     #return (dbilinearform, d2bilinearform)

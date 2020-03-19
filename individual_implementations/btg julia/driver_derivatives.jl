@@ -1,5 +1,6 @@
-include("btgDerivatives.jl")
+include("Derivatives.jl")
 include("kernel.jl")
+include("transforms.jl")
 
 using Distributions
 using Printf
@@ -92,12 +93,12 @@ if true
     #f = θ -> partial_theta(θ[1], 2, example)[1](z0)
     #df = θ -> partial_theta(θ[1], 2, example)[2](z0)
     example2 = getExample(1, 25, 1, 1, 10)
-    θ0 = [1.0]
+    θ0 = [1.1]
     z0 = [6];
-    f = θ -> partial_theta(θ[1], 2.0, example2)[2](z0)
-    df = θ -> partial_theta(θ[1], 2.0, example2)[3](z0)
+    f = θ -> partial_theta(θ[1], 2.0, example2, boxCoxObj, nothing, "Turan")[2][2](z0)
+    df = θ -> partial_theta(θ[1], 2.0, example2, boxCoxObj, nothing, "Turan")[2][3](z0)
    
-    (h, A) = checkDerivative(f, df, θ0, 5, 14, 10)
+    (h, A) = checkDerivative(f, df, θ0, 5, 10, 10)
     plt1 = plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
     println("partial theta of p(z0|theta, lambda, z)")
@@ -105,7 +106,7 @@ if true
     nums = collect(.1:.1:20) 
     g = x -> f(x)[1]
     plt2 = plot(nums, g.(nums),xlabel = "theta", ylabel = "p(z0|theta, lambda, z)", fontfamily=font(48, "Courier") ,title = "theta vs p(z0| theta, lambda, z)")
-    display(plot(plt1, plt2, fontfamily=font(48, "Courier")))
+    display(plot(plt1, plt2, fontfamily=font(48, "CoSurier")))
     gui()
 end
 
@@ -167,7 +168,7 @@ end
 
 #Example 7: Check derivative of sub-variables of posterior_theta. No "sub-functions", because we don't 
 #have a z0 to deal with
-if true
+if false
     println("loading some simple functions")
     @time begin
     θ0 = [2.0]

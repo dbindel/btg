@@ -74,7 +74,11 @@ if true # use this blockcxsanity check + plot data
     reset_timer!()
     choleskytime = 0
 
-    (f, g) = getBtgDensity(example, range_theta, range_lambda)
+    (f, g) = getBtgDensity(example, range_theta, range_lambda, "Turan")
+
+    plt(f, 0.1, 3, 50)
+    plt!(g, 0.1, 3, 50)
+
     #locs = [0.0 for i = 1:1:30]
     #gg = x -> ff(x)/constant
     #gg = ff

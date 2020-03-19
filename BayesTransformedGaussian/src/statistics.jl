@@ -83,6 +83,9 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
   [alpha, beta]: 
       interval for integration, target credible interval
       s.t. 1) pdf(alpha) = pdf(beta) and 2) integral of pdf from alpha to beta = wp (like 0.95)
+  bound:
+      the bound of support of the pdf, currently assume this is available
+      i.e. pdf(x) = 0 if z > bound
   l_height_low/l_height_high: 
       height of the l line that is lower/higher than the target one
   alpha_low/alpha_high, beta_low/beta_high: 
@@ -93,6 +96,7 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
       function from the package Cubature for numerical integration
       e.g. integral_heightue, error = hquadrature(f, a, b) gives integral of f on [a,b] with some error
       we mostly use this to compute integral of pdf on [alpha, beta] for different alpha and beta
+  
   =#
    
   # assume we have the mode

@@ -96,11 +96,12 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
       function from the package Cubature for numerical integration
       e.g. integral_heightue, error = hquadrature(f, a, b) gives integral of f on [a,b] with some error
       we mostly use this to compute integral of pdf on [alpha, beta] for different alpha and beta
-  
   =#
    
   # assume we have the mode
   mode_d = mode(btg, x)
+  # z normalized to [0,1], so reasonably pdf(10) ~= 0
+  bound = 10.
   l_height_low = 1e-3
   α_low, β_low, int_low = find_αβ(l_height_low, [0, mode_d], [mode_d, bound])
   # adjust height if l low is not lower than l* (i.e. int < wp)

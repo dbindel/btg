@@ -1,18 +1,26 @@
 #installs packages
 using Pkg
-
+#stats
 Pkg.add("StatsFuns")
-Pkg.add("Distances")
 Pkg.add("StaticArrays")
-Pkg.add("CSV") 
+Pkg.add("StatsBase") 
+
+#computation
+Pkg.add("Polynomials")
+Pkg.add("SpecialFunctions")
 Pkg.add("PDMats") 
 Pkg.add("Distributions") 
 Pkg.add("Random") 
-Pkg.add("StatsBase") 
+Pkg.add("Distances")
+Pkg.add("LinearAlgebra")
+
+#data analysis 
 Pkg.add("Plots") 
-Pkg.add("Polynomials") 
 Pkg.add("MATLAB")
 Pkg.add("DataFrames")
-Pkg.add("SpecialFunctions")
+Pkg.add("CSV") 
+
 Pkg.add("TimerOutputs")
-Pkg.add("Parameters")
+#optimization
+Pkg.add("Cubature")
+Pkg.add("Optim")

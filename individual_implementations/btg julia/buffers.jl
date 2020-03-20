@@ -52,12 +52,12 @@ end
 Compute theta-dependent quantities
 Return a struct of type θ_param_derivs if type is \"Turan\" and a struct of type θ_params if type is \"Gaussian\"
 """
-function funcθ(θ::Float64, setting::setting{Array{Float64, 2}, Array{Float64, 1}}, type = "Gaussian") #::Union{θ_params{W, C}, θ_param_derivs{W, C}} where {W<:Array{Float64, 2}, C<:Cholesky{Float64,Array{Float64, 2}}}
-    s = setting.s
-    s0 = setting.s0
-    X = setting.X
-    X0 = setting.X0
-    z = setting.z
+function funcθ(θ::Float64, train::trainingData{A, B}, test::testingData{A}, type = "Gaussian") where A<:Array{Float64, 2} where B<:Array{Float64, 1} #::Union{θ_params{W, C}, θ_param_derivs{W, C}} where {W<:Array{Float64, 2}, C<:Cholesky{Float64,Array{Float64, 2}}}
+    s = train.s
+    s0 = test.s0
+    X = train.X
+    X0 = test.X0
+    z = train.z
     
     #zeroth order expressions and easily computed higher derivatives (building blocks)
     #@timeit "zero order" begin

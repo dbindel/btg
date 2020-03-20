@@ -1,9 +1,8 @@
 include("model.jl")
-include("model_deriv.jl")
-include("statistics.jl")
+#include("statistics.jl")
 include("transforms.jl")
-include("plotting.jl")
-include("validate.jl")
+include("tools/plotting.jl")
+include("validation/validate.jl")
 using DataFrames
 using CSV
 #using StatsBase
@@ -11,7 +10,7 @@ using Plots
 #using Profile
 #using ProfileView
 
-df = DataFrame(CSV.File("data//abalone.csv"))
+df = DataFrame(CSV.File("datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
 target = target/maximum(target) #normalization
@@ -68,24 +67,11 @@ if true # use this blockcxsanity check + plot data
     reset_timer!()
     choleskytime = 0
 
-    (f, g) = getBtgDensity(train, test, range_theta, range_lambda, boxCoxObj, "Gaussian")
+    (f, g) = getBtgDensity(train, test, range_theta, range_lambda, boxCoxObj, "Gaussian", "Uniform")
 
     plt(f, 0.1, 2, 100, "pdf")
     plt!(g, 0.1, 2, 100, "cdf")
 
-    #locs = [0.0 for i = 1:1:30]
-    #gg = x -> ff(x)/constant
-    #gg = ff
-    #if false #timer
-    #for i = 1:1:30
-    #    println("iteration: ", i)
-    #    @timeit "eval" locs[i] = gg([float(i)])
-    #end
-    #print_timer()
-    #@profview gg([2.0])
-    #plot(1:1:30, locs)
-    #use plt to plot
-plt
 end
 
 if true #cross validation on training set

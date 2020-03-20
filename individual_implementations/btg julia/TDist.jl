@@ -4,10 +4,10 @@ Returns:
     p(z0 | theta, lambda, z) 
     P(z0 | theta, lambda, z) 
 """
-function likelihood(θ, λ, setting, theta_params::Union{θ_params{Array{Float64, 2}, 
+function likelihood(θ, λ, train, test, theta_params::Union{θ_params{Array{Float64, 2}, 
     Cholesky{Float64,Array{Float64, 2}}}, Nothing}=nothing, type = "Gaussian")
-    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
-    if theta_params==nothing; theta_params = funcθ(θ, setting, type); end
+    s = train.s; s0 = test.s0; X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack 
+    if theta_params==nothing; theta_params = funcθ(θ, train, test, type); end
     g = boxCox #boxCox by default
     Bθ = theta_params.Bθ
     Cθ = theta_params.Cθ

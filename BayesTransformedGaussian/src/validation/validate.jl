@@ -1,4 +1,4 @@
-include("plotting.jl")
+include("../tools/plotting.jl")
 
 """
 Structure for storing summary statistics
@@ -8,10 +8,30 @@ struct sts
     intwidth::Float64
 end
 
+function cross_validate(train::trainingData{A, B}, rangeθ::B, rangeλ::B, transform, quadtype = "Gaussian", priortype = "Uniform", num_pts=100, strt = 0, endpt=1.5) where A<:Array{Float64, 2} where B<:Array{Float64, 1}
+    X = train.X
+    x = collect(range(strt, stop = endpt, length = num_pts)) #define mesh 
+    Xs = repeat(x, outer = [1, length(z)]) #preallocate space 
+    Ys = Array{Float64}(undef, num_pts, length(z))
+    for i=1:length(z)
+        #println(i)
+        ind = [collect(1:i-1); collect(i+1:length(z))]
+        #@time begin
+        train_cur = trainingData(s[ind, :], X[ind, :], z[ind]) 
+        test_cur = testingData(s[i:i, :], X[i:i, :])
+        pdf, cdf = getBtgDensity(train_cur, test_cur, rangeθ, rangeλ, transform, quadtype, priortype)
+       
+        for j = 1:num_pts
+            Ys[j, i] = pdf(x[j])
+        end
+    end
+        return Xs, Ys
+end
+
 """
 Single point cross-validation. Currently does not use confidence intervals or median finding. 
 """
-function cross_validate(X, s, g, gprime, pθ, pλ, z, rangeθ, rangeλ, num_pts=200, strt = 0, endpt=20)
+function cross_validate_artifact(X, s, g, gprime, pθ, pλ, z, rangeθ, rangeλ, num_pts=200, strt = 0, endpt=20)
     ss = Array{sts}(undef, length(z))
     x = collect(range(strt, stop = endpt, length = num_pts)) #define mesh 
     Xs = repeat(x, outer = [1, length(z)]) #preallocate space 

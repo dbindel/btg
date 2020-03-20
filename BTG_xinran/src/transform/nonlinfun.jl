@@ -1,9 +1,9 @@
 function BoxCox(x, lambda, IFinv = 0)
     if IFinv == 0
         if lambda == 0
-            return [log(x), 1/x]
+            return [log(x), max(float(x).^(-1), 1e5)]
         else
-            return [(expm1(lambda * log(x)))/lambda, x^(lambda - 1)]
+            return [(expm1(lambda * log(x)))/lambda, max(float(x).^(lambda .-1), 1e5)]
         end
     else # compute the inverse function and inverse derivative
         if lambda == 0

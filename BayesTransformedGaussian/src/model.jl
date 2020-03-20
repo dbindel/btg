@@ -32,7 +32,6 @@ function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ:
     else
         throw(ArgumentError("Quadrature rule not recognized"))
     end
-
     nodesWeightsθ = getGaussQuadraturedata()
     affineTransformNodes(nodesWeightsθ, rangeθ)
     #always use Gauss quadrature to marginalize out λ

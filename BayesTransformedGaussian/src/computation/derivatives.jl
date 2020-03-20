@@ -42,7 +42,7 @@ function time_func_artifact(θ::Float64, setting::setting{Array{Float64, 2}, Arr
     @timeit "Σθ_prime2_faster" Σθ_prime2 = fastK(s, s, θ, rbf_prime2_single) 
     @timeit "Bθ_prime" Bθ_prime = K(s0, s, θ, rbf_prime) 
     @timeit "Bθ_prime2" Bθ_prime2 = K(s0, s, θ, rbf_prime2) 
-    print_timer()
+    #print_timer()
     return θ_params(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX)
 end
 

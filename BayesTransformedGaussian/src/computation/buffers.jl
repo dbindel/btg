@@ -64,7 +64,7 @@ function funcθ(θ::Float64, train::trainingData{A, B}, test::testingData{A}, ty
         Eθ = fastK(s0, s0, θ, rbf_single)
         Σθ =  fastK(s, s, θ, rbf_single)
         Bθ =  fastK(s0, s, θ, rbf_single)
-        @time choleskyΣθ = cholesky(Σθ) 
+        choleskyΣθ = cholesky(Σθ) 
         choleskyXΣX = cholesky(Hermitian(X'*(choleskyΣθ\X))) 
         Dθ = Eθ - Bθ*(choleskyΣθ\Bθ') 
         Hθ = X0 - Bθ*(choleskyΣθ\X) 

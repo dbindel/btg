@@ -206,12 +206,10 @@ function Gauss_Turan(F, arr, nodes = nodes12, weights=weights12)
     b = arr[2]
     nodes = (b-a)/2 .* nodes .+ (b+a)/2
     T = zeros(length(nodes), 3)
-    time = @elapsed begin
     for i = 1:length(nodes)
         (T[i, 1], T[i, 2], T[i, 3]) = F(nodes[i])
     end
-    end
-    println(time)
+    
     fn = T[:, 1]
     dfn = T[:, 2]
     d2fn = T[:, 3]

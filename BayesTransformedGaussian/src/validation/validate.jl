@@ -14,13 +14,13 @@ function cross_validate(train::trainingData{A, B}, rangeθ::B, rangeλ::B, trans
     Xs = repeat(x, outer = [1, length(z)]) #preallocate space 
     Ys = Array{Float64}(undef, num_pts, length(z))
     for i=1:length(z)
-        println(i)
+        #println(i)
         ind = [collect(1:i-1); collect(i+1:length(z))]
-        @time begin
+        #@time begin
         train_cur = trainingData(s[ind, :], X[ind, :], z[ind]) 
         test_cur = testingData(s[i:i, :], X[i:i, :])
         pdf, cdf = getBtgDensity(train_cur, test_cur, rangeθ, rangeλ, transform, quadtype, priortype)
-        end
+       
         for j = 1:num_pts
             Ys[j, i] = pdf(x[j])
         end

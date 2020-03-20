@@ -1,77 +1,45 @@
-using Distances, StaticArrays, StatsFuns
+using LinearAlgebra
+using Distributions
+using SpecialFunctions
+using PDMats
+using CSV
+#using Profile
+#using ProfileView
+using TimerOutputs
+include("kernels/kernel.jl")
+include("computation/derivatives.jl")
+include("transforms.jl")
+include("transforms.jl")
+include("settings.jl")
+include("quadrature/tensorgrid.jl")
+include("priors.jl")
 
-@doc raw"""
-    BTG
 """
-mutable struct BTG{
-    T<:Real,
-    M<:AbstractMatrix{T},
-    V<:AbstractVector{T},
-    G<:Parameterized{},
-    K<:Parameterized{},
-    B<:Buffer{}
-}
-    S0::M
-    X0::M
-    Y0::V
-    g::G
-    k::K
-    preθ::PrecomputeTheta
-    preBuf::PrecomputeBuffer
-    buf::Buffer
-end
+Obtain Bayesian predictive density function p(z0|z) and cumulative density function P(z0|z)
+by marginalizing out theta and lambda.
 
-function compute_dists!(
-    btg::BTG,
-    s::Vector{Float64},
-    x::Vector{Float64}
-    y::Float64
-)
-    ret = @MVector [0.0, 0.0, 0.0]
-    compute_dists_θλ!(ret, btg, s, x, y)
-    reset!(btg.g)
-    reset!(btg.k)
-    ret ./ btg.preBuf.normalizing_constant
-    return ret
-end
+Arg \"quadtype\" refers to type of quadrature rule used to integrate out θ, options are 
+    1) Gaussian (does not use derivatives)
+    2) Turan (uses higher derivatives)
 
-function compute_dists_θλ!(
-    ret::SVector{3, Float64},
-    btg::BTG,
-    s::Vector{Float64},
-    x::Vector{Float64}
-    y::Float64
-)
-    for i in 1:num_nodes(btg.k) # TODO
-        colwise!(btg.buf.B, SqEuclidean(), btg.S0, s)
-        btg.buf.B .= btg.k.(btg.buf.B)
-        ldiv!(btg.buf.ΣB, btg.preθ.cholΣ[i], btg.buf.B)
-
-        btg.buf.D = 1 - dot(btg.buf.B, btg.buf.ΣB)
-        btg.buf.H .= x .- btg.X0' * btg.buf.ΣB # TODO Buffer for this?
-        btg.buf.C = btg.buf.D + btg.buf.H' * (btg.preθ.XΣX \ btg.buf.H) # TODO another chol vec for this
-        tmp = @MVector [0.0, 0.0, 0.0]
-        compute_dists_λ!(tmp, btg, s, x, y)
-        ret += btg.k.weight * tmp
-        next!(btg.k)
-        reset!(btg.g)
+Note: Gaussian quadrature is always used to integrate out λ
+"""
+function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ::B, rangeλ::B, transforms, quadtype = "Gaussian", priortype = "Uniform") where A<:Array{Float64, 2} where B<:Array{Float64, 1}
+    if quadtype == "Turan"
+        nodesWeightsθ = getTuranQuadratureData() #use 12 Gauss-Turan integration nodes and weights by default
+    elseif quadtype == "Gaussian"
+        nodesWeightsθ = getGaussQuadraturedata()
+    else
+        throw(ArgumentError("Quadrature rule not recognized"))
     end
-    return nothing
+
+    nodesWeightsθ = getGaussQuadraturedata()
+    affineTransformNodes(nodesWeightsθ, rangeθ)
+    #always use Gauss quadrature to marginalize out λ
+    nodesWeightsλ = getGaussQuadraturedata()
+    affineTransformNodes(nodesWeightsλ, rangeλ)
+    priorθ = initialize_prior(rangeθ, priortype); priorλ = initialize_prior(rangeλ, priortype); 
+    (pdf, cdf) = getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
 end
 
-function compute_dists_λ!(
-    ret::SVector{3, Float64},
-    btg::BTG,
-    s::Vector{Float64},
-    x::Vector{Float64}
-    y::Float64
-)
-    for j in 1:num_nodes(btg.g)
-        btg.buf.m .= dot(btg.buf.B, btg.preBuf.Σg)
-        p = (y - btg.buf.m) / btg.buf.q / btg.buf.C
-        ν = size(btg.X0, 1) - size(btg.X0, 2)
-        ret += btg.g.weight * btg.preBuf.pθλ * (@SVector [tdistcdf(ν, p), tdistpdf(ν, p), 0.0]) # Add Leo's derivative
-        next!(btg.g)
-    end
-    return nothing
-end
+

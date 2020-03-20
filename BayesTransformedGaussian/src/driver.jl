@@ -1,9 +1,8 @@
 include("model.jl")
-include("model_deriv.jl")
-include("statistics.jl")
+#include("statistics.jl")
 include("transforms.jl")
-include("plotting.jl")
-include("validate.jl")
+include("tools/plotting.jl")
+include("validation/validate.jl")
 using DataFrames
 using CSV
 #using StatsBase

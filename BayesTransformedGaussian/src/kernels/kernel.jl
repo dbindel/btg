@@ -55,7 +55,7 @@ Ex. RBF, exponential, Matern
 Inputs are assumed to be 1D arrays or 2D column vectors.
 Returns matrix of size len(s1) times len(s2)
 """
-function K(s1, s2, θ, corr=rbf)  #deprecated
+function K(s1, s2, θ, corr=rbf)  
     K = zeros(size(s1, 1), size(s2, 1))
     if s1 != s2
         for i = 1:size(s1, 1)

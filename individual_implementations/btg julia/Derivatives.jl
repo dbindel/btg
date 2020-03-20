@@ -6,6 +6,7 @@ include("transforms.jl")
 include("examples.jl")
 include("buffers.jl")
 include("priors.jl")
+include("settings.jl")
 
 using Distributions
 using Printf
@@ -193,7 +194,7 @@ p(z0| theta, lambda, z). Computes T-Distribution explicitly (and unstably).
 """
 function prob_artifact(θ, λ, setting, type = "Gaussian")
     s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
-    theta_params = funcθ(θ, setting, type)
+    theta_params = funcθ(θ, train, test, type)
     g = boxCox #boxCox by default
     Eθ = theta_params.Eθ
     Σθ = theta_params.Σθ
@@ -223,11 +224,11 @@ takes in all pertinent theta-dependent quantities as inputs.
 
 WARNING: not tested, because want to get rid of cc (the unstably computed constant term), and redo some computations to use built-in cdf and pdf
 """
-function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,2}, Array{Float64, 1}}, transforms, theta_params::Union{θ_params{Array{Float64, 2}, 
-    Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing} = nothing, type = "Gaussian")
+function partial_theta(θ::Float64, λ::Float64, train::trainingData{A, B}, test::testingData{A}, transforms, theta_params::Union{θ_params{A}, 
+    Cholesky{Float64, A}, θ_param_derivs{A, Cholesky{Float64, A}}, Nothing} = nothing, type::String = "Gaussian") where A<:Array{Float64, 2} where B<:Array{Float64, 1}
     if theta_params === nothing
         #println("WARNING: recompute theta_params in partial_theta")
-        theta_params = funcθ(θ, setting, type)
+        theta_params = funcθ(θ, train, test, type)
         #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
         #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
@@ -260,7 +261,8 @@ function partial_theta(θ::Float64, λ::Float64, setting::setting{Array{Float64,
         tripleΣ = theta_params.tripleΣ
     end
 
-    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack setting
+    s = train.s; s0 = test.s0; X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack 
+
     g = boxCox #boxCox by default
     gλz = g(z, λ)
 
@@ -528,11 +530,11 @@ Compute p(theta, lambda| z), possibly in addition to derivatives with respect to
 until the matrix of weights is formed. 
 """
 #function posterior_theta(θ::Float64, λ::Float64, pθ, dpθ, dpθ2, pλ, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, 
-function posterior_theta(θ::Float64, λ::Float64, priorθ, priorλ, setting::setting{Array{Float64,2}, Array{Float64, 1}}, theta_params::Union{θ_params{Array{Float64, 2}, 
-    Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, Nothing} = nothing, type::String="Gaussian")
+function posterior_theta(θ::Float64, λ::Float64, priorθ, priorλ, train::trainingData{A, B}, test::testingData{A}, transforms, theta_params::Union{θ_params{A, 
+    Cholesky{Float64, A}}, θ_param_derivs{A, Cholesky{Float64,A}}, Nothing} = nothing, type::String="Gaussian") where A<:Array{Float64, 2} where B<:Array{Float64, 1}
     if theta_params === nothing
         #println("WARNING: recompute theta_params in partial_theta")
-        theta_params = funcθ(θ, setting)
+        theta_params = funcθ(θ, train, test, type)
         #(Eθ, Σθ, Bθ, Dθ, Hθ, Cθ, Eθ_prime, Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2, choleskyΣθ, choleskyXΣX) = getθ_Params(theta_params)
         #(s, s0, X, X0, z,  n, p, k) = getSettingParams(setting)
     end
@@ -564,17 +566,17 @@ function posterior_theta(θ::Float64, λ::Float64, priorθ, priorλ, setting::se
         Cθ_prime2 = theta_params.Cθ_prime2
         tripleΣ = theta_params.tripleΣ
     end
+    #unpack args 
     pθ = priorθ.f; dpθ = priorθ.df; dpθ2 = priorθ.d2f; pλ = priorλ.f
-
-    s = setting.s; s0 = setting.s0; X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) #unpack setting
-    g = boxCox
-    dg = boxCoxPrime
+    s = train.s; s0 = test.s0; X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1) 
+    g = transforms.f; dg = transforms.df
+    #compute auxiliary quantities 
     gλz = g(z, λ)
     βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\gλz)) 
     qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\gλz) + Hθ*βhat 
-    Σθ_inv_X = Σθ\X #precompute
-    meanvv = gλz - X*βhat #precompute
+    Σθ_inv_X = Σθ\X 
+    meanvv = gλz - X*βhat 
 
     EXPR1 = det(choleskyΣθ)^(-1/2)
     #println("det Sigma theta ^-1/2: ", EXPR1)

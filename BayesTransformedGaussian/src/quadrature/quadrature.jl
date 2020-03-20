@@ -6,19 +6,20 @@ using CSV
 #quadrature given integration endpoints and a function handle
 #More importantly, it provides a composite type which stores nodes and weight. 
 
-
 """
 Data-type which stores quadrature nodes and weights
 """
-mutable struct nodesWeights{T<:Array{Float64, 2}}
-    nodes::T
-    weights::T  
+ 
+
+mutable struct nodesWeights{T1<:Array{Float64}, T2<:Array{Float64}}
+    nodes::T1
+    weights::T2  
 end
 
 """
 Apply affine transformation to nodes to integration over range r (linear change of variables)
 """
-function affineTransformNodes(nw::nodesWeights{Array{Float64, 2}}, r::Array{<:Real})::nodesWeights{Array{Float64, 2}}
+function affineTransformNodes(nw::nodesWeights{O}, r::Array{<:Real}) where O<:Union{Array{Float64, 2}, Array{Float64, 1}}
     b = r[2]; a = r[1]
     nw.nodes = (b-a)/2 .* nw.nodes .+ (b + a)/2
 end
@@ -49,7 +50,7 @@ dm2, wm2 = gausslegpts(50)
 dm3, wm3 = gausslegpts(100)
 
 function getGaussQuadraturedata()
-    return nodesWeights(dm, wm)
+    nodesWeights(dm, wm)
 end
 
 """
@@ -121,15 +122,15 @@ function int2D(f, arr)
     int = int*avg1*avg2
 end
 
-data50 = DataFrame(CSV.File("nodes_weights_50.csv", header=0))
+data50 = DataFrame(CSV.File("quadratureData/nodes_weights_50.csv", header=0))
 nodes50 = convert(Array, data50[:,1]) #integration nodes for Gauss-Turan Quadrature
 weights50 = convert(Matrix, data50[:, 2:end]) #integration weights 
 
-data20 = DataFrame(CSV.File("nodes_weights_20.csv", header=0))
+data20 = DataFrame(CSV.File("quadratureData/nodes_weights_20.csv", header=0))
 nodes20  = convert(Array, data20[:,1])
 weights20 = convert(Array, data20[:,2:end])
 
-data12 = DataFrame(CSV.File("nodes_weights_12.csv", header=0))
+data12 = DataFrame(CSV.File("quadratureData/nodes_weights_12.csv", header=0))
 nodes12  = convert(Array, data12[:,1])
 weights12 = convert(Array, data12[:,2:end])
 

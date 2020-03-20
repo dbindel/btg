@@ -3,25 +3,6 @@ include("Derivatives.jl")
 include("TDist.jl")
 include("transforms.jl")
 
-function define_likelihood(θ::Float64, λ::Float64, theta_params::θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, setting::setting{Array{Float64, 2}}, quadtype = "Gaussian")
-    #time = @elapsed begin
-    pθ = x->1 
-    dpθ = x->0
-    dpθ2 = x->0
-    pλ = x->1
-    if quadtype == "Gaussian"
-        return (likelihood(θ, λ, setting, theta_params, quadtype))
-    end
-    (main, dmain, d2main) = partial_theta(float(θ), float(λ), setting, theta_params, quadtype)
-    return (main, dmain, d2main)
-    #(main1, dmain1, d2main1) = posterior_theta(float(θ), float(λ), pθ, dpθ, dpθ2, pλ, setting, theta_params, type)
-    #f = z0 -> (main(z0)*main1); df = z0 -> (main(z0)*dmain1 .+ dmain(z0)*main1); d2f = z0 -> (d2main(z0)*main1 .+ main(z0)*d2main1 .+ 2*dmain(z0)*dmain1)
-    #end
-    #println("define_fs time: %s\n", time)
-    #obj = (f, df, d2f)  #named tuple
-    #return (f, df, d2f)
-end
-
 """
     createTensorGrid(example, meshtheta, meshlambda, type)
 
@@ -29,15 +10,15 @@ Define a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} =
 where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Optional arg ``type`` is ""Gaussian""
 by default. If ``type`` is "Turan", then use Gauss-Turan quadrature to integrate out ``0`` variable. 
 """
-function getTensorGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, priorθ, priorλ, nodesWeightsθ::nodesWeights{T1, T2}, nodesWeightsλ::nodesWeights{T1, T2}, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 
+function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, priorθ, priorλ, nodesWeightsθ::nodesWeights, nodesWeightsλ::nodesWeights, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 
     nodesθ = nodesWeightsθ.nodes
     nodesλ = nodesWeightsλ.nodes
     weightsθ = nodesWeightsθ.weights
     weightsλ = nodesWeightsλ.weights
-    X = setting.X; X0 = setting.X0; z = setting.z; n = size(X, 1); p = size(X, 2)
+    X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2)
     l1 = length(nodesθ); l2 = length(nodesλ); l3 = size(nodesWeightsθ.weights, 2)
     function func_fixed(θ::Float64)
-        return funcθ(θ, setting, quadtype)
+        return funcθ(θ, train, test, quadtype)
     end
     #precompute buffer for θ-values
     theta_param_list = Array{Union{θ_params{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}, θ_param_derivs{Array{Float64, 2}, Cholesky{Float64,Array{Float64, 2}}}}}(undef, l1)
@@ -50,7 +31,7 @@ function getTensorGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, p
     weightsTensorGrid = zeros(n1, n2, n3) #tensor grid of weights
     for i = 1:n1
         for j = 1:n2
-            funcs = posterior_theta(nodesθ[i], nodesλ[j], priorθ, priorλ, setting, theta_param_list[i], quadtype)
+            funcs = posterior_theta(nodesθ[i], nodesλ[j], priorθ, priorλ, train, test, boxCoxObj, theta_param_list[i], quadtype)
             for k = 1:n3
                 weightsTensorGrid[i, j, k] = weightsθ[i, k]*weightsλ[j]*funcs[k]
             end
@@ -78,8 +59,7 @@ function getTensorGrid(setting::setting{Array{Float64, 2}, Array{Float64, 1}}, p
 
     for i = 1:l1
         for j = 1:l2 
-            funcs = partial_theta(nodesθ[i], nodesλ[j], setting, boxCoxObj, theta_param_list[i], quadtype)
-            #funcs = define_likelihood(nodesθ[i], nodesλ[j], theta_param_list[i], setting, quadtype)
+            funcs = partial_theta(nodesθ[i], nodesλ[j], train, test, boxCoxObj, theta_param_list[i], quadtype)
             for k = 1:l3
                 #tgrid[i, j, k] = funcs[k]       
                 tgridpdf[i, j, k] = funcs[1][k]

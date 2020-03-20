@@ -16,6 +16,7 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
     weightsλ = nodesWeightsλ.weights
     X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2)
     l1 = length(nodesθ); l2 = length(nodesλ); l3 = size(nodesWeightsθ.weights, 2)
+    #initializes buffer of theta-dependent quantities
     function func_fixed(θ::Float64)
         return funcθ(θ, train, test, quadtype)
     end
@@ -24,7 +25,6 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
     for i=1:l1
         theta_param_list[i] = func_fixed(nodesθ[i])
     end
-
     #initialize tensor grid of weights
     n1 = length(nodesθ); n2 = length(nodesλ); n3 = size(weightsθ, 2); 
     weightsTensorGrid = zeros(n1, n2, n3) #tensor grid of weights

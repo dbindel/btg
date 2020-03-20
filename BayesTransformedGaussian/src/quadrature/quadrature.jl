@@ -122,17 +122,75 @@ function int2D(f, arr)
     int = int*avg1*avg2
 end
 
-data50 = DataFrame(CSV.File("quadratureData/nodes_weights_50.csv", header=0))
-nodes50 = convert(Array, data50[:,1]) #integration nodes for Gauss-Turan Quadrature
-weights50 = convert(Matrix, data50[:, 2:end]) #integration weights 
+#turan nodes and weights
+nodes12 = 
+[-0.98644507017798, 
+-0.913674511061696,
+-0.781193008348874,
+-0.597620339984639,
+-0.374959012867354,
+-0.127772153072766,
+ 0.127772153072766,
+ 0.374959012867354,
+ 0.597620339984638,
+ 0.781193008348874,
+ 0.913674511061695,
+ 0.986445070177978]
 
-data20 = DataFrame(CSV.File("quadratureData/nodes_weights_20.csv", header=0))
-nodes20  = convert(Array, data20[:,1])
-weights20 = convert(Array, data20[:,2:end])
+ weights12 = (
+ a = [0.0410636498847265;
+    0.103570747783452;
+    0.159505143388351;
+    0.205018290428583;
+    0.237123354701031;
+    0.253718813813857;
+    0.253718813813857;
+    0.237123354701032;
+    0.205018290428581;
+    0.159505143388351;
+    0.10357074778345;
+    0.0410636498847288;];
 
-data12 = DataFrame(CSV.File("quadratureData/nodes_weights_12.csv", header=0))
-nodes12  = convert(Array, data12[:,1])
-weights12 = convert(Array, data12[:,2:end])
+b = [0.000200708206472283;
+    0.000473491788240051;
+    0.000623732914397858;
+    0.00061335624975073;
+    0.000445103314005514;
+    0.00016229083994099;
+   -0.000162290839940938;
+   -0.000445103314005562;
+   -0.00061335624975073;
+   -0.000623732914397801;
+   -0.000473491788240044;
+   -0.000200708206472284];
+
+c = [1.75500948544866e-6;
+   2.82815491676391e-5;
+   0.000103308274307408;
+   0.000219376538120014;
+   0.000339418529291241;
+   0.00041578672113985;
+   0.000415786721139843;
+   0.000339418529291247;
+   0.000219376538120009;
+   0.000103308274307411;
+   2.8281549167637e-5 ;
+   1.75500948544888e-6;];
+    hcat(a, b, c)
+ )
+
+
+#data50 = DataFrame(CSV.File("quadratureData/nodes_weights_50.csv", header=0))
+#nodes50 = convert(Array, data50[:,1]) #integration nodes for Gauss-Turan Quadrature
+#weights50 = convert(Matrix, data50[:, 2:end]) #integration weights 
+
+#data20 = DataFrame(CSV.File("quadratureData/nodes_weights_20.csv", header=0))
+#nodes20  = convert(Array, data20[:,1])
+#weights20 = convert(Array, data20[:,2:end])
+
+#data12 = DataFrame(CSV.File("quadratureData/nodes_weights_12.csv", header=0))
+#nodes12  = convert(Array, data12[:,1])
+#weights12 = convert(Array, data12[:,2:end])
 
 function getTuranQuadratureData()
     return nodesWeights(nodes12, weights12)

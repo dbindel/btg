@@ -41,5 +41,3 @@ function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ:
     priorθ = initialize_prior(rangeθ, priortype); priorλ = initialize_prior(rangeλ, priortype); 
     (pdf, cdf) = getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
 end
-
-

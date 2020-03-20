@@ -10,7 +10,7 @@ using Plots
 #using Profile
 #using ProfileView
 
-df = DataFrame(CSV.File("data//abalone.csv"))
+df = DataFrame(CSV.File("datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
 target = target/maximum(target) #normalization
@@ -84,7 +84,7 @@ if true # use this blockcxsanity check + plot data
     #@profview gg([2.0])
     #plot(1:1:30, locs)
     #use plt to plot
-plt
+
 end
 
 if true #cross validation on training set

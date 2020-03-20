@@ -92,7 +92,8 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
   # adjust height if l low is not lower than l* (i.e. int < wp)
   l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
 
-  l_height_high = f(mode_d) - 1e-6
+
+  l_height_high = pdf(btg, mode_d) - 1e-6
   α_high, β_high, int_high = find_αβ(l_height_high, [0, mode_d], [mode_d, bound])
   # adjust height if l_high is not higher than l* (i.e. int > wp)
   l_height_high, α_high, β_high, int_high = adjust(l_height_high, α_high, β_high, int_high, "high")
@@ -130,11 +131,11 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
   =#
   function find_αβ(l_height, α_intvl, β_intvl)
     # find α and β within ginve intervals α_intvl and β_intvl respectively
-    routine_α = optimize(x -> abs(f(x) - l_height), α_intvl[1], α_intvl[2], GoldenSection())
+    routine_α = optimize(x -> abs(pdf(btg, x) - l_height), α_intvl[1], α_intvl[2], GoldenSection())
     α = Optim.minimizer(routine_α)
-    routine_β = optimize(x -> abs(f(x) - l_height), β_intvl[1], β_intvl[2], GoldenSection())
+    routine_β = optimize(x -> abs(pdf(btg, x) - l_height), β_intvl[1], β_intvl[2], GoldenSection())
     β = Optim.minimizer(routine_β)
-    int = hquadrature(f, α, β)[1]
+    int = hquadrature(x -> pdf(btg, x), α, β)[1]
     return α, β, int
   end
 
@@ -160,7 +161,7 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
         end
     else
         while int > wp
-            l = (l + f(mode_d))/2
+            l = (l + pdf(btg, mode_d))/2
             α, β, int = find_αβ(l, [α, mode_d], [mode_d, β])
         end
     end

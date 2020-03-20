@@ -17,7 +17,7 @@ target = target/maximum(target) #normalization
 
 #pick training points
 #ind = 1:30
-ind = 1:50
+ind = 1:4000
 s = data[ind, :] 
 #choose a subset of variables to be regressors for the mean
 X = data[ind, 1:3] 
@@ -72,9 +72,12 @@ if true # use this blockcxsanity check + plot data
     plt(f, 0.1, 2, 100, "pdf")
     plt!(g, 0.1, 2, 100, "cdf")
 
+    plt(f, 0.55, 0.6, 500, "pdf")
+    plt!(g, 0.55, 0.6, 500, "cdf")
+
 end
 
-if true #cross validation on training set
+if false #cross validation on training set
     Xs, Ys = cross_validate(train, range_theta, range_lambda, boxCoxObj, "Gaussian", "Uniform")  
     z = train.z
    # _, Xs, Ys = cross_validate(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 500, 2, 24)

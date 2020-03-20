@@ -277,10 +277,12 @@ function partial_theta(θ::Float64, λ::Float64, train::trainingData{A, B}, test
     vanillat = LocationScale(0, 1, TDist(n-p))
     vanillaT_pdf = z0 -> Distributions.pdf.(vanillat, z0)
     T_pdf = z0 -> Distributions.pdf.(t, g(z0, λ)) #no Jacobian
+    
     main_pdf = z0 -> Distributions.pdf.(t, g(z0, λ)) * jac(z0)
     main_cdf = z0 -> Distributions.cdf.(t, g(z0, λ)) 
     #This block of code computes first and second derivatives. 
     if type == "Turan"
+        println("Using Turan in derivatives//partial_theta")
         @timeit "expr_mid" expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
         #first derivatives
         @timeit "some first derivs, which depend on θ AND λ" begin
@@ -576,13 +578,18 @@ function posterior_theta(θ::Float64, λ::Float64, priorθ, priorλ, train::trai
     Σθ_inv_X = Σθ\X 
     meanvv = gλz - X*βhat 
 
-    EXPR1 = det(choleskyΣθ)^(-1/2)
+    #EXPR1 = det(choleskyΣθ)^(-1/2)
+    #println("det: ", EXPR1)
     #println("det Sigma theta ^-1/2: ", EXPR1)
     EXPR2 = det(choleskyXΣX)^(-1/2)
-    EXPR3 = qtilde^(-(n-p)/2) 
+    #println("det XsigmaX: ", EXPR2)
+    #EXPR3 = qtilde^(-(n-p)/2) 
+    #println("qtilde: ", qtilde)
     EXPR4 = pθ(θ)*pλ(λ)
-    main = EXPR1*EXPR2*EXPR3*EXPR4
-
+    #println("EXPR4: ", EXPR4)
+    #main = EXPR1*EXPR2*EXPR3*EXPR4
+    #main = EXPR2*EXPR3*EXPR4
+    main = EXPR2 * EXPR4
     if type=="Turan"
         #compute betahat_prime_theta
         expr_mid = X'*(choleskyΣθ\Σθ_prime)*(Σθ_inv_X)

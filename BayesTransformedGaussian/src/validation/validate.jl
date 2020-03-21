@@ -1,4 +1,5 @@
 include("../tools/plotting.jl")
+include("../settings.jl")
 
 """
 Structure for storing summary statistics
@@ -8,6 +9,12 @@ struct sts
     intwidth::Float64
 end
 
+"""
+Computes (x, y)-values for plotting distributions arising from LOOCV (Leave one out cross validation). 
+If n is size of training set, then return values have following dimensions
+    Xs: num_pts by n matrix 
+    Ys: num_pts by n matrix
+"""
 function cross_validate(train::trainingData{A, B}, rangeθ::B, rangeλ::B, transform, quadtype = "Gaussian", priortype = "Uniform", num_pts=100, strt = 0, endpt=1.5) where A<:Array{Float64, 2} where B<:Array{Float64, 1}
     X = train.X
     x = collect(range(strt, stop = endpt, length = num_pts)) #define mesh 

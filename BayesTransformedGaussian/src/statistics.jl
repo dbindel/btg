@@ -1,14 +1,14 @@
 using Optim
 using Cubature
 
-import Statistics: median, pdf, cdf
+# import Statistics: median, pdf, cdf
 
-function median(pdf, cdf, pdf_deriv=nothing)
+function median(pdf, cdf, pdf_deriv)
     med = quantile(pdf, cdf, pdf_deriv)
     return med
 end
 
-function quantile(pdf, cdf, pdf_deriv=nothing; p::R=.5) where R <: Real
+function quantile(pdf, cdf, pdf_deriv; p::R=.5) where R <: Real
     quantile_func(x) = cdf(x) - p
 
     function quantile_deriv!(storage, x)
@@ -23,28 +23,25 @@ function quantile(pdf, cdf, pdf_deriv=nothing; p::R=.5) where R <: Real
     return quant
 end
 
-function mode(pdf, cdf, pdf_deriv=nothing) 
+function mode(pdf, cdf, pdf_deriv) 
     # maximize the pdf
     initial_guess = [ rand() ]
-    if pdf_deriv == nothing
-        routine = optimize(x -> -pdf(x), initial_guess)
-    else
-        function mode_deriv!(storage, x)
-            storage[1] = - pdf_deriv(x)
-        end
-        routine = optimize(x -> -pdf(x), mode_deriv!, initial_guess, BFGS())
+    function mode_deriv!(storage, x)
+        storage[1] = - pdf_deriv(x)
     end
-    mod = Optim.minimizer()
+    routine = optimize(x -> -pdf(x), mode_deriv!, initial_guess, BFGS())
 
+    mod = Optim.minimizer()
+    return mod
 end
 
 @doc raw"""
 """
-function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R; mode=:narrow) where R <: Real
+function credible_interval(pdf, cdf, pdf_deriv, wp::R; mode=:narrow) where R <: Real
     return credible_interval(pdf, cdf, pdf_deriv, wp, Val(mode))
 end
 
-function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R, ::Val{:equal}) where R <: Real
+function credible_interval(pdf, cdf, pdf_deriv, wp::R, ::Val{:equal}) where R <: Real
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
     lower_quant = quantile(btg, x, p=lower_qp)
@@ -52,7 +49,7 @@ function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R, ::Val{:equal}) wh
     return [lower_quant, upper_quant]
 end
 
-function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R, ::Val{:narrow}) where R <: Real
+function credible_interval(pdf, cdf, pdf_deriv, wp::R, ::Val{:narrow}) where R <: Real
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp

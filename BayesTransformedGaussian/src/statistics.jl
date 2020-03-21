@@ -3,28 +3,16 @@ using Cubature
 
 import Statistics: median, pdf, cdf
 
-
-function pdf(btg::BTG, x::AbstractVector{R}) where R <: Real
-    pdf_point_eval = compute_dists!(btg, x)[1]
-    return pdf_point_eval
-end
-
-function cdf(btg::BTG, x::AbstractVector{R}) where R <: Real
-    cdf_point_eval = compute_dists!(btg, x)[2]
-    return cdf_point_eval
-end
-
-function median(btg::BTG, x::AbstractVector{R}) where R <: Real
-    med = quantile(btg, x)
+function median(pdf, cdf, pdf_deriv=nothing)
+    med = quantile(pdf, cdf, pdf_deriv)
     return med
 end
 
-function quantile(btg::BTG, x::AbstractVector{R}; p::R=.5) where R <: Real
-    cdf(x) = cdf(btg, x)
+function quantile(pdf, cdf, pdf_deriv=nothing; p::R=.5) where R <: Real
     quantile_func(x) = cdf(x) - p
 
     function quantile_deriv!(storage, x)
-        storage[1] = pdf(btg, x)
+        storage[1] = pdf(x)
     end
 
     initial_guess = [ rand() ]
@@ -35,17 +23,28 @@ function quantile(btg::BTG, x::AbstractVector{R}; p::R=.5) where R <: Real
     return quant
 end
 
-function mode(btg::BTG, x::AbstractVector{R}) where R <: Real
-    # TODO
+function mode(pdf, cdf, pdf_deriv=nothing) 
+    # maximize the pdf
+    initial_guess = [ rand() ]
+    if pdf_deriv == nothing
+        routine = optimize(x -> -pdf(x), initial_guess)
+    else
+        function mode_deriv!(storage, x)
+            storage[1] = - pdf_deriv(x)
+        end
+        routine = optimize(x -> -pdf(x), mode_deriv!, initial_guess, BFGS())
+    end
+    mod = Optim.minimizer()
+
 end
 
 @doc raw"""
 """
-function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R; mode=:narrow) where R <: Real
-    return credible_interval(btg, x, wp, Val(mode))
+function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R; mode=:narrow) where R <: Real
+    return credible_interval(pdf, cdf, pdf_deriv, wp, Val(mode))
 end
 
-function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:equal}) where R <: Real
+function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R, ::Val{:equal}) where R <: Real
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
     lower_quant = quantile(btg, x, p=lower_qp)
@@ -53,7 +52,7 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:equal})
     return [lower_quant, upper_quant]
 end
 
-function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}) where R <: Real
+function credible_interval(pdf, cdf, pdf_deriv=nothing, wp::R, ::Val{:narrow}) where R <: Real
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp
@@ -84,9 +83,9 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
   =#
    
   # assume we have the mode
-  mode_d = mode(btg, x)
+  mode_d = mode(pdf, cdf, pdf_deriv)
   # z normalized to [0,1], so reasonably pdf(10) ~= 0
-  bound = 10.
+  bound = 5.
   l_height_low = 1e-3
   α_low, β_low, int_low = find_αβ(l_height_low, [0, mode_d], [mode_d, bound])
   # adjust height if l low is not lower than l* (i.e. int < wp)
@@ -169,16 +168,15 @@ function credible_interval(btg::BTG, x::AbstractVector{R}, wp::R, ::Val{:narrow}
   end
 end
     
-end
 
-@doc raw"""
-"""
-function map_estimate(btg::BTG)
-    # TODO
-end
+# @doc raw"""
+# """
+# function map_estimate(btg::BTG)
+#     # TODO
+# end
 
-@doc raw"""
-"""
-function cross_validate(btg::BTG)
-    # TODO
-end
+# @doc raw"""
+# """
+# function cross_validate(btg::BTG)
+#     # TODO
+# end

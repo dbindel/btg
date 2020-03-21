@@ -90,6 +90,7 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
 
         powerGrid =  qTensorGrid + detTensorGrid + jacTensorGrid #sum of exponents
         powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
+        powerGrid = powerGrid .* weightsTensorGrid
         weightsTensorGrid =  powerGrid/sum(powerGrid) #normalized grid of weights
             
     elseif quadtype== "Turan"

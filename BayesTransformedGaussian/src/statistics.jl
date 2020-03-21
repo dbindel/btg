@@ -3,12 +3,12 @@ using Cubature
 
 # import Statistics: median, pdf, cdf
 
-function median(pdf, cdf, pdf_deriv)
+function median(pdf, cdf; pdf_deriv=nothing)
     med = quantile(pdf, cdf, pdf_deriv)
     return med
 end
 
-function quantile(pdf, cdf, pdf_deriv; p::R=.5) where R <: Real
+function quantile(pdf, cdf; pdf_deriv=nothing, p::R=.5) where R <: Real
     quantile_func(x) = cdf(x) - p
 
     function quantile_deriv!(storage, x)
@@ -23,7 +23,7 @@ function quantile(pdf, cdf, pdf_deriv; p::R=.5) where R <: Real
     return quant
 end
 
-function mode(pdf, cdf, pdf_deriv) 
+function mode(pdf, cdf; pdf_deriv=nothing) 
     # maximize the pdf
     initial_guess = [ rand() ]
     function mode_deriv!(storage, x)
@@ -37,11 +37,11 @@ end
 
 @doc raw"""
 """
-function credible_interval(pdf, cdf, pdf_deriv, wp::R; mode=:narrow) where R <: Real
+function credible_interval(pdf, cdf; pdf_deriv=nothing, wp=.95::R, mode=:narrow) where R <: Real
     return credible_interval(pdf, cdf, pdf_deriv, wp, Val(mode))
 end
 
-function credible_interval(pdf, cdf, pdf_deriv, wp::R, ::Val{:equal}) where R <: Real
+function credible_interval(pdf, cdf, ::Val{:equal}; pdf_deriv=nothing, wp=.95::R) where R <: Real
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
     lower_quant = quantile(btg, x, p=lower_qp)
@@ -49,7 +49,7 @@ function credible_interval(pdf, cdf, pdf_deriv, wp::R, ::Val{:equal}) where R <:
     return [lower_quant, upper_quant]
 end
 
-function credible_interval(pdf, cdf, pdf_deriv, wp::R, ::Val{:narrow}) where R <: Real
+function credible_interval(pdf, cdf, ::Val{:narrow}; pdf_deriv=nothing, wp=.95::R) where R <: Real
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp

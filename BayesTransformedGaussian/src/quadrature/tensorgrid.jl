@@ -3,11 +3,17 @@ include("../computation/derivatives.jl")
 include("../transforms.jl")
 
 """
-    createTensorGrid(example, meshtheta, meshlambda, type)
+``getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transform, quadtype)``
 
-Define a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} = p(z_0|z, θ_i, λ_j)``, 
-where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Optional arg ``type`` is ""Gaussian""
-by default. If ``type`` is "Turan", then use Gauss-Turan quadrature to integrate out ``0`` variable.
+* quadtype can either be \"Gaussian\" or \"Turan\" (N.B. this refers to integration of θ variable, λ always integrated out using Gaussian quadrature) 
+
+Works by defining a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} = p(z_0|z, θ_i, λ_j)``, 
+where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Takes the dot product of this 
+matrix function with a weights matrix, ``w_ij = p(θ_i, λ_j|z)`` to obtain PDF and CDF functions.
+
+```julia    
+getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, boxCoxObj, "Gaussian") #uses BoxCox family of nonlinear transforms and Gaussian quadrature 
+```
 
 """
 function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, priorθ, priorλ, nodesWeightsθ::nodesWeights, nodesWeightsλ::nodesWeights, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 

@@ -479,48 +479,83 @@ function partial_lambda(θ, λ, setting)
     #return (qCinv, qC_inv_prime_lambda)
     #return (m, m_prime_lambda)
 end
+
 """
 Compute deriative of p(z0|theta, lambda, z) with respect to z0
 """
-function partial_z0(θ, λ, setting, g = boxCox, dg = boxCoxPrime, dg2 = boxCoxPrime2)
-    (s, s0, X, X0, z, n, p, k, Eθ, Σθ, Bθ, choleskyΣθ, choleskyXΣX, Dθ, Hθ, Cθ, Eθ_prime,Eθ_prime2, Σθ_prime, Σθ_prime2, Bθ_prime, Bθ_prime2) = func(θ, setting)
+function partial_z0(θ::Float64, λ::Float64, train::trainingData{A, B}, test::testingData{A}, transforms, theta_params::Union{θ_params{A}, 
+    Cholesky{Float64, A}, θ_param_derivs{A, Cholesky{Float64, A}}, Nothing} = nothing, type::String = "Gaussian") where A<:Array{Float64, 2} where B<:Array{Float64, 1}
+    if type == "Gaussian" || type == "Turan"
+        Eθ = theta_params.Eθ
+        Σθ = theta_params.Σθ
+        Bθ = theta_params.Bθ
+        Dθ = theta_params.Dθ
+        Hθ = theta_params.Hθ
+        Cθ = theta_params.Cθ
+        Σθ_inv_X = theta_params.Σθ_inv_X
+        choleskyΣθ = theta_params.choleskyΣθ
+        choleskyXΣX = theta_params.choleskyXΣX
+    else
+        throw(ArgumentError("Quadrature type not recognized."))
+    end
+    s = train.s; s0 = test.s0; X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack 
+    g = transforms.f #unpack
+    dg = transforms.df
+    dg2 = transforms.d2f
+    gλz = g(z, λ)
+    Σθinvgz = choleskyΣθ\gλz #precompute
 
-    βhat = choleskyXΣX\(X'*(choleskyΣθ\g(z, λ))) 
-    qtilde = (expr = g(z, λ)-X*βhat; expr'*(choleskyΣθ\expr)) 
-    m = Bθ*(choleskyΣθ\g(z, λ)) + Hθ*βhat
-
-    jac = z0 -> abs(reduce(*, map(x -> dg(x, λ), z0)))
-
-    djac = z0 ->(local n = length(z0);
-                reshape(
-                (local dd = map(x->dg(x, λ), z0); 
-                local p = abs(reduce(*, dd));
-                (f = i -> (dd[i] !=0 ? p/dd[i]*sign(dd[i])*(-1)^(((sign(dd[mod(i+1, n)+1])+1)/2)+1)* 
-                dg2(z0[i], λ) : 0) ; 
-                map(f, collect(1:n)))), n, 1))
-
+    #intermediate quantities
+    βhat = choleskyXΣX\(X'*Σθinvgz) 
+    qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
+    m = Bθ * Σθinvgz + Hθ*βhat
     qC = qtilde*Cθ
-    detqC = det(qC)
+
+    t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
+    #vanillat = LocationScale(0, 1, TDist(n-p))
+    #vanillaT_pdf = z0 -> Distributions.pdf.(vanillat, z0)
+    #T_pdf = z0 -> Distributions.pdf.(vanillat, g(z0, λ)) 
     
-    ccc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2)/detqC^(1/2) #constant 
+    function tdist(z0)
+        gλz0 = g(z0, λ)
+        if size(z0, 2)>1
+            throw(ArgumentError("z0 must be 1-dimensional"))
+        end
+        Tz0 = Distributions.pdf.(t, gλz0)
+        return Tz0 
+    end
 
-    expr = z0 -> (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m))
-
-    dexpr = z0 -> (local n = length(z0);
-                    2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m));
-                    )
-
-    #expr2 = z0 -> (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2)
-    #dexpr2 = z0 -> (-(n-p+k)/2) * (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k+2)/2) * 2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m))
-
-    expr3 = z0 -> ccc*jac(z0)*(1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2)
-    dexpr3 = z0 -> ccc*(jac(z0)*(-(n-p+k)/2) * (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k+2)/2) * 2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m)) 
-                    + djac(z0)*(1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2))
-
-    #return (z0 -> g(z0, λ), z0 -> [dg(z0, λ)[1] 0 ; 0 dg(z0, λ)[2]])
-    #return (expr, dexpr)
-    #return (jac, djac)
-    return (expr3, dexpr3)
+    function deriv(z0)
+        gλz0 = g(z0, λ)
+        if size(z0, 2)>1
+            throw(ArgumentError("z0 must be 1-dimensional"))
+        end
+        #Tz0 = Distributions.pdf.(vanillat, (gλz0 .- m) ./ sqrt(qC/(n-p)))
+        Tz0 = Distributions.pdf.(t, gλz0)
+        return abs(dg2(z0, λ)) * Tz0 + abs(dg(z0, λ)) * Tz0 * (-(n-p+k) * ( gλz0 .- m) ./ (qC .+ (gλz0 .- m) .^2)
+    end
+    
+    return (tdist, deriv)
+    #############     Code for Multivariate z0    ##########
+    #jac = z0 -> abs(reduce(*, map(x -> dg(x, λ), z0)))
+    #djac = z0 ->(local n = length(z0);
+    #            reshape(
+    #            (local dd = map(x->dg(x, λ), z0); 
+    #            local p = abs(reduce(*, dd));
+    #            (f = i -> (dd[i] !=0 ? p/dd[i]*sign(dd[i])*(-1)^(((sign(dd[mod(i+1, n)+1])+1)/2)+1)* 
+    #            dg2(z0[i], λ) : 0) ; 
+    #            map(f, collect(1:n)))), n, 1))
+    #qC = qtilde*Cθ
+    #detqC = det(qC)
+    #ccc = gamma((n-p+k)/2)/gamma((n-p)/2)/pi^(k/2)/detqC^(1/2) #constant
+    #expr = z0 -> (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m))
+    #dexpr = z0 -> (local n = length(z0);
+    #                2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m));
+    #                )
+    #expr3 = z0 -> ccc*jac(z0)*(1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2)
+    #dexpr3 = z0 -> ccc*(jac(z0)*(-(n-p+k)/2) * (1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k+2)/2) * 2 * Diagonal(dg(z0, λ)) * (qC\(g(z0, λ) .- m)) 
+    #                + djac(z0)*(1 .+ (g(z0, λ) .- m)'*(qC\(g(z0, λ) .- m)))^(-(n-p+k)/2))
+    ######################################################
 end
 
 

@@ -14,14 +14,14 @@ function quantile(pdf, cdf; pdf_deriv=nothing, p::R=.5) where R <: Real
     # function quantile_deriv!(storage, x)
     #     storage[1] = pdf(x)
     # end
-    routine = optimize(quantile_func, 0., 3.)
+    routine = optimize(quantile_func, 0., 5.)
     quant = Optim.minimizer(routine)
     return quant
 end
 
 function mode(pdf, cdf; pdf_deriv=nothing) 
     # maximize the pdf
-    routine = optimize(x -> -pdf(x), 0., 3.)
+    routine = optimize(x -> -pdf(x), 0., 5.)
     mod = Optim.minimizer(routine)
     return mod
 end
@@ -122,7 +122,7 @@ function credible_interval(pdf, cdf, ::Val{:narrow}; pdf_deriv=nothing, wp::R=.9
   # assume we have the mode
   mode_d = mode(pdf, cdf)
   # z normalized to [0,1], so reasonably pdf(10) ~= 0
-  bound = 5.
+  bound = 3*mode_d
   l_height_low = 1e-3
   α_low, β_low, int_low = find_αβ(l_height_low, [0, mode_d], [mode_d, bound])
   # adjust height if l low is not lower than l* (i.e. int < wp)

@@ -13,6 +13,7 @@ Pkg.add("Distributions")
 Pkg.add("Random") 
 Pkg.add("Distances")
 Pkg.add("LinearAlgebra")
+Pkg.add("FastGaussQuadrature")
 
 #data analysis 
 Pkg.add("Plots") 
@@ -24,3 +25,6 @@ Pkg.add("TimerOutputs")
 #optimization
 Pkg.add("Cubature")
 Pkg.add("Optim")
+
+#visualization
+Pkg.add("PyPlot")

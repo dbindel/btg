@@ -3,11 +3,17 @@ include("../computation/derivatives.jl")
 include("../transforms.jl")
 
 """
-    createTensorGrid(example, meshtheta, meshlambda, type)
+``getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transform, quadtype)``
 
-Define a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} = p(z_0|z, θ_i, λ_j)``, 
-where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Optional arg ``type`` is ""Gaussian""
-by default. If ``type`` is "Turan", then use Gauss-Turan quadrature to integrate out ``0`` variable.
+* quadtype can either be \"Gaussian\" or \"Turan\" (N.B. this refers to integration of θ variable, λ always integrated out using Gaussian quadrature) 
+
+Works by defining a function ``f`` from ``R^k`` to ``Mat(n, n)``, such that ``f(z_0)_{ij} = p(z_0|z, θ_i, λ_j)``, 
+where ``i`` and ``j`` range over the meshgrids over ``θ`` and ``λ``. Takes the dot product of this 
+matrix function with a weights matrix, ``w_ij = p(θ_i, λ_j|z)`` to obtain PDF and CDF functions.
+
+```julia    
+getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, boxCoxObj, "Gaussian") #uses BoxCox family of nonlinear transforms and Gaussian quadrature 
+```
 
 """
 function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, priorθ, priorλ, nodesWeightsθ::nodesWeights, nodesWeightsλ::nodesWeights, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 
@@ -38,52 +44,58 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
         end
     end
 
+    if quadtype == "Gaussian"
     #|Σθ|, qtilde, and Jac(z) are prone to overflow and underflow. As such, we work strictly with their exponents, 
     #and shift them so the largest sum-of-exponents (exponentiating then gives 1). After that, we can safely
     #normalize the weight so that they sum to 1. 
 
-    #compute exponents of qtilde^(-(n-p)/2)
-    qvals = zeros(n1, n2)
-    g = transform.f; dg = transform.df
-    gλvals = zeros(length(z), n2)
-    lmbda = λ -> g(z, λ)
-    for i = 1:n2 
-        gλvals[:, i] = lmbda(nodesλ[i])
-    end
-    for i = 1:n1
-        for j = 1:n2
-            #compute auxiliary quantities 
-            choleskyXΣX = theta_param_list[i].choleskyXΣX
-            choleskyΣθ = theta_param_list[i].choleskyΣθ
-            gλz = gλvals[:, j]
-            βhat = choleskyXΣX\(X'*(choleskyΣθ\gλz)) 
-            qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
-            qvals[i, j] = -(n-p)/2 * log(qtilde) 
+        #compute exponents of qtilde^(-(n-p)/2)
+        qvals = zeros(n1, n2)
+        g = transform.f; dg = transform.df
+        gλvals = zeros(length(z), n2)
+        lmbda = λ -> g(z, λ)
+        for i = 1:n2 
+            gλvals[:, i] = lmbda(nodesλ[i])
         end
-    end
-    qTensorGrid = repeat(qvals, 1, 1, n3)
+        for i = 1:n1
+            for j = 1:n2
+                #compute auxiliary quantities 
+                choleskyXΣX = theta_param_list[i].choleskyXΣX
+                choleskyΣθ = theta_param_list[i].choleskyΣθ
+                gλz = gλvals[:, j]
+                βhat = choleskyXΣX\(X'*(choleskyΣθ\gλz)) 
+                qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
+                qvals[i, j] = -(n-p)/2 * log(qtilde) 
+            end
+        end
+        qTensorGrid = repeat(qvals, 1, 1, n3)
 
-    #compute exponents of |Σθ|^(-1/2)    
-    detvals = zeros(n1, 1)
-    for i = 1:n1
-        choleskyΣθ = theta_param_list[i].choleskyΣθ
-        detvals[i] = sum(log.(diag(choleskyΣθ.U)))
-    end
-    #we multiply by -1.0 instead of -0.5, because the determinant is the 
-    #product of the squares of the diagonal entries of choleskyΣθ.U 
-    detTensorGrid = repeat((- 1.0 .* detvals), 1, n2, n3)
+        #compute exponents of |Σθ|^(-1/2)    
+        detvals = zeros(n1, 1)
+        for i = 1:n1
+            choleskyΣθ = theta_param_list[i].choleskyΣθ
+            detvals[i] = sum(log.(diag(choleskyΣθ.U)))
+        end
+        #we multiply by -1.0 instead of -0.5, because the determinant is the 
+        #product of the squares of the diagonal entries of choleskyΣθ.U 
+        detTensorGrid = repeat((- 1.0 .* detvals), 1, n2, n3)
 
-    #compute exponents of (Jac(z)^(1-p/n)
-    jacvals = zeros(1, n2)
-    df = transform.df
-    for i = 1:n2
-        jacvals[i] = sum(log.(abs.(map( x-> df(x, nodesλ[i]), z))))
-    end
-    jacTensorGrid = repeat((1-p/n) .* jacvals, n1, 1, n3)
+        #compute exponents of (Jac(z)^(1-p/n)
+        jacvals = zeros(1, n2)
+        df = transform.df
+        for i = 1:n2
+            jacvals[i] = sum(log.(abs.(map( x-> df(x, nodesλ[i]), z))))
+        end
+        jacTensorGrid = repeat((1-p/n) .* jacvals, n1, 1, n3)
 
-    powerGrid =  qTensorGrid + detTensorGrid + jacTensorGrid #sum of exponents
-    powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
-    weightsTensorGrid =  powerGrid/sum(powerGrid) #normalized grid of weights
+        powerGrid =  qTensorGrid + detTensorGrid + jacTensorGrid #sum of exponents
+        powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
+        powerGrid = powerGrid .* weightsTensorGrid
+        weightsTensorGrid =  powerGrid/sum(powerGrid) #normalized grid of weights
+            
+    elseif quadtype== "Turan"
+        weightsTensorGrid =  weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
+    end
 
     #tensor grid for PDF p(z0|theta, lambda, z)
     tgridpdf = Array{Any, 3}(undef, l1, l2, l3) 

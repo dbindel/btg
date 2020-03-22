@@ -282,7 +282,6 @@ function partial_theta(θ::Float64, λ::Float64, train::trainingData{A, B}, test
     main_cdf = z0 -> Distributions.cdf.(t, g(z0, λ)) 
     #This block of code computes first and second derivatives. 
     if type == "Turan"
-        println("Using Turan in derivatives//partial_theta")
         @timeit "expr_mid" expr_mid = X'*(choleskyΣθ\(Σθ_prime * Σθ_inv_X))#precompute
         #first derivatives
         @timeit "some first derivs, which depend on θ AND λ" begin
@@ -572,18 +571,18 @@ function posterior_theta(θ::Float64, λ::Float64, priorθ, priorλ, train::trai
     g = transforms.f; dg = transforms.df
     #compute auxiliary quantities 
     gλz = g(z, λ)
-    βhat = (X'*(choleskyΣθ\X))\(X'*(choleskyΣθ\gλz)) 
+    βhat = choleskyXΣX\(X'*(choleskyΣθ\gλz)) 
     qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
     m = Bθ*(choleskyΣθ\gλz) + Hθ*βhat 
-    Σθ_inv_X = Σθ\X 
+    # Σθ_inv_X = Σθ\X # XZ: already computed in theta_params
     meanvv = gλz - X*βhat 
 
-    #EXPR1 = det(choleskyΣθ)^(-1/2)
+    EXPR1 = det(choleskyΣθ)^(-1/2)
     #println("det: ", EXPR1)
     #println("det Sigma theta ^-1/2: ", EXPR1)
     EXPR2 = det(choleskyXΣX)^(-1/2)
     #println("det XsigmaX: ", EXPR2)
-    #EXPR3 = qtilde^(-(n-p)/2) 
+    EXPR3 = qtilde^(-(n-p)/2) 
     #println("qtilde: ", qtilde)
     EXPR4 = pθ(θ)*pλ(λ)
     #println("EXPR4: ", EXPR4)

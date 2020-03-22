@@ -4,7 +4,7 @@ using SpecialFunctions
 using PDMats
 using CSV
 #using Profile
-#using ProfileView
+#using ProfileView 
 using TimerOutputs
 include("kernels/kernel.jl")
 include("computation/derivatives.jl")

@@ -1,6 +1,7 @@
 using LinearAlgebra
 using DataFrames
 using CSV
+using FastGaussQuadrature
 
 #This file contains various renditions of  which perform numerical
 #quadrature given integration endpoints and a function handle
@@ -26,28 +27,18 @@ end
 
 
 """
-Uses the Golub-Welsch eigenvalue method to compute
+Uses the FastGaussQuadrature package to compute 
 Gauss-Legendre quadrature nodes and weights for the domain [-1, 1]
 
 INPUTS: n, the number of desired nodes
 OUTPUTS: x and w, the nodes and weights
 """
-function gausslegpts(n)
-    x = zeros(n-1) 
-    for i = 1:n-1
-        x[i] = i/sqrt(4*i^2-1)
-    end
-    x = SymTridiagonal(zeros(n), x) #Jacobi matrix
-    d, V = eigen(x)
-    w = 2*V[1,:].^2 #factor of 2 comes from the fact that integral of measure is 2
-    return d, w
-end
 
 #precomute various integration nodes/weights
-dm0, wm0 = gausslegpts(24) 
-dm, wm = gausslegpts(12) 
-dm2, wm2 = gausslegpts(50)
-dm3, wm3 = gausslegpts(100)
+dm0, wm0 = gausslegendre(24) 
+dm, wm = gausslegendre(12) 
+dm2, wm2 = gausslegendre(50)
+dm3, wm3 = gausslegendre(100)
 
 function getGaussQuadraturedata()
     nodesWeights(dm, wm)

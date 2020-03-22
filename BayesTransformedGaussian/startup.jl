@@ -25,3 +25,6 @@ Pkg.add("TimerOutputs")
 #optimization
 Pkg.add("Cubature")
 Pkg.add("Optim")
+
+#visualization
+Pkg.add("PyPlot")

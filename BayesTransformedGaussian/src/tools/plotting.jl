@@ -1,3 +1,5 @@
+using PyPlot
+
 """
 Generates data for plotting f on [a, b]
 """
@@ -28,5 +30,25 @@ function plt!(f, a, b, numpts=100, label = "y")
     display(plot!(x, y, label = label))
 end
 
-
+"""
+plot pdf, median, mode and credible interval
+"""
+function plot_distribution_single(pdf, median, mode, CI, z0_true)
+    # plot pdf
+    b = 2.2 * mode
+    z_grid = range(1e-5, stop = b, step = 0.01)
+    p_grid = pdf.(z_grid);
+    PyPlot.plot(z_grid, p_grid, label = "probability density function")
+    # PyPlot.vlines(median, 0, pdf0(mean), label = "mean", colors = "k")
+    PyPlot.vlines(median, 0, pdf0(median), label = "median",  colors = "b")
+    PyPlot.vlines(z0_true, 0, pdf0(z0_true), label = "true value",  colors = "r")
+    # plot CI
+    CI_x_range = range(CI[1], stop = CI[2], step = 0.01)
+    CI_y_range = pdf.(CI_x_range)
+    PyPlot.fill_between(CI_x_range, 0, CI_y_range, alpha = 0.3, label = "95% confidence interval")
+    PyPlot.legend()
+    PyPlot.grid()
+    PyPlot.title("BTG Summary")
+#     PyPlot.savefig("Figure/Prediction")
+end
 

@@ -532,7 +532,7 @@ function partial_z0(θ::Float64, λ::Float64, train::trainingData{A, B}, test::t
         end
         #Tz0 = Distributions.pdf.(vanillat, (gλz0 .- m) ./ sqrt(qC/(n-p)))
         Tz0 = Distributions.pdf.(t, gλz0)
-        return abs(dg2(z0, λ)) * Tz0 + abs(dg(z0, λ)) * Tz0 * (-(n-p+k) * ( gλz0 .- m) ./ (qC .+ (gλz0 .- m) .^2)
+        return abs(dg2(z0, λ)) * Tz0 + abs(dg(z0, λ)) * Tz0 * (-(n-p+k) * ( gλz0 .- m) ./ (qC .+ (gλz0 .- m) .^2))
     end
     
     return (tdist, deriv)

@@ -5,7 +5,8 @@ using Cubature
 
 """
 Given pdf, cdf and maybe pdf_deriv, 
-compute median, quantile, mode, symmetric 
+compute median, quantile, mode, symmetric/narrowest credible intervel.
+Warning: only for normalized values
 """
 function median(pdf, cdf; pdf_deriv=nothing)
     med = quantile(pdf, cdf)

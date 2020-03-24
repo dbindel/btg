@@ -3,6 +3,10 @@ include("model.jl")
 include("transforms.jl")
 include("tools/plotting.jl")
 include("validation/validate.jl")
+
+#used for testing derivatives 
+include("computation/derivatives.jl")
+include("computation/buffers.jl")
 using DataFrames
 using CSV
 #using StatsBase
@@ -46,6 +50,7 @@ end
     train = trainingData(s, X, z)
     test = testingData(s0, X0)
     #example2 = getExample(1, 10, 1, 1, 2)
+    println("Data loaded.")
 
 #experiment to see how large n has to be for Cholesky to have the most expensive computational cost
 if false
@@ -62,20 +67,52 @@ if false
     end    
 end
 
+  #check derivative of p(z0|theta, lambda, z)
+if false
+    theta_params = funcθ(1.5, train, test, "Gaussian")
+    (f, df) = partial_z0(1.5, 2.0, train, test, boxCoxObj, theta_params, "Gaussian") 
+    (h, A) = checkDerivative(f, df, .6, 9, 15, 10)
+    plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
+    #plot(polyfit(h, A, 1), reuse = true)
+    println("partial theta of p(z0|theta, lambda, z)")
+    println(polyfit(h, A, 1))  
+    nums = collect(.05:.05:1) 
+    g = x -> f(x)[1]
+    plt2 = Plots.plot(nums, g.(nums),xlabel = "theta", ylabel = "p(z0|theta, lambda, z)", fontfamily=font(48, "Courier") ,title = "theta vs p(z0| theta, lambda, z)")
+    display(Plots.plot(plt1, plt2, fontfamily=font(48, "CoSurier")))
+    gui()
+end
+
 if true # use this blockcxsanity check + plot data
-    
     reset_timer!()
     choleskytime = 0
 
-    (f, g) = getBtgDensity(train, test, range_theta, range_lambda, boxCoxObj, "Turan", "Uniform")
+    (f, g, df) = getBtgDensity(train, test, range_theta, range_lambda, boxCoxObj, "Gaussian", "Uniform")
 
-    plt(f, 0.1, 2, 100, "pdf")
+    println("Plotting...")
+    plt(df, 0.1, 2, 100, "dpdf")
+    plt!(f, 0.1, 2, 100, "pdf")
     plt!(g, 0.1, 2, 100, "cdf")
 
-    plt(f, 0.1, 0.9, 500, "pdf")
-    plt!(g, 0.1, 0.9, 500, "cdf")
+    #plt(f, 0.1, 0.9, 500, "pdf")
+    #plt!(g, 0.1, 0.9, 500, "cdf")
 
 end
+
+#check derivatives of df, f, or g
+if true
+    (h, A) = checkDerivative(f, df, .3, 7, 15, 10)
+    plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
+    #plot(polyfit(h, A, 1), reuse = true)
+    println("derivative of p(z0|z)")
+    println(polyfit(h, A, 1))  
+    nums = collect(.05:.05:1) 
+    gg = x -> f(x)[1]
+    plt2 = Plots.plot(nums, gg.(nums),xlabel = "theta", ylabel = "p(z0|theta, lambda, z)", fontfamily=font(48, "Courier") ,title = "theta vs p(z0| theta, lambda, z)")
+    display(Plots.plot(plt1, plt2, fontfamily=font(48, "CoSurier")))
+    gui()
+end
+
 
 if false #cross validation on training set
     Xs, Ys = cross_validate(train, range_theta, range_lambda, boxCoxObj, "Gaussian", "Uniform")  

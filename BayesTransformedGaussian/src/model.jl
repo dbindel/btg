@@ -38,5 +38,7 @@ function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ:
     nodesWeightsλ = getGaussQuadraturedata()
     affineTransformNodes(nodesWeightsλ, rangeλ)
     priorθ = initialize_prior(rangeθ, priortype); priorλ = initialize_prior(rangeλ, priortype); 
-    (pdf, cdf) = getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
+    (pdf, cdf) = getTensorGrid(partial_theta, train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
+    (dpdf, _ ) = getTensorGrid(partial_z0, train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
+    return (pdf, cdf, dpdf)
 end

@@ -1,4 +1,5 @@
 using PyPlot
+using Plots
 
 """
 Generates data for plotting f on [a, b]
@@ -19,7 +20,7 @@ function plt(f, a, b, numpts=100, label = "y")
     y = zeros(1,numpts)
     x = collect(a:h:b)
     y = map(f, x)
-    display(plot(x, y, label = label))
+    display(Plots.plot(x, y, label = label))
 end
 
 function plt!(f, a, b, numpts=100, label = "y")
@@ -27,7 +28,7 @@ function plt!(f, a, b, numpts=100, label = "y")
     y = zeros(1,numpts)
     x = collect(a:h:b)
     y = map(f, x)
-    display(plot!(x, y, label = label))
+    display(Plots.plot!(x, y, label = label))
 end
 
 """

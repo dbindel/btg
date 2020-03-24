@@ -13,9 +13,14 @@ function median(pdf, cdf; pdf_deriv=nothing)
     return med
 end
 
+function median2(pdf, cdf; pdf_deriv=nothing)
+  med = quantile(pdf, cdf)
+  return med
+end
+
 function quantile(pdf, cdf; pdf_deriv=nothing, p::R=.5) where R <: Real
     quantile_func(x) = abs(cdf(x) - p)
-    routine = optimize(quantile_func, 0., 2.)
+    routine = optimize(quantile_func, 0., 1.2, GoldenSection())
     quant = Optim.minimizer(routine)
     return quant
 end

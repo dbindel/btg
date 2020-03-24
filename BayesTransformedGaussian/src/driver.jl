@@ -23,17 +23,21 @@ target = target/normalizing_constant #normalization
 
 #pick training points
 #ind = 1:30
-ind = 1:80
+ind = 1:500
 s = data[ind, :] 
 #choose a subset of variables to be regressors for the mean
-X = data[ind, 1:3] 
+X = data[ind, 1:1] 
 z = float(target[ind])
 #normalizing_constant = maximum(z)
 #z = z ./ normalizing_constant
 
+#select range_lambda and range_theta
+if false
+    histogram(boxCoxObj.f.(target, .5), bins=:scott)
+end
 #define ranges for theta and lambda
-rangeθ = [100.0, 300.0]
-rangeλ = [-1.0, 1.0]
+rangeθ = [200.0, 700.0]
+rangeλ = [.4, .6]
 
 if false #look at eigenspectrum of kernel matrix
     θ = 200
@@ -42,7 +46,7 @@ if false #look at eigenspectrum of kernel matrix
 end
 
     #load examples
-    i = 240
+    i = 120
     s0 = data[i:i,:] #covariates and coordinates
     X0  = data[i:i, 1:3]
     #example = setting(s, s0, X, X0, z)#abalone data
@@ -82,18 +86,24 @@ if false
     gui()
 end
 
-if true # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
+if false # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
     reset_timer!()
     choleskytime = 0
 
-    (f, g, df) = getBtgDensity(train, test, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")
+    #(f, g, df) = getBtgDensity(train, test, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")
+
+    i=43
+    ind = [collect(1:i-1); collect(i+1:length(z))]
+    train_cur = trainingData(s[ind, :], X[ind, :], z[ind]) 
+    test_cur = testingData(s[i:i, :], X[i:i, :])
+    (f, g, df) = getBtgDensity(train_cur, test_cur, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")
 
     if true
     println("Plotting...")
-    plt(df, 0.1, 2, 100, "dpdf")
-    plt!(f, 0.1, 2, 100, "pdf")
-    plt!(g, 0.1, 2, 100, "cdf")
-
+    #plt(df, 0.1, 2, 100, "dpdf")
+    plt(f, 0.1, 2, 300, "pdf")
+    plt!(g, 0.1, 2, 300, "cdf")
+    println(median(f, g))
     #plt(f, 0.1, 0.9, 500, "pdf")
     #plt!(g, 0.1, 0.9, 500, "cdf")
     end
@@ -151,31 +161,37 @@ if false #delete one group cross validation
     savefig("results//abalone//abalone_group_cross_validation4.pdf")
 end
 
+
+
 if true #compute loss for Abalone dataset
+    graph = false #generate plots for debugging
+
     println("Computing loss...")
-    (med,  Xs, Ys) = compute_loss(train, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform", "true", 100, 0, 2.5)
+    (med,  _, _) = compute_loss(train, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform", graph, 100, 0, 2.5)
     println("maximum computed median: ", maximum(med))
     println("minimum computed median: ", minimum(med))
     SE = norm(med .- z)^2 * normalizing_constant^2
     println("SE: ", SE)
     
-    display(Plots.plot(Xs, Ys, 
-    layout = length(z), 
-    legend=nothing, 
-    xtickfont = Plots.font(4, "Courier"),
-    ytickfont = Plots.font(4, "Courier"), 
-    lw=0.5))
-    display(Plots.plot!(z', layout = length(z), 
-    legend=nothing, 
-    seriestype = :vline, 
-    xtickfont = Plots.font(4, "Courier"), 
-    ytickfont = Plots.font(4, "Courier"), 
-    lw=0.5))
-    display(Plots.plot!(med', layout = length(z), 
-    legend=nothing, 
-    seriestype = :vline, 
-    xtickfont = Plots.font(4, "Courier"), 
-    ytickfont = Plots.font(4, "Courier"), 
-    lw=0.5))
+    if graph == true
+        display(Plots.plot(Xs, Ys, 
+        layout = length(z), 
+        legend=nothing, 
+        xtickfont = Plots.font(4, "Courier"),
+        ytickfont = Plots.font(4, "Courier"), 
+        lw=0.5))
+        display(Plots.plot!(z', layout = length(z), 
+        legend=nothing, 
+        seriestype = :vline, 
+        xtickfont = Plots.font(4, "Courier"), 
+        ytickfont = Plots.font(4, "Courier"), 
+        lw=0.5))
+        display(Plots.plot!(med', layout = length(z), 
+        legend=nothing, 
+        seriestype = :vline, 
+        xtickfont = Plots.font(4, "Courier"), 
+        ytickfont = Plots.font(4, "Courier"), 
+        lw=0.5))
+    end
 end
 

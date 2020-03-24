@@ -2,11 +2,11 @@ import Base: inv
 
 @doc raw"""
 """
-abstract type Transform end
+abstract type AbstractTransform end
 
 @doc raw"""
 """
-struct BoxCox <: Transform end
+struct BoxCox <: AbstractTransform end
 
 (::BoxCox)(λ, y) = λ == 0 ? log(y) : expm1(log(y) * λ) / λ
 inv(::BoxCox, λ, z) = λ == 0 ? exp(z) : exp(log(λ * z + 1) / λ)
@@ -29,9 +29,9 @@ end
 @doc raw"""
     TODO Unimplimented
 """
-struct YeoJohnson <: Transform end
+struct YeoJohnson <: AbstractTransform end
 
 @doc raw"""
     TODO Unimplimented
 """
-struct ArandaOrdaz <: Transform end
+struct ArandaOrdaz <: AbstractTransform end

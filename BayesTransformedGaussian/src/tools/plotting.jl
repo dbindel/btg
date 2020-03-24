@@ -42,6 +42,7 @@ function plot_distribution_single(pdf, median, mode, CI, z0_true, quadtype)
     PyPlot.plot(z_grid, p_grid, label = "probability density function")
     # PyPlot.vlines(median, 0, pdf0(mean), label = "mean", colors = "k")
     PyPlot.vlines(median, 0, pdf(median), label = "median",  colors = "b")
+    PyPlot.vlines(mode, 0, pdf(mode), label = "mode")
     PyPlot.vlines(z0_true, 0, pdf(z0_true), label = "true value",  colors = "r")
     # plot CI
     CI_x_range = range(CI[1], stop = CI[2], step = 0.01)

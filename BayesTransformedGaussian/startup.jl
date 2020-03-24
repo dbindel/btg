@@ -17,6 +17,7 @@ Pkg.add("FastGaussQuadrature")
 
 #data analysis 
 Pkg.add("Plots") 
+Pkg.add("PyPlot")
 Pkg.add("MATLAB")
 Pkg.add("DataFrames")
 Pkg.add("CSV") 
@@ -28,5 +29,3 @@ Pkg.add("TimerOutputs")
 Pkg.add("Cubature")
 Pkg.add("Optim")
 
-#visualization
-Pkg.add("PyPlot")

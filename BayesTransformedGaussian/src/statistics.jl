@@ -3,6 +3,11 @@ using Cubature
 
 # import Statistics: median, pdf, cdf
 
+"""
+Given pdf, cdf and maybe pdf_deriv, 
+compute median, quantile, mode, symmetric/narrowest credible intervel.
+Warning: only for normalized values
+"""
 function median(pdf, cdf; pdf_deriv=nothing)
     med = quantile(pdf, cdf)
     return med
@@ -10,24 +15,18 @@ end
 
 function quantile(pdf, cdf; pdf_deriv=nothing, p::R=.5) where R <: Real
     quantile_func(x) = abs(cdf(x) - p)
-    # derivative
-    # function quantile_deriv!(storage, x)
-    #     storage[1] = pdf(x)
-    # end
     routine = optimize(quantile_func, 0., 5.)
     quant = Optim.minimizer(routine)
     return quant
 end
 
 function mode(pdf, cdf; pdf_deriv=nothing) 
-    # maximize the pdf
-    routine = optimize(x -> -pdf(x), 0., 5.)
+    # maximize the pdf 
+    routine = optimize(x -> -pdf(x), 0., 5.) 
     mod = Optim.minimizer(routine)
     return mod
 end
 
-@doc raw"""
-"""
 function credible_interval(pdf, cdf; pdf_deriv=nothing, wp::R=.95, mode=:equal) where R <: Real
     return credible_interval(pdf, cdf, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
 end
@@ -127,8 +126,6 @@ function credible_interval(pdf, cdf, ::Val{:narrow}; pdf_deriv=nothing, wp::R=.9
   α_low, β_low, int_low = find_αβ(l_height_low, [0, mode_d], [mode_d, bound])
   # adjust height if l low is not lower than l* (i.e. int < wp)
   l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
-
-
   l_height_high = pdf(mode_d) - 1e-6
   α_high, β_high, int_high = find_αβ(l_height_high, [0, mode_d], [mode_d, bound])
   # adjust height if l_high is not higher than l* (i.e. int > wp)

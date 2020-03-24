@@ -97,8 +97,8 @@ function add_point(c::ComputeKernel, comp::ComputeData, x)
     c.n += 1
     n = c.n
     # This is kinda hacky, write a colwise function
-    pairwise!(view(c.k12, :, n), comp.d1.x, reshape(x, length(x), 1), c.θ...)
-    pairwise!(view(c.k2, 1:n, n), comp.d2.x, reshape(x, length(x), 1), c.θ...)
+    colwise!(c.k12[:, n], c.k, comp.d1.x, x, c.θ...)
+    colwise!(c.k2[1:n, n], c.k, comp.d2.x[:, 1:comp.d2.n], x, c.θ...)
     tmp = c.k1 * comp.w[:, end]
     tmp2 = c.k2 * comp.w[:, end]
     c.k2[n, n] +=  dot(comp.w[:, end], tmp) - 2 * tmp2[end]

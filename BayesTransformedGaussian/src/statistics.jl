@@ -15,7 +15,7 @@ end
 
 function quantile(pdf, cdf; pdf_deriv=nothing, p::R=.5) where R <: Real
     quantile_func(x) = abs(cdf(x) - p)
-    routine = optimize(quantile_func, 0., 5.)
+    routine = optimize(quantile_func, 0., 2.)
     quant = Optim.minimizer(routine)
     return quant
 end

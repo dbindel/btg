@@ -18,24 +18,22 @@ using Plots
 df = DataFrame(CSV.File("datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
-target = target/maximum(target) #normalization
+normalizing_constant = maximum(target)
+target = target/normalizing_constant #normalization
 
 #pick training points
 #ind = 1:30
-ind = 1:40
+ind = 1:80
 s = data[ind, :] 
 #choose a subset of variables to be regressors for the mean
 X = data[ind, 1:3] 
 z = float(target[ind])
-#prior marginals are assumed constant
-pλ = x -> 1 
-pθ = x -> 1
-dpθ = x -> 0 
-dpθ2 = x -> 0
+#normalizing_constant = maximum(z)
+#z = z ./ normalizing_constant
 
 #define ranges for theta and lambda
-range_theta = [100.0, 300.0]
-range_lambda = [-1.0, 1.0]
+rangeθ = [100.0, 300.0]
+rangeλ = [-1.0, 1.0]
 
 if false #look at eigenspectrum of kernel matrix
     θ = 200
@@ -84,12 +82,13 @@ if false
     gui()
 end
 
-if true # use this blockcxsanity check + plot data
+if true # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
     reset_timer!()
     choleskytime = 0
 
-    (f, g, df) = getBtgDensity(train, test, range_theta, range_lambda, boxCoxObj, "Gaussian", "Uniform")
+    (f, g, df) = getBtgDensity(train, test, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")
 
+    if true
     println("Plotting...")
     plt(df, 0.1, 2, 100, "dpdf")
     plt!(f, 0.1, 2, 100, "pdf")
@@ -97,11 +96,11 @@ if true # use this blockcxsanity check + plot data
 
     #plt(f, 0.1, 0.9, 500, "pdf")
     #plt!(g, 0.1, 0.9, 500, "cdf")
-
+    end
 end
 
 
-if true #check derivatives of df, f, or g
+if false #check derivatives of df, f, or g
     (h, A) = checkDerivative(f, df, .3, 7, 15, 10)
     plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
@@ -116,7 +115,7 @@ end
 
 
 if false #cross validation on training set
-    Xs, Ys = cross_validate(train, range_theta, range_lambda, boxCoxObj, "Gaussian", "Uniform")  
+    Xs, Ys = cross_validate(train, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")  
     z = train.z
    # _, Xs, Ys = cross_validate(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 500, 2, 24)
     display(plot(Xs, Ys, 
@@ -136,7 +135,7 @@ end
 
 
 if false #delete one group cross validation
-    Xs, Ys = cross_validate_groups(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 5, 500, 2, 24)
+    Xs, Ys = cross_validate_groups(X, s, boxCox, boxCoxPrime, pθ, pλ, z, rangeθ, rangeλ, 5, 500, 2, 24)
     display(plot(Xs, Ys, 
     layout = length(z), 
     legend=nothing, 
@@ -152,7 +151,31 @@ if false #delete one group cross validation
     savefig("results//abalone//abalone_group_cross_validation4.pdf")
 end
 
-if true #MSE for Abalone dataset
-
+if true #compute loss for Abalone dataset
+    println("Computing loss...")
+    (med,  Xs, Ys) = compute_loss(train, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform", "true", 100, 0, 2.5)
+    println("maximum computed median: ", maximum(med))
+    println("minimum computed median: ", minimum(med))
+    SE = norm(med .- z)^2 * normalizing_constant^2
+    println("SE: ", SE)
+    
+    display(Plots.plot(Xs, Ys, 
+    layout = length(z), 
+    legend=nothing, 
+    xtickfont = Plots.font(4, "Courier"),
+    ytickfont = Plots.font(4, "Courier"), 
+    lw=0.5))
+    display(Plots.plot!(z', layout = length(z), 
+    legend=nothing, 
+    seriestype = :vline, 
+    xtickfont = Plots.font(4, "Courier"), 
+    ytickfont = Plots.font(4, "Courier"), 
+    lw=0.5))
+    display(Plots.plot!(med', layout = length(z), 
+    legend=nothing, 
+    seriestype = :vline, 
+    xtickfont = Plots.font(4, "Courier"), 
+    ytickfont = Plots.font(4, "Courier"), 
+    lw=0.5))
 end
 

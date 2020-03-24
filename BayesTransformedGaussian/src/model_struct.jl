@@ -70,7 +70,7 @@ function add_point(comp::ComputeData, x, fx, y)
     @assert comp.n < comp.capacity
     comp.n += 1
     add_point(comp.d2, x, fx, y)
-    ldiv!(view(comp.w, :, comp.n), comp.f0, fx)
+    ldiv!(view(comp.w, :, comp.n), comp.f0, fx) # Add new row to W
     return nothing
 end
 
@@ -93,18 +93,31 @@ function ComputeKernel(capacity, comp::ComputeData, k, θ)
 end
 
 function add_point(c::ComputeKernel, comp::ComputeData, x)
-    @assert c.n < c.capacity
-    c.n += 1
-    n = c.n
-    # This is kinda hacky, write a colwise function
-    colwise!(c.k12[:, n], c.k, comp.d1.x, x, c.θ...)
-    colwise!(c.k2[1:n, n], c.k, comp.d2.x[:, 1:comp.d2.n], x, c.θ...)
-    tmp = c.k1 * comp.w[:, end]
-    tmp2 = c.k2 * comp.w[:, end]
-    c.k2[n, n] +=  dot(comp.w[:, end], tmp) - 2 * tmp2[end]
-    c.k2[1:n-1, n] .+= (comp.w' * tmp) .- tmp2[1:n-1]
-    @views ldiv!(c.k2[1:n-1, n], UpperTriangular(c.k2[1:n-1, 1:n-1]), c.k2[1:n-1, n])
-    @views c.k2[n, n] = sqrt(c.k2[n, n] - dot(c.k2[1:n-1, n]), c.k2[1:n-1, n])
+    n = comp.n
+    colwise!(c.k12[:, n], c.k, comp.d1.x[:, 1:comp.d1.n], x, c.θ...)
+    if n == 1
+        # begin cholesky factorization of Ktilde
+        c.k2[1, 1] = c.k(x, x, c.θ...)
+        tmp = c.k1 * comp.w[:, 1]
+        tmp2 = c.k12[:, 1]' * comp.w[:, 1]
+        c.k2[1, 1] += dot(comp.w[:, 1], tmp) - 2 * tmp2
+        c.k2[1, 1] = sqrt(c.k2[1, 1])
+    else
+        # Update K2
+        colwise!(c.k2[1:n, n], c.k, comp.d2.x[:, 1:comp.d2.n], x, c.θ...)
+        # Update Ktilde
+        tmp = c.k1 * comp.w[:, n]
+        tmp2 = c.k12[:, 1:n]' * comp.w[:, n]
+        c.k2[n, n] +=  dot(comp.w[:, n], tmp) - 2 * tmp2[n]
+        c.k2[1:n-1, n] .+= (comp.w[:, 1:n-1]' * tmp) .- tmp2[1:n-1]
+        # Update Cholesky factor of Ktilde
+        # TODO write this more elegantly, this is messy
+        t = UpperTriangular(c.k2[1:n-1, 1:n-1])
+        tmp3 = t \ c.k2[1:n-1, n]
+        tmp4 = t' \ tmp3
+        c.k2[1:n-1, n] .= tmp4
+        @views c.k2[n, n] = sqrt(c.k2[n, n] - dot(c.k2[1:n-1, n], c.k2[1:n-1, n]))
+    end
     return nothing
 end
 

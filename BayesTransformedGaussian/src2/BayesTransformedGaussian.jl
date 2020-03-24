@@ -7,4 +7,4 @@ include("./transforms.jl")
 include("./model.jl")
 include("./statistics.jl")
 
-end # module 
+end # module

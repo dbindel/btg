@@ -1,18 +1,62 @@
-@doc raw"""
-"""
-abstract type RadialCorrelation end
+using Distances
+import Distances: pairwise!
 
 @doc raw"""
 """
+abstract type Correlation end
+
+@doc raw"""
+"""
+struct InducedQuadratic{K<:Correlation} <: Correlation
+    k::K
+end
+
+(k::InducedQuadratic)(x, y, ℓ::Real, θ...) = k.k(sqeuclidean(x, y) / ℓ, θ...)
+function (k::InducedQuadratic)(x, y, ℓ::AbstractVector, θ...)
+    dist = WeightedSqEuclidean(inv.(ℓ))
+    return k.k(dist(x, y), θ...)
+end
+
+function pairwise!(out, k::InducedQuadratic, x, y, ℓ::Real, θ...)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= (τ -> k.k(τ / ℓ, θ...)).(out)
+    return nothing
+end
+function pairwise!(out, k::InducedQuadratic, x, y, ℓ::AbstractVector, θ...)
+    dist = WeightedSqEuclidean(inv.(ℓ))
+    pairwise!(out, dist, x, y, dims=2)
+    out .= (τ -> k.k(τ, θ...)).(out)
+    return nothing
+end
+
+
+@doc raw"""
+    """
 struct ExponentiatedQuadratic <: Correlation end
-const Gaussian = ExponentiatedQuadratic
-const RBF = ExponentiatedQuadratic
-const SquaredExponential = ExponentiatedQuadratic
-const SqExponential = ExponentiatedQuadratic
+@inline (::ExponentiatedQuadratic)(τ) = exp(-τ / 2)
+(k::ExponentiatedQuadratic)(x, y) = k(sqeuclidean(x, y))
+function pairwise!(out, k::ExponentiatedQuadratic, x, y)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= k.(out)
+    return nothing
+end
 
-(::RBF)(θ, τ) = exp(-τ / 2)
+const RBF = InducedQuadratic{ExponentiatedQuadratic}
+const Gaussian = RBF
+RBF() = InducedQuadratic(ExponentiatedQuadratic())
 
-_dist_type(ℓ, x, y) = promote_type(eltype(ℓ), eltype(x), eltype(y))
+partial_θ(k::RBF, τ, ℓ) = τ * k(τ, ℓ) / 2 / ℓ ^ 2
+function partial_θ!(out, k::RBF, x, y, ℓ)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= (τ -> partial_θ(k, τ, ℓ)).(out)
+    return nothing
+end
+partial_θθ(k::RBF, τ, ℓ) = τ * k(τ, ℓ) * (τ - 4 * ℓ) / 4 / ℓ ^ 4
+function partial_θθ!(out, k::RBF, x, y, ℓ)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= (τ -> partial_θθ(k, τ, ℓ)).(out)
+    return nothing
+end
 
 struct Spherical <: Correlation end
 # TODO
@@ -22,29 +66,3 @@ struct Matern <: Correlation end
 
 struct RationalQuadratic <: Correlation end
 # TODO
-
-@doc raw"""
-"""
-abstract type LengthScale end
-function (d::LengthScale)(ℓ, x, y)
-    out = Array{_dist_type(ℓ, x, y)}(undef, size(x, 2), size(y, 2))
-    d(out, ℓ, x, y)
-    return out
-end
-
-@doc raw"""
-"""
-struct Scale <: LengthScale end
-function (d!::Scale)(out, ℓ, x, y)
-    pairwise!(out, SqEuclidean(), x, y, dims=2)
-    out ./= ℓ
-    return nothing
-end
-
-@doc raw"""
-"""
-struct MultiScale <: LengthScale end
-function (d!::MultiScale)(out, ℓ, x, y)
-    pairwise!(out, WeightedSqEuclidean(ℓ), x, y, dims=2)
-    return nothing
-end

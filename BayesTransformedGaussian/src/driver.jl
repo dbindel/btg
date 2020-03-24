@@ -1,5 +1,5 @@
 include("model.jl")
-#include("statistics.jl")
+include("statistics.jl")
 include("transforms.jl")
 include("tools/plotting.jl")
 include("validation/validate.jl")
@@ -7,6 +7,7 @@ include("validation/validate.jl")
 #used for testing derivatives 
 include("computation/derivatives.jl")
 include("computation/buffers.jl")
+
 using DataFrames
 using CSV
 #using StatsBase
@@ -99,8 +100,8 @@ if true # use this blockcxsanity check + plot data
 
 end
 
-#check derivatives of df, f, or g
-if true
+
+if true #check derivatives of df, f, or g
     (h, A) = checkDerivative(f, df, .3, 7, 15, 10)
     plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
@@ -151,5 +152,7 @@ if false #delete one group cross validation
     savefig("results//abalone//abalone_group_cross_validation4.pdf")
 end
 
+if true #MSE for Abalone dataset
 
+end
 

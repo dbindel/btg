@@ -9,6 +9,11 @@ struct sts
     intwidth::Float64
 end
 
+
+function compute_loss((train::trainingData{A, B}, rangeθ::B, rangeλ::B, transform, quadtype = "Gaussian", priortype = "Uniform", num_pts=100, strt = 0, endpt=1.5) where A<:Array{Float64, 2} where B<:Array{Float64, 1})
+    #todo
+end
+
 """
 Computes (x, y)-values for plotting distributions arising from LOOCV (Leave one out cross validation). 
 If n is size of training set, then return values have following dimensions
@@ -34,6 +39,7 @@ function cross_validate(train::trainingData{A, B}, rangeθ::B, rangeλ::B, trans
     end
         return Xs, Ys
 end
+
 
 """
 Single point cross-validation. Currently does not use confidence intervals or median finding. 

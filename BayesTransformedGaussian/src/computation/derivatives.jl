@@ -521,21 +521,34 @@ function partial_z0(θ::Float64, λ::Float64, train::trainingData{A, B}, test::t
         if size(z0, 2)>1
             throw(ArgumentError("z0 must be 1-dimensional"))
         end
-        Tz0 = Distributions.pdf.(t, gλz0)
+        Tz0 = Distributions.pdf.(t, gλz0) #.* abs.(dg(z0, λ))
         return Tz0 
     end
 
-    function deriv(z0)
+    function dtdist(z0)
+        gλz0 = g(z0, λ)
+        if size(z0, 2)>1
+            throw(ArgumentError("z0 must be 1-dimensional"))
+        end
+        Tz0 = Distributions.pdf.(t, gλz0)
+        return Tz0 .* (-(n-p+k)) .* ( gλz0 .- m) ./ (qC .+ (gλz0 .- m) .^2) .* dg(z0, λ)
+    end
+
+    function prob(z0)
+        return tdist(z0) .* abs.(dg(z0, λ))
+    end
+
+    function dprob(z0)
         gλz0 = g(z0, λ)
         if size(z0, 2)>1
             throw(ArgumentError("z0 must be 1-dimensional"))
         end
         #Tz0 = Distributions.pdf.(vanillat, (gλz0 .- m) ./ sqrt(qC/(n-p)))
         Tz0 = Distributions.pdf.(t, gλz0)
-        return abs(dg2(z0, λ)) * Tz0 + abs(dg(z0, λ)) * Tz0 * (-(n-p+k) * ( gλz0 .- m) ./ (qC .+ (gλz0 .- m) .^2)
+        return (dg2(z0, λ) .* Tz0 .+ abs.(dg(z0, λ)) .* dtdist(z0))[1]
     end
-    
-    return (tdist, deriv)
+    return [[dprob], [prob]]
+    #return (tdist, dtdist)
     #############     Code for Multivariate z0    ##########
     #jac = z0 -> abs(reduce(*, map(x -> dg(x, λ), z0)))
     #djac = z0 ->(local n = length(z0);

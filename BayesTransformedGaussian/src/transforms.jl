@@ -1,7 +1,8 @@
 import Base: inv
 
 """
-Family of nonlinear transformation parametrized by λ that defaults to Box Cox
+Family of nonlinear transformation parametrized by λ that defaults to Box Cox.
+N.B. We assume in derivatives.jl that the nonlinear transformation f is monotonic increasing. 
 """
 struct nonlinearTransform{T1<:Function, T2<:Function, T3<:Function, T4<:Function, T5<:Function, T6<:Function, T7<:Function}
     f::T1

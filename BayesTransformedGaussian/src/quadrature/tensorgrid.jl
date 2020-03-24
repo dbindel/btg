@@ -16,7 +16,7 @@ getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, box
 ```
 
 """
-function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, priorθ, priorλ, nodesWeightsθ::nodesWeights, nodesWeightsλ::nodesWeights, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 
+function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData{T1}, priorθ, priorλ, nodesWeightsθ::nodesWeights, nodesWeightsλ::nodesWeights, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 
     nodesθ = nodesWeightsθ.nodes
     nodesλ = nodesWeightsλ.nodes
     weightsθ = nodesWeightsθ.weights
@@ -48,7 +48,6 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
     #|Σθ|, qtilde, and Jac(z) are prone to overflow and underflow. As such, we work strictly with their exponents, 
     #and shift them so the largest sum-of-exponents (exponentiating then gives 1). After that, we can safely
     #normalize the weight so that they sum to 1. 
-
         #compute exponents of qtilde^(-(n-p)/2)
         qvals = zeros(n1, n2)
         g = transform.f; dg = transform.df
@@ -104,7 +103,7 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
 
     for i = 1:l1
         for j = 1:l2 
-            funcs = partial_theta(nodesθ[i], nodesλ[j], train, test, boxCoxObj, theta_param_list[i], quadtype)
+            funcs = integrand(nodesθ[i], nodesλ[j], train, test, boxCoxObj, theta_param_list[i], quadtype)
             for k = 1:l3
                 #tgrid[i, j, k] = funcs[k]       
                 tgridpdf[i, j, k] = funcs[1][k]
@@ -117,7 +116,8 @@ function getTensorGrid(train::trainingData{T1, T2}, test::testingData{T1}, prior
         for i=1:l1
             for j = 1:l2
                 for k =1:l3
-                    res[i, j, k] = tgridpdf[i, j, k](z0)
+                    #println("tgridpdf(z0): ", tgridpdf[i, j, k](z0))
+                    res[i, j, k] = tgridpdf[i, j, k](z0)[1]
                 end
             end
         end 

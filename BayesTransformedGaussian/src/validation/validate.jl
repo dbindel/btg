@@ -9,14 +9,49 @@ struct sts
     intwidth::Float64
 end
 
+
+"""
+Compute MSE for LOOCV 
+"""
+function compute_loss(train::trainingData{A, B}, rangeθ::B, rangeλ::B, transform, quadtype = "Gaussian", priortype = "Uniform", graph = "true", num_pts=100, strt = 0, endpt=2.5, tol = 1e-5) where A<:Array{Float64, 2} where B<:Array{Float64, 1}
+    X = train.X; z = train.z; s = train.s
+    medians = similar(z)
+    x = collect(range(strt, stop = endpt, length = num_pts)) #define mesh 
+    Xs = repeat(x, outer = [1, length(z)]) #preallocate space 
+    Ys = Array{Float64}(undef, num_pts, length(z))
+   
+    for i = 1:length(z)
+        println("i: ", i)
+        ind = [collect(1:i-1); collect(i+1:length(z))]
+        train_cur = trainingData(s[ind, :], X[ind, :], z[ind])
+        test_cur = testingData(s[i:i, :], X[i:i, :]) 
+        (pdf, cdf, _) = getBtgDensity(train_cur, test_cur, rangeθ, rangeλ, transform, quadtype, priortype)
+        med_cur = median(pdf, cdf) #first median-finding routine
+        medians[i] = med_cur
+        #println("cdf(medcur)-0.5", abs(cdf(med_cur)-0.5))
+        #println("median: ", med_cur)
+        #println("actual z: ", z[i])
+        #if (abs(cdf(med_cur)-0.5)>tol)
+        if graph == "true"#one expensive loop
+            for j = 1:num_pts
+                Ys[j, i] = pdf(x[j])
+            end
+        end
+    end
+    return (medians, Xs, Ys)
+    
+    #norm(medians .- z)^2/length(z)
+end
+
 """
 Computes (x, y)-values for plotting distributions arising from LOOCV (Leave one out cross validation). 
 If n is size of training set, then return values have following dimensions
     Xs: num_pts by n matrix 
     Ys: num_pts by n matrix
 """
+
 function cross_validate(train::trainingData{A, B}, rangeθ::B, rangeλ::B, transform, quadtype = "Gaussian", priortype = "Uniform", num_pts=100, strt = 0, endpt=1.5) where A<:Array{Float64, 2} where B<:Array{Float64, 1}
-    X = train.X
+    X = train.X; z = train.z; s = train.s
     x = collect(range(strt, stop = endpt, length = num_pts)) #define mesh 
     Xs = repeat(x, outer = [1, length(z)]) #preallocate space 
     Ys = Array{Float64}(undef, num_pts, length(z))
@@ -27,13 +62,13 @@ function cross_validate(train::trainingData{A, B}, rangeθ::B, rangeλ::B, trans
         train_cur = trainingData(s[ind, :], X[ind, :], z[ind]) 
         test_cur = testingData(s[i:i, :], X[i:i, :])
         pdf, cdf = getBtgDensity(train_cur, test_cur, rangeθ, rangeλ, transform, quadtype, priortype)
-       
         for j = 1:num_pts
             Ys[j, i] = pdf(x[j])
         end
     end
         return Xs, Ys
 end
+
 
 """
 Single point cross-validation. Currently does not use confidence intervals or median finding. 

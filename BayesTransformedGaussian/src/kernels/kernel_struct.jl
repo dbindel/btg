@@ -2,12 +2,22 @@ using Distances
 import Distances: pairwise!
 
 @doc raw"""
+    AbstractCorrelation
+
+An abstract type for all correlation functions.
 """
-abstract type Correlation end
+abstract type AbstractCorrelation end
 
 @doc raw"""
+    InducedQuadratic{K<:AbstractCorrelation}
+
+A wrapper around radial kernels which rescales the distances between points as the quadratic form
+
+```math
+(x - y)M^{-1}(x - y)
+```
 """
-struct InducedQuadratic{K<:Correlation} <: Correlation
+struct InducedQuadratic{K<:AbstractCorrelation} <: AbstractCorrelation
     k::K
 end
 
@@ -31,8 +41,9 @@ end
 
 
 @doc raw"""
-    """
-struct ExponentiatedQuadratic <: Correlation end
+    ExponentiatedQuadratic
+"""
+struct ExponentiatedQuadratic <: AbstractCorrelation end
 @inline (::ExponentiatedQuadratic)(τ) = exp(-τ / 2)
 (k::ExponentiatedQuadratic)(x, y) = k(sqeuclidean(x, y))
 function pairwise!(out, k::ExponentiatedQuadratic, x, y)
@@ -41,6 +52,9 @@ function pairwise!(out, k::ExponentiatedQuadratic, x, y)
     return nothing
 end
 
+@doc raw"""
+    RBF
+"""
 const RBF = InducedQuadratic{ExponentiatedQuadratic}
 const Gaussian = RBF
 RBF() = InducedQuadratic(ExponentiatedQuadratic())
@@ -58,11 +72,11 @@ function partial_θθ!(out, k::RBF, x, y, ℓ)
     return nothing
 end
 
-struct Spherical <: Correlation end
+struct Spherical <: AbstractCorrelation end
 # TODO
 
-struct Matern <: Correlation end
+struct Matern <: AbstractCorrelation end
 # TODO
 
-struct RationalQuadratic <: Correlation end
+struct RationalQuadratic <: AbstractCorrelation end
 # TODO

@@ -74,3 +74,27 @@ getindex(A::IncrementalColumns, args...) = getindex(get_mat(A), args...)
 
 setindex!(A::IncrementalColumns, args...) = setindex!(get_mat(A), args...)
     
+mutable struct IncrementalVector{T} <: AbstractVector{T}
+    capacity::Int
+    n::Int
+    v::Vector{T}
+end
+function incremental_vector(T, capacity)
+    v = Array{T}(undef, capacity)
+    return IncrementalVector(capacity, 0, v)
+end
+
+function add_element!(v::IncrementalVector, c; check=true)
+    @assert v.n + 1 <= v.capacity
+    v.v[A.n + 1] = c
+    v.n += 1
+    return nothing
+end
+
+get_vec(v::IncrementalVector) = view(v.v, 1:v.n)
+
+size(v::IncrementalVector, args...) = size(get_vec(v), args...)
+
+getindex(v::IncrementalVector, args...) = getindex(get_vec(v), args...)
+
+setindex!(v::IncrementalVector, args...) = setindex!(get_vec(v), args...)

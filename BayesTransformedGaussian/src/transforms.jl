@@ -78,7 +78,7 @@ Mixed derivative of Box-Cox power transformation w.r.t lambda and x
 """
 
 function boxCoxMixed_lambda_z(x, lambda=1)
-    lambda==0 ? 0 : float(x).^(lambda-1) .* Base.log.(x) 
+    lambda==0 ? 0 : float(x).^(lambda-1) .* Base.log.(x) #remove first term completely?
 end
 
 """

@@ -13,7 +13,6 @@ inv(::BoxCox, λ, z) = λ == 0 ? exp(z) : exp(log(λ * z + 1) / λ)
 
 partial_x(::BoxCox, λ, x) = x ^ (λ - 1)
 partial_xx(::BoxCox, λ, x) = (λ - 1) * x ^ (λ - 2)
-
 partial_xλ(::BoxCox, λ, x) = x ^ (λ - 1) * log(x)
 
 partial_λ(::BoxCox, λ, y) = λ == 0 ? 0 : (λ * x ^ λ - x ^ λ + 1) / λ ^ 2

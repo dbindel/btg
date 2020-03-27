@@ -1,7 +1,11 @@
 using LinearAlgebra
 
-import Base: size, inv
+import Base: size, inv, getindex, setindex
 import LinearAlgebra: ldiv!, det, logdet, isposdef
+
+#####
+##### Incremental Cholesky Decomposition
+#####
 
 @doc raw"""
 """
@@ -11,7 +15,7 @@ mutable struct IncrementalCholesky{T} <: Factorization{T}
     info::Int
     R::Matrix{T}
 end
-function incremental_cholesky(capacity, c; check=true)
+function incremental_cholesky(capacity, c::Number; check=true)
     info = 0
     if c <= 0
         check && throw(LinearAlgebra.PosDefException(1))
@@ -21,6 +25,13 @@ function incremental_cholesky(capacity, c; check=true)
     R[1, 1] = sqrt(c)
     return IncrementalCholesky(capacity, 1, info, R)
 end
+function incremental_cholesky(capacity, A::AbstractMatrix; check=true)
+    n = size(A, 1)
+    R = Array{eltype(A)}(undef, capacity, capacity)
+    R[1:n, 1:n] .= A
+    chol = cholesky!(Symmetric(@view R[1:n, 1:n]))
+    return IncrementalCholesky(capacity, n, chol.info, R)
+end 
 
 function add_col!(R::IncrementalCholesky, v; check=true)
     @assert R.n + 1 <= R.capacity
@@ -32,6 +43,12 @@ function add_col!(R::IncrementalCholesky, v; check=true)
         R.info = -1
     end
     R.n += 1
+    return nothing
+end
+
+function remove_col!(R::IncrementalCholesky)
+    @assert R.n - 1 >= 1
+    R.n -= 1
     return nothing
 end
 
@@ -49,52 +66,65 @@ logdet(R::IncrementalCholesky) = logdet(get_chol(R))
 
 isposdef(R::IncrementalCholesky) = R.info == 0
 
-mutable struct IncrementalColumns{T} <: AbstractMatrix{T}
+#####
+##### Growable Data Array
+##### 
+
+mutable struct DataArray{T,N} <: AbstractArray{T,N}
     capacity::Int
     n::Int
-    A::Matrix{T}
+    A::Array{T,N}
 end
-function incremental_columns(T, capacity, d)
-    A = Array{T}(undef, d, capacity)
-    return IncrementalColumns(capacity, 0, A)
+function data_array(T, capacity, dims::Vararg{Int, N}) where N
+    n = length(dims)
+    A = Array{T, N+1}(undef, dims..., capacity)
+    return DataArray(capacity, 0, A)
+end
+function data_array(capacity, A::Array{T, N}) where T where N
+    s = size(A)
+    new_A = Array{T, N}(undef, ntuple(i -> s[i], N-1)..., capacity)
+    new_A[ntuple(i -> 1:s[i], N)...] .= A
+    return DataArray(capacity, s[N], new_A)
 end
 
-function add_col!(A::IncrementalColumns, v; check=true)
+function array_view(A::DataArray{T, N}) where T where N
+    return view(A.A, ntuple(_ -> Colon(), N-1)..., 1:A.n)
+end
+
+
+size(A::DataArray, args...) = size(array_view(A), args...)
+
+getindex(A::DataArray, args...) = getindex(array_view(A), args...)
+
+setindex!(A::DataArray, args...) = setindex!(array_view(A), args...)
+
+function extend!(A::DataArray{T, N}, m) where T where N
+    @assert A.n + m <= A>capacity
+    vw = view(A.A, :, A.n:A.n+m)
+    A.n += m
+    return vw
+end
+
+function add_point!(A::DataArray{T, N}, v) where T where N
     @assert A.n + 1 <= A.capacity
-    A.A[:, A.n + 1] = v
+    A.A[ntuple(_ -> Colon(), N-1)..., A.n + 1] .= v
     A.n += 1
     return nothing
 end
 
-get_mat(A::IncrementalColumns) = view(A.A, :, 1:A.n)
-
-size(A::IncrementalColumns, args...) = size(get_mat(A), args...)
-
-getindex(A::IncrementalColumns, args...) = getindex(get_mat(A), args...)
-
-setindex!(A::IncrementalColumns, args...) = setindex!(get_mat(A), args...)
-    
-mutable struct IncrementalVector{T} <: AbstractVector{T}
-    capacity::Int
-    n::Int
-    v::Vector{T}
-end
-function incremental_vector(T, capacity)
-    v = Array{T}(undef, capacity)
-    return IncrementalVector(capacity, 0, v)
-end
-
-function add_element!(v::IncrementalVector, c; check=true)
-    @assert v.n + 1 <= v.capacity
-    v.v[A.n + 1] = c
-    v.n += 1
+function add_points!(A::DataArray{T, N}, B) where T where N
+    m = size(B)[end]
+    @assert A.n + m <= A.capacity
+    A.A[ntuple(_ -> Colon(), N-1)..., A.n:A.n+m] .= B
+    A.n += m
     return nothing
 end
 
-get_vec(v::IncrementalVector) = view(v.v, 1:v.n)
+function remove_point!(A::DataArray)
+    @assert A.n - 1 >= 1
+    A.n -= 1
+    return nothing
+end
 
-size(v::IncrementalVector, args...) = size(get_vec(v), args...)
-
-getindex(v::IncrementalVector, args...) = getindex(get_vec(v), args...)
-
-setindex!(v::IncrementalVector, args...) = setindex!(get_vec(v), args...)
+const DataMatrix{T} = DataArray{T, 2}
+const DataVector{T} = DataArray{T, 1}

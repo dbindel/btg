@@ -1,93 +1,125 @@
-using Random
-using LinearAlgebra
 using Distances
+import Distances: pairwise!, colwise!
 
+@doc raw"""
+    AbstractCorrelation
+
+An abstract type for all correlation functions.
 """
-Gaussian/RBF/Squared Exponential correlation function
-"""
-function rbf(x, y, θ=1.0)
-    1/sqrt(2*pi)*exp.(-θ*0.5*(norm(x .- y))^2)
+abstract type AbstractCorrelation end
+
+pairwise!(out, k::AbstractCorrelation, x, θ...) = pairwise!(out, k, x, x, θ...)
+
+struct FixedParam{K<:AbstractCorrelation,T} <: AbstractCorrelation
+    k::K
+    θ::T
 end
 
+(k::FixedParam)(x, y) = k.k(x, y, k.θ...)
+(k::FixedParam)(τ) = k.k(τ, k.θ...)
+
+pairwise!(out, k::FixedParam, x) = pairwise!(out, k.k, x, k.θ...)
+pairwise!(out, k::FixedParam, x, y) = pairwise!(out, k.k, x, y, k.θ...)
+colwise!(out, k::FixedParam, x, y) = colwise!(out, k.k, x, y, k.θ...)
+
+
+@doc raw"""
+    InducedQuadratic{K<:AbstractCorrelation}
+
+A wrapper around radial kernels which rescales the distances between points as the quadratic form
+
+```math
+(x - y)M^{-1}(x - y)
+```
 """
-Gaussian/RBF/Squared Exponential correlation function
-"""
-function rbf_single(dist, θ=1.0)
-    1/sqrt(2*pi)*exp.(-θ*0.5*(dist)^2)
+struct InducedQuadratic{K<:AbstractCorrelation} <: AbstractCorrelation
+    k::K
 end
 
-"""
-Derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime(x, y, θ=1.0)
-    - 1/sqrt(2*pi) * 0.5 * norm(x.-y)^2 * exp.(-θ*0.5*(norm(x .- y))^2)
+(k::InducedQuadratic)(x, y, ℓ::Real, θ...) = k.k(sqeuclidean(x, y) / ℓ, θ...)
+function (k::InducedQuadratic)(x, y, ℓ::AbstractVector, θ...)
+    dist = WeightedSqEuclidean(inv.(ℓ))
+    return k.k(dist(x, y), θ...)
 end
 
-"""
-Derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime_single(dist, θ=1.0)
-    - 1/sqrt(2*pi) * 0.5 * dist^2 * exp.(-θ*0.5*(dist)^2)
+function pairwise!(out, k::InducedQuadratic, x, y, ℓ::Real, θ...)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= (τ -> k.k(τ / ℓ, θ...)).(out)
+    return nothing
+end
+function pairwise!(out, k::InducedQuadratic, x, y, ℓ::AbstractVector, θ...)
+    dist = WeightedSqEuclidean(inv.(ℓ))
+    pairwise!(out, dist, x, y, dims=2)
+    out .= (τ -> k.k(τ, θ...)).(out)
+    return nothing
+end
+function pairwise!(out, k::InducedQuadratic, x, ℓ::Real, θ...)
+    pairwise!(out, SqEuclidean(), x, dims=2)
+    out .= (τ -> k.k(τ / ℓ, θ...)).(out)
+    return nothing
+end
+function pairwise!(out, k::InducedQuadratic, x, ℓ::AbstractVector, θ...)
+    dist = WeightedSqEuclidean(inv.(ℓ))
+    pairwise!(out, dist, x, dims=2)
+    out .= (τ -> k.k(τ, θ...)).(out)
+    return nothing
 end
 
-"""
-Second derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime2(x, y, θ=1.0)
-    1/sqrt(2*pi) * 0.25 * norm(x.-y)^4 * exp.(-θ*0.5*(norm(x .- y))^2)
+function colwise!(out, k::InducedQuadratic, x, y, ℓ::Real, θ...)
+    colwise!(out, SqEuclidean(), x, y)
+    out .= (τ -> k.k(τ / ℓ, θ...)).(out)
+    return nothing
+end
+function colwise!(out, k::InducedQuadratic, x, y, ℓ::AbstractVector, θ...)
+    dist = WeightedSqEuclidean(inv.(ℓ))
+    colwise!(out, dist, x, y)
+    out .= (τ -> k.k(τ, θ...)).(out)
+    return nothing
 end
 
+
+@doc raw"""
+    ExponentiatedQuadratic
 """
-Second derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime2_single(dist, θ=1.0)
-    1/sqrt(2*pi) * 0.25 * dist^4 * exp.(-θ*0.5*(dist)^2)
+struct ExponentiatedQuadratic <: AbstractCorrelation
+    jitter::Float64
+end
+ExponentiatedQuadratic() = ExponentiatedQuadratic(eps() * 10^8)
+@inline function (k::ExponentiatedQuadratic)(τ)
+    return (exp(-τ / 2) + (τ == 0 ? k.jitter : 0)) / (1 + k.jitter)
+end
+(k::ExponentiatedQuadratic)(x, y) = k(sqeuclidean(x, y))
+function pairwise!(out, k::ExponentiatedQuadratic, x, y)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= k.(out)
+    return nothing
 end
 
+@doc raw"""
+    RBF
 """
-Builds cross-covariance matrix using corr kernel function.
-Ex. RBF, exponential, Matern
- 
-Inputs are assumed to be 1D arrays or 2D column vectors.
-Returns matrix of size len(s1) times len(s2)
-"""
-function K(s1, s2, θ, corr=rbf)  
-    K = zeros(size(s1, 1), size(s2, 1))
-    if s1 != s2
-        for i = 1:size(s1, 1)
-            for j = 1:size(s2, 1)
-                cur = corr(s1[i, :], s2[j, :], θ)
-                K[i, j] = isa(cur, Array) ? cur[1] : cur 
-            end
-        end   
-    else #s1==s2 can compute half the matrix and fill in other half
-        for i = 1:size(s1, 1)
-            for j = 1:i
-                cur = corr(s1[i, :], s2[j, :], θ)
-                K[i, j] = K[j, i] = isa(cur, Array) ? cur[1] : cur 
-            end
-        end  
-    end
-    return size(s1, 1)==size(s2, 1) ? K+UniformScaling(1e-8) : K
+const RBF = InducedQuadratic{ExponentiatedQuadratic}
+const Gaussian = RBF
+RBF() = InducedQuadratic(ExponentiatedQuadratic())
+
+partial_θ(k::RBF, τ, ℓ) = τ * k(τ, ℓ) / 2 / ℓ ^ 2
+function partial_θ!(out, k::RBF, x, y, ℓ)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= (τ -> partial_θ(k, τ, ℓ)).(out)
+    return nothing
+end
+partial_θθ(k::RBF, τ, ℓ) = τ * k(τ, ℓ) * (τ - 4 * ℓ) / 4 / ℓ ^ 4
+function partial_θθ!(out, k::RBF, x, y, ℓ)
+    pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= (τ -> partial_θθ(k, τ, ℓ)).(out)
+    return nothing
 end
 
-#rows of s1 and s2 contain the coordinates of each location
-function fastK(s1, s2, θ, corr=rbf_single)
-    corrtheta = dist -> corr(dist, θ)
-    res = corrtheta.(pairwise(Euclidean(), s1, s2, dims=1))
-    return size(s1, 1)==size(s2, 1) ? res + UniformScaling(1e-8) : res
-end
+struct Spherical <: AbstractCorrelation end
+# TODO
 
-"""
-Samples from a Normal distribution with mean 0 and covariance matrix K
-Scales result by 40. Works in 1D.
-"""
-function sample(K)
-    c = cholesky(K)
-    v = 40*randn(size(K, 1), 1)
-    return c.L*(v)
-end
+struct Matern <: AbstractCorrelation end
+# TODO
+
+struct RationalQuadratic <: AbstractCorrelation end
+# TODO

@@ -625,7 +625,7 @@ function partial_s(θ::Float64, λ::Float64, train::trainingData{A, B}, test::te
         end
     end
 
-    
+    return ()
 
 
 

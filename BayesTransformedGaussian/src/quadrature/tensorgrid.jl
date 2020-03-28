@@ -17,9 +17,6 @@ getTensorGrid(train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, box
 
 """
 function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData{T1}, priorθ, priorλ, nodesWeightsθ::nodesWeights, nodesWeightsλ::nodesWeights, transform, quadtype::String) where T1 <:Array{Float64} where T2<:Array{Float64} 
-    # PART 1: 
-    # a. get the quadrature grid for theta and lambda 
-    # b. precompute theta buffer 
     nodesθ = nodesWeightsθ.nodes
     nodesλ = nodesWeightsλ.nodes
     weightsθ = nodesWeightsθ.weights
@@ -35,19 +32,6 @@ function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData
     for i=1:l1
         theta_param_list[i] = func_fixed(nodesθ[i])
     end
-
-    # PART 2:
-    # compute weightsTensorGrid
-    # Suggestion: wrap weightsTensorGrid computation into a function; 
-    #             combine the EXPR computation to reduce redundant computation
-    # INPUT: data, theta/lambda grid, theta_buffer, quadtype...
-    # OUTPUT: weightsTensorGrid
-                # Gaussian, n1*n2, W_ij = weightsθ[i] *  weightsλ[j] * p(z|theta_i, lambda_j) 
-                # if Turan, n1*n2*n3, W_ijk = weightsθ[i, k] * weightsλ[j] * funcs[k]
-                # if MC, n1*n2, W_ij = p(z|theta_i, lambda_j) 
-
-    # For p(z|theta_i, lambda_j), can also modify posterior_theta, 
-    # from loop+elementwise computation to tensor computation
 
     #initialize tensor grid of weights
     n1 = length(nodesθ); n2 = length(nodesλ); n3 = size(weightsθ, 2); 
@@ -113,8 +97,6 @@ function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData
         weightsTensorGrid =  weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
     end
 
-    # PART 3: put weightsTensorGrid into pdf and cdf computation, allows different weighted sum
-    # tensor grid for PDF p(z0|theta, lambda, z)
     tgridpdf = Array{Any, 3}(undef, l1, l2, l3) 
     #tensor grid for CDF P(z0|theta, lambda, z)
     tgridcdf = Array{Any, 3}(undef, l1, l2, l3) 

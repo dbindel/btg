@@ -23,7 +23,7 @@ target = target/normalizing_constant #normalization
 
 #pick training points
 #ind = 1:30
-ind = 1:500
+ind = 1:100
 s = data[ind, :] 
 #choose a subset of variables to be regressors for the mean
 X = data[ind, 1:1] 
@@ -86,7 +86,7 @@ if false
     gui()
 end
 
-if false # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
+if true # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
     reset_timer!()
     choleskytime = 0
 
@@ -110,8 +110,8 @@ if false # use this blockc to get pdf and cdf, sanity check them, and optionally
 end
 
 
-if false #check derivatives of df, f, or g
-    (h, A) = checkDerivative(f, df, .3, 7, 15, 10)
+if true #check derivatives of df, f, or g
+    (h, A) = checkDerivative(f, df, .3, nothing, 7, 15, 10)
     plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
     println("derivative of p(z0|z)")
@@ -124,11 +124,11 @@ if false #check derivatives of df, f, or g
 end
 
 
-if false #cross validation on training set
+if true #cross validation on training set
     Xs, Ys = cross_validate(train, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")  
     z = train.z
    # _, Xs, Ys = cross_validate(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 500, 2, 24)
-    display(plot(Xs, Ys, 
+    display(Plots.plot(Xs, Ys, 
     layout = length(z), 
     legend=nothing, 
     xtickfont = Plots.font(4, "Courier"),

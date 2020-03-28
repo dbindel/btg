@@ -573,6 +573,66 @@ end
 
 
 """
+Compute deriative of p(z0|theta, lambda, z) with respect to s
+"""
+function partial_s(θ::Float64, λ::Float64, train::trainingData{A, B}, test::testingData{A}, transforms, theta_params::Union{θ_params{A}, 
+    Cholesky{Float64, A}, θ_param_derivs{A, Cholesky{Float64, A}}, Nothing} = nothing, type::String = "Gaussian") where A<:Array{Float64, 2} where B<:Array{Float64, 1}
+    if type == "Gaussian" || type == "Turan"
+        Eθ = theta_params.Eθ
+        Σθ = theta_params.Σθ
+        Bθ = theta_params.Bθ
+        Dθ = theta_params.Dθ
+        Hθ = theta_params.Hθ
+        Cθ = theta_params.Cθ
+        Σθ_inv_X = theta_params.Σθ_inv_X
+        choleskyΣθ = theta_params.choleskyΣθ
+        choleskyXΣX = theta_params.choleskyXΣX
+    else
+        throw(ArgumentError("Quadrature type not recognized."))
+    end
+    s = train.s; s0 = test.s0; X = train.X; X0 = test.X0; z = train.z; n = size(X, 1); p = size(X, 2); k = size(X0, 1)  #unpack 
+    g = transforms.f #unpack
+    dg = transforms.df
+    dg2 = transforms.d2f
+    gλz = g(z, λ)
+    Σθinvgz = choleskyΣθ\gλz #precompute
+
+    #intermediate quantities
+    βhat = choleskyXΣX\(X'*Σθinvgz) 
+    qtilde = (expr = gλz-X*βhat; expr'*(choleskyΣθ\expr)) 
+    m = Bθ * Σθinvgz + Hθ*βhat
+    qC = qtilde*Cθ
+
+    t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p))
+    #vanillat = LocationScale(0, 1, TDist(n-p))
+    #vanillaT_pdf = z0 -> Distributions.pdf.(vanillat, z0)
+    #T_pdf = z0 -> Distributions.pdf.(vanillat, g(z0, λ)) 
+
+    d = maximum(size(s0, 1), size(s0, 2))
+    sdiff = repeat(s0, n, 1) .- s
+    gradB = zeros(n, d)
+    gradB = -θ * Bθ .* (sdiff)
+
+    gradE = [1]
+
+    gradD = -2 * θ * gradB' * (choleskyΣθ\Bθ) #in the future, store sigma inv B
+
+    HessianD1 = -2 * θ^2 *  gradB' * (choleskyΣθ\gradB) 
+    HessianD2 = zeros(d, d)
+    for i = 1:d
+        for j = 1:i
+            HessianD2[i, j] = -θ^2 * choleskyΣθ\ (gradB[:, i] .* sdiff[:, i] .+ Bθ) 
+        end
+    end
+
+    return ()
+
+
+
+end
+
+
+"""
 Compute p(theta, lambda| z), possibly in addition to derivatives with respect to theta. Differs from paper in that Jacobian term computation is delayed 
 until the matrix of weights is formed. 
 """
@@ -762,9 +822,13 @@ that error of linear approximation decays like O(h^2)
 
 last: smallest power of exp^(-x) we wish to compute in scheme
 """
-function checkDerivative(f, df, x0, first = 3, last = 12, num = 10)
+function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num = 10)
     f0 = f(x0)
     df0 = df(x0) 
+    if hessian!=nothing 
+        d2f0 = hessian(x0)
+    end
+
     if size(x0, 2)>1
         dx = rand(size(x0, 1), size(x0, 2))
     else
@@ -787,11 +851,18 @@ function checkDerivative(f, df, x0, first = 3, last = 12, num = 10)
             println("df0: ", df0)
             println("increment", h[i]*dx)
         end
-        try 
-            A[i] = norm((fi .- f0) .- df0' * (h[i] * dx))
-        catch DimensionMismatch #we catch the case when f: R^1 -> R^n, in which case  df0'*dx will yield an error
-            #println("caught in check deriv")
-            A[i] = norm((fi .- f0) .- df0 .* (h[i] * dx))
+       
+            if hessian!=nothing
+                inc = h[i] * dx
+                A[i] = norm((fi .- f0) .- df0' * inc .- 0.5* inc' * d2f0 * inc)
+            else
+                try
+                A[i] = norm((fi .- f0) .- df0' * (h[i] * dx))
+            catch DimensionMismatch #we catch the case when f: R^1 -> R^n, in which case  df0'*dx will yield an error
+                #println("caught in check deriv")
+                A[i] = norm((fi .- f0) .- df0 .* (h[i] * dx))
+            end
+           
         end
     end
     #println(A)

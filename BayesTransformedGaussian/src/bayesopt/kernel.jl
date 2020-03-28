@@ -41,8 +41,8 @@ function (k::InducedQuadratic)(x, y, ℓ::AbstractVector, θ...)
     dist = WeightedSqEuclidean(inv.(ℓ))
     return k.k(dist(x, y), θ...)
 end
-
 function pairwise!(out, k::InducedQuadratic, x, y, ℓ::Real, θ...)
+
     pairwise!(out, SqEuclidean(), x, y, dims=2)
     out .= (τ -> k.k(τ / ℓ, θ...)).(out)
     return nothing

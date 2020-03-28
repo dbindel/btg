@@ -14,6 +14,7 @@ struct FixedParam{K<:AbstractCorrelation,T} <: AbstractCorrelation
     k::K
     θ::T
 end
+FixedParam(k, θ...) = FixedParam(k, θ)
 
 (k::FixedParam)(x, y) = k.k(x, y, k.θ...)
 (k::FixedParam)(τ) = k.k(τ, k.θ...)
@@ -91,6 +92,11 @@ end
 (k::ExponentiatedQuadratic)(x, y) = k(sqeuclidean(x, y))
 function pairwise!(out, k::ExponentiatedQuadratic, x, y)
     pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= k.(out)
+    return nothing
+end
+function colwise!(out, k::ExponentiatedQuadratic, x, y)
+    colwise!(out, SqEuclidean(), x, y)
     out .= k.(out)
     return nothing
 end

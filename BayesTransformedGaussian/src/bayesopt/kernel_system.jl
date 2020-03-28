@@ -1,6 +1,3 @@
-include("./incremental.jl")
-include("./kernel.jl")
-
 @doc raw"""
 """
 mutable struct KernelData{K<:AbstractCorrelation}
@@ -44,13 +41,13 @@ function kernel_data(capacity, k, x1, fx1, x2, fx2)
     # Compute reduced system
     K2_tilde = incremental_cholesky(capacity, K22 .- K21W .- K21W' .+ WK1W)
 
-    return KernelData(capacity, n, k, x1, fx1_fact, K1, new_x2, W, new_K12, K2_tilde)
+    return KernelData(capacity, n, k, x1, fx1_fact, K1, new_x2, W, K12, K2_tilde)
 end
 
 solve_lower(kd, y1, y2) = kd.K2_tilde \ (y2 .- (kd.W' * y1))
 solve_upper(kd, c2) = -(kd.W * c2)
 solve_tail(kd, y1, c1, c2) = kd.fx1' \ (y1 .- (kd.K1 * c1) .- (kd.K12 * c2))
-function solve_system(kd, y1, y2) =
+function solve_system(kd, y1, y2)
     c2 = solve_lower(kd, y1, y2)
     c1 = solve_upper(kd, c2)
     d = solve_tail(kd, y1, c1, c2)
@@ -58,15 +55,14 @@ function solve_system(kd, y1, y2) =
 end
 
 function point_correlation!(k1, k2, kd, x)
-    colwise!(k1, kd.x1, x)
-    colwise!(k2, kd.x2, x)
+    colwise!(k1, kd.k, kd.x1, x)
+    colwise!(k2, kd.k, kd.x2, x)
     return nothing
 end
 
 function k2_update!(k2, kd)
-    tmp .+= kd.W * (kd.K1 * kd.W[:, end])
-    tmp .-= kd.K12' * kd.W[:, end]
-    tmp[end] .-= dot(kd.K12[:, end], kd.W[:, end])
+    k2 .+= kd.W' * (kd.K1 * kd.W[:, end])
+    k2 .-= kd.K12' * kd.W[:, end] .+ kd.W' * kd.K12[:, end]
     return nothing
 end
 
@@ -79,11 +75,8 @@ function add_point!(kd, x, fx)
     vw = extend!(kd.K12, 1)
 
     tmp = Array{Float64}(undef, n + 1)
-    point_correlation!(vw, tmp, k2, kd, x)
-
-    tmp .+= kd.W * (kd.K1 * kd.W[:, end])
-    tmp .-= kd.K12' * kd.W[:, end]
-    tmp[end] .-= dot(kd.K12[:, end], kd.W[:, end])
+    point_correlation!(vw, tmp, kd, x)
+    k2_update!(tmp, kd)
 
     add_col!(kd.K2_tilde, tmp)
 
@@ -102,7 +95,7 @@ function remove_point!(kd)
     return nothing
 end
 
-function predict_point(kd::KernelSystem, y1, y2, x, fx)
+function predict_point(kd::KernelData, y1, y2, x, fx)
     c1, c2, β = solve_system(kd, y1, y2)
     k1 = Array{Float64}(undef, size(kd.K1, 1))
     k2 = Array{Float64}(undef, kd.n)
@@ -111,7 +104,7 @@ function predict_point(kd::KernelSystem, y1, y2, x, fx)
     return m
 end
 
-function qmC!(kd::KernelSystem, y1, y2, x, fx)
+function qmC!(kd::KernelData, y1, y2, x, fx)
     c1, c2, β = solve_system(kd, y1, y2)
     k1 = Array{Float64}(undef, size(kd.K1, 1))
     k2 = Array{Float64}(undef, kd.n)
@@ -120,7 +113,7 @@ function qmC!(kd::KernelSystem, y1, y2, x, fx)
     
     q = dot(y1, c1) + dot(y2, c2)
     
-    add_point!(kd)
+    add_point!(kd, x, fx)
     C = kd.K2_tilde.R[kd.n, kd.n] ^ 2
     remove_point!(kd)
     

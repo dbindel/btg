@@ -23,7 +23,7 @@ target = target/normalizing_constant #normalization
 
 #pick training points
 #ind = 1:30
-ind = 1:100
+ind = 1:5
 s = data[ind, :] 
 #choose a subset of variables to be regressors for the mean
 X = data[ind, 1:1] 
@@ -45,15 +45,15 @@ if false #look at eigenspectrum of kernel matrix
     display(plot(sort(eigvals(gm))))
 end
 
-    #load examples
-    i = 120
-    s0 = data[i:i,:] #covariates and coordinates
-    X0  = data[i:i, 1:3]
-    #example = setting(s, s0, X, X0, z)#abalone data
-    train = trainingData(s, X, z)
-    test = testingData(s0, X0)
-    #example2 = getExample(1, 10, 1, 1, 2)
-    println("Data loaded.")
+#initialize train and test data structures
+i = 120
+s0 = data[i:i,:] #covariates and coordinates
+X0  = data[i:i, 1:1]
+#example = setting(s, s0, X, X0, z)#abalone data
+train = trainingData(s, X, z)
+test = testingData(s0, X0)
+#example2 = getExample(1, 10, 1, 1, 2)
+println("Data loaded.")
 
 #experiment to see how large n has to be for Cholesky to have the most expensive computational cost
 if false
@@ -86,7 +86,7 @@ if false
     gui()
 end
 
-if true # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
+if false # use this blockc to get pdf and cdf, sanity check them, and optionally plot them
     reset_timer!()
     choleskytime = 0
 
@@ -109,8 +109,36 @@ if true # use this blockc to get pdf and cdf, sanity check them, and optionally 
     end
 end
 
+if true #check derivative of reference function
+    f = x->x[1]^2+x[2]
+    df = x -> [2*x[1]; 1]
+    #f = x -> x[1]^2*x[2]^2 + x[2]^4
+    #df = x -> [2*x[1]*x[2]^2 ; 2*x[1]^2*x[2] + 4*x[2]^3]
+    (h, A) = checkDerivative(f, df, [1.2, 2.1])
+    println(polyfit(h, A, 1))
+end
 
-if true #check derivatives of df, f, or g
+if true #check derivatives of CDF(z, s) w.r.t s
+    function phi(s0_new)
+        #println("here1")
+        test.s0 = s0_new
+        #println("here2")
+        theta_params = funcθ(1.2, train, test, "Gaussian") 
+        #println("here3")
+        (r1, r2, r3, r4, r5) = partial_s(1.2, 10.5, train, test, boxCoxObj, theta_params, "Gaussian")
+    end
+    s0_initial = similar(test.s0)
+    for i = 1: max(size(s0, 1), size(s0, 2))
+        s0_initial[i] = test.s0[i] + 2*(rand()-.5)
+    end
+    (h, A) = checkDerivative(s0 -> phi(s0)[3], s0 -> phi(s0)[4], s0_initial, nothing,7, 20)
+    println(polyfit(h, A, 1))
+    plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
+    Plots.display(plt1)
+    gui()
+end
+
+if false #check derivatives of df, f, or g
     (h, A) = checkDerivative(f, df, .3, nothing, 7, 15, 10)
     plt1 = Plots.plot(h, A, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
     #plot(polyfit(h, A, 1), reuse = true)
@@ -124,7 +152,7 @@ if true #check derivatives of df, f, or g
 end
 
 
-if true #cross validation on training set
+if false #cross validation on training set
     Xs, Ys = cross_validate(train, rangeθ, rangeλ, boxCoxObj, "Gaussian", "Uniform")  
     z = train.z
    # _, Xs, Ys = cross_validate(X, s, boxCox, boxCoxPrime, pθ, pλ, z, range_theta, range_lambda, 500, 2, 24)
@@ -140,7 +168,7 @@ if true #cross validation on training set
     xtickfont = Plots.font(4, "Courier"), 
     ytickfont = Plots.font(4, "Courier"), 
     lw=0.5))
-    savefig("abalone_1.pdf")
+    Plots.savefig("abalone_1.pdf")
 end
 
 
@@ -163,7 +191,7 @@ end
 
 
 
-if true #compute loss for Abalone dataset
+if false #compute loss for Abalone dataset
     graph = false #generate plots for debugging
 
     println("Computing loss...")

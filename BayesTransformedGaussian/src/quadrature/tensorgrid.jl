@@ -32,6 +32,7 @@ function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData
     for i=1:l1
         theta_param_list[i] = func_fixed(nodesθ[i])
     end
+
     #initialize tensor grid of weights
     n1 = length(nodesθ); n2 = length(nodesλ); n3 = size(weightsθ, 2); 
     weightsTensorGrid = zeros(n1, n2, n3) #tensor grid of weights
@@ -96,7 +97,6 @@ function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData
         weightsTensorGrid =  weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
     end
 
-    #tensor grid for PDF p(z0|theta, lambda, z)
     tgridpdf = Array{Any, 3}(undef, l1, l2, l3) 
     #tensor grid for CDF P(z0|theta, lambda, z)
     tgridcdf = Array{Any, 3}(undef, l1, l2, l3) 

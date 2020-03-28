@@ -14,6 +14,7 @@ struct FixedParam{K<:AbstractCorrelation,T} <: AbstractCorrelation
     k::K
     θ::T
 end
+FixedParam(k, θ...) = FixedParam(k, θ)
 
 (k::FixedParam)(x, y) = k.k(x, y, k.θ...)
 (k::FixedParam)(τ) = k.k(τ, k.θ...)
@@ -41,8 +42,8 @@ function (k::InducedQuadratic)(x, y, ℓ::AbstractVector, θ...)
     dist = WeightedSqEuclidean(inv.(ℓ))
     return k.k(dist(x, y), θ...)
 end
-
 function pairwise!(out, k::InducedQuadratic, x, y, ℓ::Real, θ...)
+
     pairwise!(out, SqEuclidean(), x, y, dims=2)
     out .= (τ -> k.k(τ / ℓ, θ...)).(out)
     return nothing
@@ -91,6 +92,11 @@ end
 (k::ExponentiatedQuadratic)(x, y) = k(sqeuclidean(x, y))
 function pairwise!(out, k::ExponentiatedQuadratic, x, y)
     pairwise!(out, SqEuclidean(), x, y, dims=2)
+    out .= k.(out)
+    return nothing
+end
+function colwise!(out, k::ExponentiatedQuadratic, x, y)
+    colwise!(out, SqEuclidean(), x, y)
     out .= k.(out)
     return nothing
 end

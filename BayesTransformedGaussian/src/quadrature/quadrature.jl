@@ -19,10 +19,19 @@ end
 
 """
 Apply affine transformation to nodes to integration over range r (linear change of variables)
+Support both 1-dimensional and multi-dimensional cases
+INPUTS: 
+    nw: nodesweights structure including nodes and weights
+    r, 2*d array storing range of theta_i for i in 1:d, where d is the dimension of space
 """
-function affineTransformNodes(nw::nodesWeights{O}, r::Array{<:Real}) where O<:Union{Array{Float64, 2}, Array{Float64, 1}}
-    b = r[2]; a = r[1]
-    nw.nodes = (b-a)/2 .* nw.nodes .+ (b + a)/2
+function affineTransformNodes(nw::nodesWeights{O}, r::Array{Float64}) where O<:Union{Array{Float64, 2}, Array{Float64, 1}}
+    center = (r[2,:] .+ r[1,:])./2
+    length = (r[2,:] .- r[1,:])./2
+    N = zeros(size(nw.nodes, 1), size(r, 2))
+    for i in 1:size(r, 2)
+        N[:,i] = length[i] .* nw.nodes .+ center[i]
+    end
+    nw.nodes = N
 end
 
 

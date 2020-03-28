@@ -36,8 +36,8 @@ end
 function add_col!(R::IncrementalCholesky, v; check=true)
     @assert R.n + 1 <= R.capacity
     n = R.n
-    @views R.R[1:n, n+1] = R \ v[1:end-1]
-    @views R.R[n+1, n+1] = v[end] - dot(R.R[1:n, n+1], R.R[1:n, n+1])
+    @views R.R[1:n, n+1] = get_chol(R).L \ v[1:end-1]
+    @views R.R[n+1, n+1] = sqrt(v[end] - dot(R.R[1:n, n+1], R.R[1:n, n+1]))
     if R.R[n+1, n+1] <= 0
         check && throw(LinearAlgebra.PosDefException(n+1))
         R.info = -1
@@ -99,8 +99,8 @@ getindex(A::DataArray, args...) = getindex(array_view(A), args...)
 setindex!(A::DataArray, args...) = setindex!(array_view(A), args...)
 
 function extend!(A::DataArray{T, N}, m) where T where N
-    @assert A.n + m <= A>capacity
-    vw = view(A.A, :, A.n:A.n+m)
+    @assert A.n + m <= A.capacity
+    vw = view(A.A, :, A.n+1:A.n+m)
     A.n += m
     return vw
 end

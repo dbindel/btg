@@ -24,7 +24,7 @@ Arg \"quadtype\" refers to type of quadrature rule used to integrate out θ, opt
 
 Note: Gaussian quadrature is always used to integrate out λ
 """
-function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ::B, rangeλ::B, transforms, quadtype = "Gaussian", priortype = "Uniform") where A<:Array{Float64, 2} where B<:Array{Float64, 1}
+function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ::B, rangeλ::B, transforms, quadtype = "Gaussian", priortype = "Uniform") where A<:Array{Float64, 2} where B<:Array{Float64}
     if quadtype == "Turan"
         nodesWeightsθ = getTuranQuadratureData() #use 12 Gauss-Turan integration nodes and weights by default
     elseif quadtype == "Gaussian"
@@ -37,7 +37,11 @@ function getBtgDensity(train::trainingData{A, B}, test::testingData{A}, rangeθ:
     #always use Gauss quadrature to marginalize out λ
     nodesWeightsλ = getGaussQuadraturedata()
     affineTransformNodes(nodesWeightsλ, rangeλ)
-    priorθ = initialize_prior(rangeθ, priortype); priorλ = initialize_prior(rangeλ, priortype); 
+
+    #TODO: priorθ_i for each dimension, and then wrap up into priorθ
+    priorθ = initialize_prior(rangeθ, priortype); 
+
+    priorλ = initialize_prior(rangeλ, priortype); 
     (pdf, cdf) = getTensorGrid(partial_theta, train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
     (dpdf, _ ) = getTensorGrid(partial_z0, train, test, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, transforms, quadtype)
     return (pdf, cdf, dpdf)

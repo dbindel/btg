@@ -16,7 +16,7 @@ pdf, cdf, pdf_deriv = solve(btg)
 
 # increase size of training data
 # optimize LCB
-x_new = optimize(btg, pdf, cdf, pdf_deriv)
+x_new = BTG_BO_optimize(btg, pdf, cdf, pdf_deriv)
 
 # evaluate and add new point to btg 
 # objective function: f
@@ -24,7 +24,5 @@ add_point!(btg, x_new, f(x_new))
 
 # solve the current model
 pdf, cdf, pdf_deriv = solve(btg)
-
-
 
 

@@ -1,8 +1,12 @@
 
 """
-BTG object may include
-    x: current data
-    z: current training values
+BTG object may include (some may be unnecessary)
+    x: Nmax*d array
+    z: Nmax*1 array
+    X: Nmax*p array, covariates
+    Nmax: maximum number of points BTG could handle
+    dim: dimension of the space
+    nx: number of points in data
     n: number of points encorporated in kernel system 
     p: number of covariates 
     g: transform 
@@ -79,7 +83,7 @@ end
 keep the structure θ_params
 update btg.θ_buffers 
 """
-function θ_buffers_comp!(btg)
+function θ_buffers_comp!(btg::BTG)
     # funcθ
 end
 
@@ -97,7 +101,22 @@ function weight_comp(btg::BTG)
     return WeightTensorGrid
 end
 
-function prediction_comp(btg, WeightTensorGrid)
+function prediction_comp(btg::BTG, WeightTensorGrid::Array{Float64})
     # line 100-159 in tensorgrid.jl
     return pdf, cdf, pdf_deriv
+end
+
+function new_point!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
+    btg.nx = size(x, 1)
+    btg.x[1:btg.nx, :] = x
+    btg.z[1:btg.nx] = z
+    btg.X[1:btg.nx, :] = X
+end
+
+function add_point!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
+    n_new = size(x, 1) # number of new points
+    btg.x[btg.nx+1: btg.nx+n_new, :] = x
+    btg.z[btg.nx+1: btg.nx+n_new] = z
+    btg.X[btg.nx+1: btg.nx+n_new, :] = X
+    btg.nx += n_new
 end

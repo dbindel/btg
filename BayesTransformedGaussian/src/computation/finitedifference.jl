@@ -24,7 +24,7 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     for i=1:length(h)
         h[i] = exp(-h[i]) 
     end
-    println("h":, h)
+    println("h: ", h)
     A = zeros(length(h))
     fis = zeros(1, length(h))
     vals = zeros(100, length(h))
@@ -32,7 +32,7 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
         #println(x0)
         #println(h[i]*dx)
         vals[:, i] = f.(collect(.1:.1:10))
-        fi = f(x0 .+ h[i]*dx)[1]
+        fi = f.(x0 .+ h[i]*dx)[1]
         fis[i] = fi[1]
         if true #debug
             println("x0: ", x0)

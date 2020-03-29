@@ -45,7 +45,7 @@ end
 FixedParam(k, θ...) = FixedParam(k, θ)
 
 (k::FixedParam)(τ) = k.k(τ, k.θ...)
-distance(k::FixedParam, θ...) = distance(k.k, θ...)
+distance(k::FixedParam) = distance(k.k, k.θ...)
 
 @doc raw"""
     Gaussian

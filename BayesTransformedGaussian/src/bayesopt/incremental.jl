@@ -29,9 +29,15 @@ function incremental_cholesky(capacity, A::AbstractMatrix; check=true)
     n = size(A, 1)
     R = Array{eltype(A)}(undef, capacity, capacity)
     R[1:n, 1:n] .= A
-    chol = cholesky!(Symmetric(@view R[1:n, 1:n]))
+    chol = cholesky!(Symmetric(@view R[1:n, 1:n]); check=check)
     return IncrementalCholesky(capacity, n, chol.info, R)
-end 
+end
+
+function incremental_cholesky!(n, A::AbstractMatrix; check=true)
+    @assert size(A, 1) == size(A, 2)
+    @views chol = cholesky!(Symmetric(A[1:n, 1:n]); check=check)
+    return IncrementalCholesky(size(A, 1), n, chol.info, A)
+end
 
 function add_col!(R::IncrementalCholesky, v; check=true)
     @assert R.n + 1 <= R.capacity
@@ -87,10 +93,11 @@ function data_array(capacity, A::Array{T, N}) where T where N
     return DataArray(capacity, s[N], new_A)
 end
 
+data_array!(n, A::Array{T, N}) where T where N = DataArray(size(A)[end], n, A)
+
 function array_view(A::DataArray{T, N}) where T where N
     return view(A.A, ntuple(_ -> Colon(), N-1)..., 1:A.n)
 end
-
 
 size(A::DataArray, args...) = size(array_view(A), args...)
 

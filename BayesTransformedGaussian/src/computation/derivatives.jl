@@ -608,27 +608,39 @@ function partial_s(θ::Float64, λ::Float64, train::trainingData{A, B}, test::te
     #vanillaT_pdf = z0 -> Distributions.pdf.(vanillat, z0)
     #T_pdf = z0 -> Distributions.pdf.(vanillat, g(z0, λ)) 
 
-    d = maximum(size(s0, 1), size(s0, 2))
+    d = max(size(s0, 1), size(s0, 2))
+    
+    @assert(size(s0, 1)<=size(s0, 2)) #s0 must be a row vector for the following line to work
     sdiff = repeat(s0, n, 1) .- s
-    gradB = zeros(n, d)
-    gradB = -θ * Bθ .* (sdiff)
 
+    #println("sdiff", size(sdiff))
+    gradB = zeros(n, d)
+    #println("Bthetasize: ", size(Bθ))
+    gradB = -θ * Bθ' .* (sdiff)
+    #println(size(gradB))
     gradE = [1]
 
-    gradD = -2 * θ * gradB' * (choleskyΣθ\Bθ) #in the future, store sigma inv B
+    gradD = -2 * θ * gradB' * (choleskyΣθ\Bθ') #in the future, store sigma inv B
 
     HessianD1 = -2 * θ^2 *  gradB' * (choleskyΣθ\gradB) 
     HessianD2 = zeros(d, d)
     for i = 1:d
         for j = 1:i
-            HessianD2[i, j] = -θ^2 * choleskyΣθ\ (gradB[:, i] .* sdiff[:, i] .+ Bθ) 
+            if false
+            println("gradB col")
+            println(gradB[:, i:i])
+            println("sdiff col")
+            println(sdiff[:, i:i])
+            println("Btheta'")
+            println(Bθ')
+            println("thta")
+            println(θ)
+            end
+            HessianD2[i, j] = HessianD2[j, i] = (-θ^2 .* (choleskyΣθ\(gradB[:, i:i] .* sdiff[:, i:i] .+ Bθ')))[1]
         end
     end
-
-    return ()
-
-
-
+    HessianD = HessianD1 .+ HessianD2
+    return (Bθ, gradB, Dθ, gradD, HessianD)
 end
 
 
@@ -854,10 +866,10 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
        
             if hessian!=nothing
                 inc = h[i] * dx
-                A[i] = norm((fi .- f0) .- df0' * inc .- 0.5* inc' * d2f0 * inc)
+                A[i] = norm((fi - f0) - df0' * inc .- 0.5* inc' * d2f0 * inc)
             else
                 try
-                A[i] = norm((fi .- f0) .- df0' * (h[i] * dx))
+                A[i] = norm((fi - f0) - df0' * (h[i] * dx)) 
             catch DimensionMismatch #we catch the case when f: R^1 -> R^n, in which case  df0'*dx will yield an error
                 #println("caught in check deriv")
                 A[i] = norm((fi .- f0) .- df0 .* (h[i] * dx))

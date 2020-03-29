@@ -2,6 +2,9 @@ using Random
 using LinearAlgebra
 using Distances
 
+
+abstract type AbstractCorrelation end
+
 """
 Gaussian/RBF/Squared Exponential correlation function
 """

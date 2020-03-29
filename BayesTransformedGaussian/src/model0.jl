@@ -1,3 +1,8 @@
+include("settings.jl")
+include("tensorgrid0.jl")
+
+
+
 
 """
 BTG object may include (some may be unnecessary)
@@ -7,7 +12,7 @@ BTG object may include (some may be unnecessary)
     Nmax: maximum number of points BTG could handle
     dim: dimension of the space
     nx: number of points in data
-    n: number of points encorporated in kernel system 
+    n: number of points incorporated in kernel system 
     p: number of covariates 
     g: transform 
     k: kernel type
@@ -16,6 +21,20 @@ BTG object may include (some may be unnecessary)
     nodesWeightsθ: stores θ nodes and weights
     θ_buffers: the old θ_params struct
 """
+
+mutable struct btg
+    train::TrainingData #s, X, z
+    #test::TestingData #s0, X0
+    n #number of points
+    p #number covariates per point
+    g #transform family
+    k #kernel family
+    quadtype # "Gaussian", "Turan", or "MonteCarlo"
+    nodesWeightsλ
+    nodesWeightsθ
+    θ_buffers
+    Nmax #maximum number of points supported
+end
 
 """
 Three step of a BTG solver
@@ -28,6 +47,14 @@ Three step of a BTG solver
 3. prediction computation
     line 100-159 in tensorgrid.jl
 """
+
+function init(train, quadtype, )
+    nodesWeightsλ, nodesWeightsθ, θ_buffers
+end
+
+return btg()
+end
+
 function solve(btg::BTG)
     build_system!(btg) 
     WeightTensorGrid = weight_comp(btg)
@@ -106,14 +133,15 @@ function prediction_comp(btg::BTG, WeightTensorGrid::Array{Float64})
     return pdf, cdf, pdf_deriv
 end
 
-function new_point!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
+function add_point!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
     btg.nx = size(x, 1)
     btg.x[1:btg.nx, :] = x
     btg.z[1:btg.nx] = z
     btg.X[1:btg.nx, :] = X
+    btg.nx += 1
 end
 
-function add_point!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
+function add_points!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
     n_new = size(x, 1) # number of new points
     btg.x[btg.nx+1: btg.nx+n_new, :] = x
     btg.z[btg.nx+1: btg.nx+n_new] = z

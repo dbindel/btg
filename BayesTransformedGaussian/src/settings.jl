@@ -20,7 +20,7 @@ struct trainingData{T<:Array{Float64, 2}, S<:Array{Float64, 1}}
     z::S
 end
 
-struct testingData{T<:Array{Float64, 2}}
+mutable struct testingData{T<:Array{Float64, 2}}
     s0::T
     X0::T
 end

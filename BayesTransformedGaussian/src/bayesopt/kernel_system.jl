@@ -1,5 +1,80 @@
 @doc raw"""
 """
+mutable struct SystemData
+    X::DataMatrix{Float64} # Observation locations
+    U::LU{Float64, Matrix{Float64}} # p x p unisolvent subset of Fx
+    W::DataMatrix{Float64} # U \ Fx (without the points in uFx)
+end
+
+function usage(ks::SystemData)
+    return (p = size(ks.U, 1), n = size(ks.X, 2), capacity = ks.X.capacity)
+end
+
+@doc raw"""
+"""
+struct KernelData{K<:AbstractCorrelation}
+    k::K # Kernel Correlation function
+    K1::Matrix{Float64} # Correlation at locations for U
+    K12::DataMatrix{Float64} # Cross correlation of observation locations
+    rK2::IncrementalCholesky{Float64} # Reduced kernel system for x2
+end
+
+function kernel_data(capacity, k, X, W, θ...)
+    return kernel_data(capacity, FixedParam(k, θ), X, W)
+end
+
+function kernel_data(capacity, k, X, W)
+    p, n = size(W)
+    @views X1, X2 = X[:, 1:p], X[:, p+1:end]
+
+    K1 = Array{Float64}(undef, p, p)
+    @views pairwise!(K1, k, X1, θ...)
+
+    K12′ = Array{Float64}(undef, p, capacity)
+    @views pairwise!(K12[:, 1:n],  k, X1, X2, θ...)
+
+    rK2′ = Array{Float64}(undef, capacity, capacity)
+    @views pairwise!(K2′[1:n, 1:n], k, X2, θ...)
+    mul!(K2, W', K12, -1, 1)
+    mul!(K2, K12', W, -1, 1)
+    tmp = K1 * W
+    mul!(K2, W', K1, 1, 1)
+
+    return KernelData(k, K1, K12, rK2)
+end
+
+function usage(kd::KernelData)
+    return (p = size(kd.K12, 1), n = size(kd.K12, 2), capacity = kd.K12.capacity)
+end
+
+log(ks::SystemData, kd::KernelData) = exp(logdet(ks, kd))
+logdet(ks::KernelSystem, kd::KernelData) = 2 * logabsdet(ks.U)[1] + logdet(kd.rK2)
+
+function kernel_data(capacity, p, k, X, W)
+    m = size(X, 2) - p
+    
+    K1 = Array{Float64}(undef, p, p)
+    @views pairwise!(K1, k, X[:, 1:p])
+    K12 = data_array(Float64, capacity, p)
+    vw = extend!(K12, n)
+    @views pairwise!(vw, k, X[:, 1:p], X[:, p+1:end])
+    K2 = Array{Float64}(undef, m, m)
+    @views pairwise!(K2, k, X[:, p+1:end])
+    
+    WK1W = W' * (K1 * W)
+    K21W = K12' * W
+
+    K2_tilde = incremental_cholesky(capacity, K22 .- K21W .- K21W' .+ WK1W)
+
+    return KernelData(p, m, capacity, K1, K12, K2_tilde)
+end
+
+function kernel_system(capacity, k, X, Fx)
+    p, n = size(X)
+end
+
+@doc raw"""
+"""
 mutable struct KernelData{K<:AbstractCorrelation}
     # upper bound on the n - p samples
     capacity::Int

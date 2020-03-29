@@ -1,5 +1,4 @@
 using Distances
-import Distances: pairwise, pairwise!
 
 @doc raw"""
     AbstractCorrelation
@@ -10,29 +9,32 @@ abstract type AbstractCorrelation end
 
 (k::AbstractCorrelation)(x, y, θ...) = k(distance(k, θ...)(x, y))
 
-function pairwise(k::AbstractCorrelation, x, θ...)
+function correlation(k::AbstractCorrelation, x, θ...; jitter = 0)
     ret = Array{Float64}(undef, size(x, 2), size(x, 2))
-    pairwise!(ret, k, x, θ...)
+    correlation!(ret, k, x, θ...; jitter = jitter)
     return ret
 end
-function pairwise(k::AbstractCorrelation, x, y, θ...)
+function cross_correlation(k::AbstractCorrelation, x, y, θ...)
     ret = Array{Float64}(undef, size(x, 2), size(y, 2))
-    pairwise!(ret, k, x, y, θ...)
+    cross_correlation!(ret, k, x, y, θ...)
     return ret
 end
-function pairwise!(out, k::AbstractCorrelation, x, y, θ...)
+function cross_correlation!(out, k::AbstractCorrelation, x, y, θ...)
     dist = distance(k, θ...)
     pairwise!(out, dist, x, y, dims=2)
-    out .= (τ -> k.k(τ, θ...)).(out)
+    out .= (τ -> k(τ, θ...)).(out)
     return nothing
 end
-function pairwise!(out, k::AbstractCorrelation, x, θ...)
+function correlation!(out, k::AbstractCorrelation, x, θ...; jitter = 0)
     dist = distance(k, θ...)
     pairwise!(out, dist, x, dims=2)
-    out .= (τ -> k.k(τ, θ...)).(out)
+    out .= (τ -> k(τ, θ...)).(out)
+    if jitter != 0
+        out += jitter * I
+        out ./= out[1, 1]
+    end
     return nothing
 end
-pairwise!(out, k::AbstractCorrelation, x, θ...) = pairwise!(out, k, x, x, θ...)
 
 @doc raw"""
 """

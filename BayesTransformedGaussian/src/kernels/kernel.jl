@@ -55,19 +55,19 @@ jitter: nugget term added to diagonal of kernel matrix to ensure positive-defini
 dims: 1 if data points are arranged row-wise and 2 if col-wise
 
 """
-function correlation(k::AbstractCorrelation, x, θ; jitter = 0, dims=2) 
+function correlation(k::AbstractCorrelation, θ, x; jitter = 0, dims=1) 
     ret = Array{Float64}(undef, size(x, dims), size(x, dims))
-    correlation!(ret, k, x, θ; jitter = jitter)
+    correlation!(ret, k, θ, x; jitter = jitter)
     return ret
 end
 
-function cross_correlation(k::AbstractCorrelation, x, y, θ; dims=2)
+function cross_correlation(k::AbstractCorrelation, θ, x, y; dims=1)
     ret = Array{Float64}(undef, size(x, dims), size(y, dims))
-    cross_correlation!(ret, k, x, y, θ)
+    cross_correlation!(ret, k, θ , x, y)
     return ret
 end
 
-function cross_correlation!(out, k::AbstractCorrelation, x, y, θ; dims = 2)
+function cross_correlation!(out, k::AbstractCorrelation, θ, x, y; dims = 1)
     x = reshape(x, size(x, 1), size(x, 2)); y = reshape(y, size(y, 1), size(y, 2)) #2D arrays
     dist = distance(k, θ)
     pairwise!(out, dist, x, y, dims=dims)
@@ -75,7 +75,7 @@ function cross_correlation!(out, k::AbstractCorrelation, x, y, θ; dims = 2)
     return nothing
 end
 
-function correlation!(out, k::AbstractCorrelation, x, θ; jitter = 0, dims=2)
+function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 0, dims=1)
     x = reshape(x, size(x, 1), size(x, 2))
     dist = distance(k, θ)
     pairwise!(out, dist, x, dims=dims)

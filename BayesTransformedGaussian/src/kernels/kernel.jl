@@ -63,7 +63,7 @@ end
 
 function cross_correlation(k::AbstractCorrelation, θ, x, y; dims=1)
     ret = Array{Float64}(undef, size(x, dims), size(y, dims))
-    cross_correlation!(ret, k, θ , x, y)
+    cross_correlation!(ret, k, θ, x, y;dims=dims)
     return ret
 end
 

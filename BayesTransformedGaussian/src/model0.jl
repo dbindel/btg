@@ -1,8 +1,7 @@
 include("settings.jl")
 include("tensorgrid0.jl")
-
-
-
+include("../transforms/transforms.jl")
+include("../kernels/kernel.jl")
 
 """
 BTG object may include (some may be unnecessary)
@@ -21,19 +20,17 @@ BTG object may include (some may be unnecessary)
     nodesWeightsθ: stores θ nodes and weights
     θ_buffers: the old θ_params struct
 """
-
 mutable struct btg
-    train::TrainingData #s, X, z
+    train::TrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
     #test::TestingData #s0, X0
-    n #number of points
-    p #number covariates per point
-    g #transform family
-    k #kernel family
-    quadtype # "Gaussian", "Turan", or "MonteCarlo"
-    nodesWeightsλ
-    nodesWeightsθ
-    θ_buffers
-    Nmax #maximum number of points supported
+    n #number of points in kernel system, if 0 then uninitialized
+    g #transform family, e.g. BoxCox()
+    k #kernel family, e.g. Gaussian()
+    quadtype #Gaussian, Turan, or MonteCarlo
+    nodesWeightsλ #integration nodes and weights for λ
+    nodesWeightsθ #integration nodes and weights for θ
+    θ_buffers #buffers for theta-dependent values
+    #Nmax will add this logic later
 end
 
 """
@@ -48,14 +45,57 @@ Three step of a BTG solver
     line 100-159 in tensorgrid.jl
 """
 
-function init(train, quadtype, )
-    nodesWeightsλ, nodesWeightsθ, θ_buffers
+"""
+Initialize btg object with training data object (x, Fx, y) and quadtype
+"""
+function init(train, quadtype = "Gaussian")::BTG
+    btg(train, 0, BoxCox(), Gaussian(), quadtype, nothing, nothing, nothing)
+end
+
+"""
+Sets or resets the quadrature nodes and weights in the btg object.
+
+Notes:
+* Number of length scales is encoded in the height of d x 2 matrix rangeθ 
+* currently the number of quadrature nodes per dimension is the same
+
+"""
+function setrange!(btg::btg, rangeθ, rangeλ; numpts = 12)
+     #same length scale for all dimensions or different length scale for all dimensions
+    @assert size(rangeθ, 1) == 1 || size(rangeθ, 1) == btg.train.dimension
+    @assert size(rangeλ, 1) == 1 
+    if btg.quadtype == "MonteCarlo"
+        btg.nodesWeightsθ = getMCdata(numpts)
+        btg.nodesWeightsλ = getMCdata(numpts)
+    else
+        if btg.quadtype == "Turan"
+            btg.nodesWeightsθ = getTuranQuadratureData(numpts) #use 12 Gauss-Turan integration nodes and weights by default
+        elseif btg.quadtype == "Gaussian"
+            btg.nodesWeightsθ = getGaussQuadraturedata(numpts)
+        elseif
+            throw(ArgumentError("Quadrature rule not recognized"))
+        end
+        btg.nodesWeightsθ = getGaussQuadraturedata(numpts)
+        affineTransformNodes(btg.nodesWeightsθ, rangeθ) #will this really mutate btg.nodesWeights?
+        #always use Gauss quadrature to marginalize out λ
+        btg.nodesWeightsλ = getGaussQuadraturedata(numpts)
+        affineTransformNodes(btg.nodesWeightsλ, rangeλ)
+    end
+    return nothing
+end
+
+"""
+keep the structure θ_params
+update btg.θ_buffers 
+"""
+function θ_buffers_comp!(btg::BTG)
+    # funcθ
 end
 
 return btg()
 end
 
-function solve(btg::BTG)
+function solve(btg::btg)
     build_system!(btg) 
     WeightTensorGrid = weight_comp(btg)
     pdf, cdf, pdf_deriv = prediction_comp(btg, WeightTensorGrid)
@@ -106,13 +146,6 @@ function new_system!(btg::BTG)
     θ_buffers_comp!(btg) 
 end
 
-"""
-keep the structure θ_params
-update btg.θ_buffers 
-"""
-function θ_buffers_comp!(btg::BTG)
-    # funcθ
-end
 
 """
 keep the structure θ_params

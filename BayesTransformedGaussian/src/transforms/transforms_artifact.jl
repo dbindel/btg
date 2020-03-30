@@ -1,9 +1,8 @@
 import Base: inv
 
-"""
-Family of nonlinear transformation parametrized by λ that defaults to Box Cox.
-N.B. We assume in derivatives.jl that the nonlinear transformation f is monotonic increasing. 
-"""
+
+
+
 struct nonlinearTransform{T1<:Function, T2<:Function, T3<:Function, T4<:Function, T5<:Function, T6<:Function, T7<:Function}
     f::T1
     df::T2
@@ -13,32 +12,6 @@ struct nonlinearTransform{T1<:Function, T2<:Function, T3<:Function, T4<:Function
     d_mixed::T6 
     inv::T7 
 end
-
-
-@doc raw"""
-    BoxCox(λ::Real)
-
-The Box-Cox power transformation function with parameter λ.
-
-```math
-g_\lambda(x) = \begin{cases} 
-    \frac{x^\lambda - 1}{\lambda} & \lambda \neq 0\\ 
-    \ln(x) & \lambda = 0
-\end{cases}
-```
-
-External links
-* [Power Transform on Wikipedia](https://en.wikipedia.org/wiki/Power_transform)
-
-...
-# Arguments
-* `x::float64`: evaluation point
-* `lambda::float=1.0`: lambda hyperparameter
-
-"""
-struct BoxCox end
-
-(::BoxCox)(λ, x) = λ == 0 ? log(x) : expm1(log(x) * λ) / λ
 
 function boxCox(x, lambda=1)
     lambda == 0 ? Base.log.(x) : (float(x).^lambda.-1)./lambda
@@ -90,4 +63,3 @@ end
 
 #define BoxCox Object
 boxCoxObj = nonlinearTransform(boxCox, boxCoxPrime, boxCoxPrime2, boxCoxPrime_lambda, boxCoxPrime_lambda2, boxCoxMixed_lambda_z, invBoxCox)
-

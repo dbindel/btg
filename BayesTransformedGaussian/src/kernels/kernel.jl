@@ -51,7 +51,7 @@ function computeDists!(out, k::AbstractCorrelation, θ, x, y=x; dims=1)
 end
 
 """
-jitter: nugget term added to diagonal of kernel matrix to ensure positive-definiteness
+jitter: added to diagonal of kernel matrix to ensure positive-definiteness
 dims: 1 if data points are arranged row-wise and 2 if col-wise
 
 """
@@ -105,7 +105,8 @@ struct Gaussian <: AbstractCorrelation end
 const RBF = Gaussian
 const SqExponential = RBF
 
-#these two functions are purely meant to be used in conjunction with (k::AbstractCorrelation)(x::Array, y::Array, θ)
+#WARNING: these two functions are purely meant to be used in conjunction with (k::AbstractCorrelation)(x::Array, y::Array, θ)
+#These are not standalone functions!
 (::Gaussian)(τ::Real, θ::Real) = exp(- τ * θ / 2) 
 (::Gaussian)(τ::Real, ::AbstractVector) = exp(- τ / 2) #theta already taken into account in computation of tau
 

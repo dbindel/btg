@@ -18,6 +18,8 @@ struct trainingData{T<:Array{Float64, 2}, S<:Array{Float64, 1}}
     s::T
     X::T
     z::S
+    dimension::Int64
+    p::Int64
 end
 
 mutable struct testingData{T<:Array{Float64, 2}}

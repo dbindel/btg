@@ -1,6 +1,7 @@
 using TimerOutputs
 using LinearAlgebra
 include("../settings.jl")
+include("../kernels/kernel.jl")
 
 #This file defines buffer structs for passing theta-dependent values, as well as funtions to initialize them
 
@@ -46,6 +47,8 @@ struct θ_param_derivs{O<:Array{Float64, 2}, C<:Cholesky{Float64,Array{Float64, 
     choleskyΣθ::C
     choleskyXΣX::C
 end
+
+
 
 
 """

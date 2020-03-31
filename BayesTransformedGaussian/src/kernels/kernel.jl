@@ -1,96 +1,136 @@
-using Random
-using LinearAlgebra
 using Distances
+using LinearAlgebra
+include("../tools/plotting.jl")
+#
+#
+# CONVENTIONS:
+# locations x and y will always be arrays, whether it's 1D or 2D
+#
+#
+# NOTES:
+# - WeightedSqEuclidean([3, 4])(x, y) from Distances.jl will default to SqEuclidean if x and y aren't arrays
+#   it will throw an error of x and y are arrays but not the same length as the weights vector
+# - one can input single length scale as scalar or array of length 1
+#   and multiple length scale as array
+# - SqEuclidean and other distance functions from Distances.jl only take in 2-D arrays as inputs
+#
+@doc raw"""
+    AbstractCorrelation
 
-
+An abstract type for all correlation functions.
+"""
 abstract type AbstractCorrelation end
 
+(k::AbstractCorrelation)(x::Array, y::Array, θ) = k(distance(k, θ)(x, y),  θ)
+
 """
-Gaussian/RBF/Squared Exponential correlation function
+Computes matrix of pairwise distances between x and y, which contains points 
+arranged row-wise
 """
-function rbf(x, y, θ=1.0)
-    1/sqrt(2*pi)*exp.(-θ*0.5*(norm(x .- y))^2)
+function distancematrix(k::AbstractCorrelation, θ, x, y=x; dims=1)
+    ret = Array{Float64}(undef, size(x, dims), size(x, dims))
+    computeDists!(ret, k, θ, x, y; dims=dims)
+    return ret
 end
 
 """
-Gaussian/RBF/Squared Exponential correlation function
+x, y: arrays of points in R^d
+θ: 1D array
 """
-function rbf_single(dist, θ=1.0)
-    1/sqrt(2*pi)*exp.(-θ*0.5*(dist)^2)
-end
-
-"""
-Derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime(x, y, θ=1.0)
-    - 1/sqrt(2*pi) * 0.5 * norm(x.-y)^2 * exp.(-θ*0.5*(norm(x .- y))^2)
-end
-
-"""
-Derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime_single(dist, θ=1.0)
-    - 1/sqrt(2*pi) * 0.5 * dist^2 * exp.(-θ*0.5*(dist)^2)
-end
-
-"""
-Second derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime2(x, y, θ=1.0)
-    1/sqrt(2*pi) * 0.25 * norm(x.-y)^4 * exp.(-θ*0.5*(norm(x .- y))^2)
-end
-
-"""
-Second derivative of Gaussian/RBF/Squared Exponential correlation function
-with respect to hyperparameter theta
-"""
-function rbf_prime2_single(dist, θ=1.0)
-    1/sqrt(2*pi) * 0.25 * dist^4 * exp.(-θ*0.5*(dist)^2)
-end
-
-"""
-Builds cross-covariance matrix using corr kernel function.
-Ex. RBF, exponential, Matern
- 
-Inputs are assumed to be 1D arrays or 2D column vectors.
-Returns matrix of size len(s1) times len(s2)
-"""
-function K(s1, s2, θ, corr=rbf)  
-    K = zeros(size(s1, 1), size(s2, 1))
-    if s1 != s2
-        for i = 1:size(s1, 1)
-            for j = 1:size(s2, 1)
-                cur = corr(s1[i, :], s2[j, :], θ)
-                K[i, j] = isa(cur, Array) ? cur[1] : cur 
-            end
-        end   
-    else #s1==s2 can compute half the matrix and fill in other half
-        for i = 1:size(s1, 1)
-            for j = 1:i
-                cur = corr(s1[i, :], s2[j, :], θ)
-                K[i, j] = K[j, i] = isa(cur, Array) ? cur[1] : cur 
-            end
-        end  
+function computeDists!(out, k::AbstractCorrelation, θ, x, y=x; dims=1)
+    if typeof(θ)<:Array
+        @assert max(size(θ, 1), size(θ, 2)) == size(x, 2) == size(y, 2)
     end
-    return size(s1, 1)==size(s2, 1) ? K+UniformScaling(1e-8) : K
-end
-
-#rows of s1 and s2 contain the coordinates of each location
-function fastK(s1, s2, θ, corr=rbf_single)
-    corrtheta = dist -> corr(dist, θ)
-    res = corrtheta.(pairwise(Euclidean(), s1, s2, dims=1))
-    return size(s1, 1)==size(s2, 1) ? res + UniformScaling(1e-8) : res
+    dist = distance(k, θ)
+    try
+        out .= pairwise!(out, dist, x, y, dims = dims)
+    catch(MethodError)
+        out .= pairwise!(out, dist, reshape(x,size(x, 1), size(x, 2)), reshape(y, size(y, 1), size(y, 2)), dims = dims)
+    end   
+        return nothing
 end
 
 """
-Samples from a Normal distribution with mean 0 and covariance matrix K
-Scales result by 40. Works in 1D.
+jitter: added to diagonal of kernel matrix to ensure positive-definiteness
+dims: 1 if data points are arranged row-wise and 2 if col-wise
+
 """
-function sample(K)
-    c = cholesky(K)
-    v = 40*randn(size(K, 1), 1)
-    return c.L*(v)
+function correlation(k::AbstractCorrelation, θ, x; jitter = 0, dims=1) 
+    ret = Array{Float64}(undef, size(x, dims), size(x, dims))
+    correlation!(ret, k, θ, x; jitter = jitter)
+    return ret
 end
+
+function cross_correlation(k::AbstractCorrelation, θ, x, y; dims=1)
+    ret = Array{Float64}(undef, size(x, dims), size(y, dims))
+    cross_correlation!(ret, k, θ, x, y;dims=dims)
+    return ret
+end
+
+function cross_correlation!(out, k::AbstractCorrelation, θ, x, y; dims = 1)
+    x = reshape(x, size(x, 1), size(x, 2)); y = reshape(y, size(y, 1), size(y, 2)) #2D arrays
+    dist = distance(k, θ)
+    pairwise!(out, dist, x, y, dims=dims)
+    out .= (τ -> k(τ, θ)).(out)
+    return nothing
+end
+
+function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 0, dims=1)
+    x = reshape(x, size(x, 1), size(x, 2))
+    dist = distance(k, θ)
+    pairwise!(out, dist, x, dims=dims)
+    out .= (τ -> k(τ, θ)).(out)
+    if jitter != 0
+        out +=UniformScaling(jitter) 
+        out ./= out[1, 1] #covariance must be in [0, 1]
+    end
+    return nothing
+end
+
+@doc raw"""
+"""
+struct FixedParam{K<:AbstractCorrelation,T} <: AbstractCorrelation
+    k::K
+    θ::T
+end
+FixedParam(k, θ...) = FixedParam(k, θ)
+
+(k::FixedParam)(τ) = k.k(τ, k.θ...)
+distance(k::FixedParam) = distance(k.k, k.theta...)
+
+@doc raw"""
+    Gaussian
+"""
+struct Gaussian <: AbstractCorrelation end
+const RBF = Gaussian
+const SqExponential = RBF
+
+#WARNING: these two functions are purely meant to be used in conjunction with (k::AbstractCorrelation)(x::Array, y::Array, θ)
+#These are not standalone functions!
+(::Gaussian)(τ::Real, θ::Real) = exp(- τ * θ / 2) 
+(::Gaussian)(τ::Real, ::AbstractVector) = exp(- τ / 2) #theta already taken into account in computation of tau
+
+distance(::Gaussian, θ::Real) = SqEuclidean()
+distance(::Gaussian, θ::AbstractVector) = WeightedSqEuclidean(θ)
+
+"""
+currently derivative is only implemented for single length scale
+"""
+function partial_θ(k::Gaussian, τ, θ)
+    -τ/2 * k(τ, θ[1])
+end
+#partial_θ(k::Gaussian, τ, θ...) = ; 
+#partial_τ(k::Gaussian, τ, θ) = - θ/2 * k(τ, θ) 
+#partial_θθ(k::RBF, τ, θ) = τ^2/4 * k(τ, θ)
+#partial_ττ(k::Gaussian, τ, θ) =  θ^2/4 * k(τ, θ) 
+ 
+struct Spherical <: AbstractCorrelation end
+# TODO
+
+struct Matern <: AbstractCorrelation end
+# TODO
+
+struct RationalQuadratic <: AbstractCorrelation end
+# TODO
+
+

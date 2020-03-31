@@ -49,7 +49,8 @@ dm, wm = gausslegendre(12)
 dm2, wm2 = gausslegendre(50)
 dm3, wm3 = gausslegendre(100)
 
-function getGaussQuadraturedata()
+function getGaussQuadraturedata(n=12)
+    dm, wm = gausslegendre(n)
     nodesWeights(dm, wm)
 end
 

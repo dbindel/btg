@@ -54,7 +54,7 @@ function update!(e::extensible_trainingData, x0, Fx0, y0)
     @assert typeof(y0)<:Array{Any, 1}
     k = size(x0, 1)
     if e.n +size(x0, 1) > e.capacity
-        throw(Error("Maximum TrainingData capacity reached."))
+        throw(Error("Maximum training data capacity reached."))
     end
     e.x[e.n + 1 : e.n + k, :] = x0
     e.Fx[e.n + 1 : e.n + k, :] = Fx0
@@ -62,6 +62,7 @@ function update!(e::extensible_trainingData, x0, Fx0, y0)
     e.n += k
     return nothing
 end
+
 
 
 function newTrainingData(x, Fx, y)::trainingData 

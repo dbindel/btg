@@ -14,11 +14,14 @@ mutable struct IncrementalCholesky{T} <: Factorization{T}
     info::Int
     R::Matrix{T}
 end
+
+
 function incremental_cholesky!(A::AbstractMatrix, n; check=true)
     @assert size(A, 1) == size(A, 2)
     @views chol = cholesky!(Symmetric(A[1:n, 1:n]); check=check)
     return IncrementalCholesky(n, chol.info, A)
 end
+
 function incremental_cholesky(T, capacity)
     return incremental_cholesky!(Array{T}(undef, capacity, capacity), 0)
 end
@@ -45,7 +48,8 @@ function remove!(R::IncrementalCholesky, k)
     return nothing
 end
 
-get_chol(R::IncrementalCholesky) = Cholesky(view(R.R, 1:R.n, 1:R.n), :U, R.info) 
+#error handling slow in julia
+get_chol(R::IncrementalCholesky) = Cholesky(view(R.R, 1:R.n, 1:R.n), :U, R.info) #info indicates if matrix is still positive definite
 
 size(R::IncrementalCholesky, args...) = size(get_chol(R), args...) 
 
@@ -65,7 +69,7 @@ isposdef(R::IncrementalCholesky) = R.info == 0
 
 mutable struct DataArray{T,N} <: AbstractArray{T,N}
     n::Int
-    A::Array{T,N}
+    A::Array{T,N} 
 end
 
 data_array(T, capacity, dims...) = DataArray(0, Array{T}(undef, dims..., capacity))

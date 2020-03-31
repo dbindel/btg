@@ -1,7 +1,9 @@
 include("settings.jl")
-include("tensorgrid0.jl")
-include("../transforms/transforms.jl")
-include("../kernels/kernel.jl")
+include("quadrature/tensorgrid0.jl")
+include("transforms/transforms.jl")
+include("kernels/kernel.jl")
+include("priors/priors.jl")
+include("computation/buffers.jl")
 
 """
 BTG object may include (some may be unnecessary)
@@ -23,13 +25,14 @@ BTG object may include (some may be unnecessary)
 mutable struct btg
     train::TrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
     #test::TestingData #s0, X0
-    n #number of points in kernel system, if 0 then uninitialized
-    g #transform family, e.g. BoxCox()
-    k #kernel family, e.g. Gaussian()
-    quadtype #Gaussian, Turan, or MonteCarlo
+    n::Int64 #number of points in kernel system, if 0 then uninitialized
+    g::nonlineartransform #transform family, e.g. BoxCox()
+    k::abstractkernel  #kernel family, e.g. Gaussian()
+    prior::priorType #prior type, e.g. uniform
+    quadType::String #Gaussian, Turan, or MonteCarlo
     nodesWeightsλ #integration nodes and weights for λ
     nodesWeightsθ #integration nodes and weights for θ
-    θ_buffers #buffers for theta-dependent values
+    θ_buffers::  #buffers for theta-dependent values
     #Nmax will add this logic later
 end
 
@@ -60,6 +63,9 @@ Notes:
 * currently the number of quadrature nodes per dimension is the same
 
 """
+
+function update!(btg::btg)
+
 function setrange!(btg::btg, rangeθ, rangeλ; numpts = 12)
      #same length scale for all dimensions or different length scale for all dimensions
     @assert size(rangeθ, 1) == 1 || size(rangeθ, 1) == btg.train.dimension

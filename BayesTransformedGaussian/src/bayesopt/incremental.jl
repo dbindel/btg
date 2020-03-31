@@ -18,6 +18,8 @@ end
 
 function incremental_cholesky!(A::AbstractMatrix, n; check=true)
     @assert size(A, 1) == size(A, 2)
+    println(size(A, 1))
+    println(n)
     @views chol = cholesky!(Symmetric(A[1:n, 1:n]); check=check)
     return IncrementalCholesky(n, chol.info, A)
 end
@@ -26,7 +28,7 @@ function incremental_cholesky(T, capacity)
     return incremental_cholesky!(Array{T}(undef, capacity, capacity), 0)
 end
 
-function extend!(R::IncrementalCholesky, k)
+function extend!(R::IncrementalCholesky, k) 
     @assert R.n + k <= size(R.R, 1)
     return @views R.R[1:R.n, R.n+1:R.n+k], R.R[R.n+1:R.n+k, R.n+1:R.n+k]
 end

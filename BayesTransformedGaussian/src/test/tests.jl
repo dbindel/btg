@@ -2,7 +2,8 @@ using Test
 using Distributions
 include("../kernels/kernel.jl")
 include("../computation/finitedifference.jl")
-include("../transforms.jl")
+include("../transforms/transforms.jl")
+include("../datastructs.jl")
 
 #@testset "kernel.jl" begin
 #a = (tau, x) -> exp.(-x*tau/2)
@@ -44,4 +45,31 @@ include("../transforms.jl")
     #@test boxCox(invBoxCox([1; 2], 1), 1) ≈ [1;2] atol = 1e-15
     #@test boxCox(invBoxCox(2., -0.45), -0.45) ≈ 2.0 atol = 1e-15
     #@test invBoxCox(boxCox(2., -2), -2) ≈ 2.0 atol = 1e-15
+end
+
+@testset "datastructs.jl" begin
+    x = newExtensibleTrainingData(5, 2, 3)
+    @test x.d == 2
+    @test x.p == 3
+    @test x.n == 0
+    o = [1.0 2.0; 3.0 4.0]
+    p = [1.0 2.0 3.0; 4.0 5.0 6.0]
+    z = [1.0, 2.0]
+    update!(x, o, p, z)
+    @test x.x[1:2, :] == o
+    @test x.Fx[1:2, :] == p
+    @test x.y[1:2] == z
+    @test x.n == 2
+    o2 = [1.0 2.0; 3.0 4.0; 4.0 5.0]
+    p2 = [1.0 2.0 3.0; 4.0 5.0 6.0; 1.0 2.0 3.0]
+    z2 = [1.0;2.0; 3.0]
+    update!(x, o2, p2, z2) 
+    @test x.x[1:5, :] == vcat(o, o2)
+    @test x.Fx[1:5, :] == vcat(p, p2)
+    @test x.y[1:5] == vcat(z, z2)
+    @test x.n == 5
+    o3 = [1.0 2.0]
+    p3 = [1.0 2.0 3.0]
+    z3 = [3.0]
+   # @test_broken BoundsError update!(x, o3, p3, z3) 
 end

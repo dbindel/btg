@@ -28,11 +28,11 @@ External links
 * `lambda::float=1.0`: lambda hyperparameter
 
 """
-abstract type nonlineartransform end
+abstract type NonlinearTransform end
 
-struct BoxCox <:nonlineartransform end 
+struct BoxCox <:NonlinearTransform end 
 
-struct anotherone<:nonlineartransform end
+struct anotherone<:NonlinearTransform end
 
 (::BoxCox)(x, λ::Real) = λ == 0 ? log.(x) : expm1.(log.(x) .* λ) ./ λ
 

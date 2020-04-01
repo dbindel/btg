@@ -23,16 +23,17 @@ BTG object may include (some may be unnecessary)
     θ_buffers: the old θ_params struct
 """
 mutable struct btg
-    train::TrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
-    #test::TestingData #s0, X0
+    train_data::AbstractTrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
     n::Int64 #number of points in kernel system, if 0 then uninitialized
-    g::nonlineartransform #transform family, e.g. BoxCox()
-    k::abstractkernel  #kernel family, e.g. Gaussian()
+    g:: NonlinearTransform #transform family, e.g. BoxCox()
+    k::AbstractCorrelation  #kernel family, e.g. Gaussian()
     prior::priorType #prior type, e.g. uniform
     quadType::String #Gaussian, Turan, or MonteCarlo
-    nodesWeightsλ #integration nodes and weights for λ
     nodesWeightsθ #integration nodes and weights for θ
-    θ_buffers::  #buffers for theta-dependent values
+    nodesWeightsλ #integration nodes and weights for λ; nodes and weights should remain constant throughout the lifetime of the btg object
+    train_buffer_dict::Dict{Float64, train_buffer}  #buffer for each theta value
+    test_buffer_dict::Dict{Float64, test_buffer} #buffer for each theta value
+    #buffers for theta-dependent values
     #Nmax will add this logic later
 end
 
@@ -49,60 +50,36 @@ Three step of a BTG solver
 """
 
 """
-Initialize btg object with training data object (x, Fx, y) and quadtype
+Initialize btg object
+NOTE:
+- rangeθ has dimension 2, its rows represent integration ranges for each length scale parameter
 """
-function init(train, quadtype = "Gaussian")::BTG
-    btg(train, 0, BoxCox(), Gaussian(), quadtype, nothing, nothing, nothing)
+function init(train_data::AbstractTrainingData, rangeθ, rangeλ; corr::AbstractCorrelation = Gaussian(), prior::priorType = Uniform() , quadtype::String = "Gaussian", transform:NonlinearTransform = BoxCox())::btg
+    #a btg object really should contain a bunch of train buffers correpsonding to different theta-values
+    #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
+    nodesWeightsθ = nodesWeights(rangeθ, quadtype)
+    nodesWeightsλ = nodesWeights(rangeλ, quadtype)
+    train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, training_dataa, corr)
+    test_buffer_dict = init_test_buffer_dict()
+    btg(train_data, 0, transform, corr, prior, quadtype, nodesWeightsθ, nodsesWeightsλ, train_buffer_dict, nothing)
 end
 
-"""
-Sets or resets the quadrature nodes and weights in the btg object.
+#workflow is:
+#1) set_test_data
+#2) solve, i.e. get pdf and cdf 
+#3) update_system if needed
 
-Notes:
-* Number of length scales is encoded in the height of d x 2 matrix rangeθ 
-* currently the number of quadrature nodes per dimension is the same
+#x, Fx, y
 
-"""
-
-function update!(btg::btg)
-
-function setrange!(btg::btg, rangeθ, rangeλ; numpts = 12)
-     #same length scale for all dimensions or different length scale for all dimensions
-    @assert size(rangeθ, 1) == 1 || size(rangeθ, 1) == btg.train.dimension
-    @assert size(rangeλ, 1) == 1 
-    if btg.quadtype == "MonteCarlo"
-        btg.nodesWeightsθ = getMCdata(numpts)
-        btg.nodesWeightsλ = getMCdata(numpts)
-    else
-        if btg.quadtype == "Turan"
-            btg.nodesWeightsθ = getTuranQuadratureData(numpts) #use 12 Gauss-Turan integration nodes and weights by default
-        elseif btg.quadtype == "Gaussian"
-            btg.nodesWeightsθ = getGaussQuadraturedata(numpts)
-        elseif
-            throw(ArgumentError("Quadrature rule not recognized"))
-        end
-        btg.nodesWeightsθ = getGaussQuadraturedata(numpts)
-        affineTransformNodes(btg.nodesWeightsθ, rangeθ) #will this really mutate btg.nodesWeights?
-        #always use Gauss quadrature to marginalize out λ
-        btg.nodesWeightsλ = getGaussQuadraturedata(numpts)
-        affineTransformNodes(btg.nodesWeightsλ, rangeλ)
-    end
-    return nothing
+function update_system!(btg::btg, x0, Fx0, y0)
+    update!(btg.train_data, x0, Fx0, y0)    
+    update_train_buffer!(btg.train_buffer, btg.train)
+    update_test_buffer!(btg.train_buffer, btg.test_buffer, btg.trainingData)
 end
 
-"""
-keep the structure θ_params
-update btg.θ_buffers 
-"""
-function θ_buffers_comp!(btg::BTG)
-    # funcθ
-end
-
-return btg()
-end
 
 function solve(btg::btg)
-    build_system!(btg) 
+    
     WeightTensorGrid = weight_comp(btg)
     pdf, cdf, pdf_deriv = prediction_comp(btg, WeightTensorGrid)
 end
@@ -124,25 +101,6 @@ end
 set up new system
 """
 function new_system!(btg::BTG)
-    # get rangeλ and rangeθ
-        # fixed and stored in priorInfo or computed from map estimation
-    if btg.quadtype == "MonteCarlo"
-        btg.nodesWeightsθ = getMCdata()
-        btg.nodesWeightsλ = getMCdata()
-    else
-        if btg.quadtype == "Turan"
-            btg.nodesWeightsθ = getTuranQuadratureData() #use 12 Gauss-Turan integration nodes and weights by default
-        elseif btg.quadtype == "Gaussian"
-            btg.nodesWeightsθ = getGaussQuadraturedata()
-        elseif
-            throw(ArgumentError("Quadrature rule not recognized"))
-        end
-        btg.nodesWeightsθ = getGaussQuadraturedata()
-        affineTransformNodes(btg.nodesWeightsθ, rangeθ)
-        #always use Gauss quadrature to marginalize out λ
-        btg.nodesWeightsλ = getGaussQuadraturedata()
-        affineTransformNodes(btg.nodesWeightsλ, rangeλ)
-    end
     # get prior function
     priorθ = initialize_prior(rangeθ, priortype); 
     priorλ = initialize_prior(rangeλ, priortype); 
@@ -153,37 +111,14 @@ function new_system!(btg::BTG)
 end
 
 
-"""
-keep the structure θ_params
-update btg.θ_buffers 
-"""
-function extend_system!(btg::BTG, i::Int)
-    # extend every buffer of theta with the help of incremental Cholesky    
-end
-
-
-function weight_comp(btg::BTG)
+function weight_comp(btg::BTG)#depends on train_data and not test_data
     # line 36-99 in tensorgrid.jl 
     return WeightTensorGrid
 end
 
-function prediction_comp(btg::BTG, WeightTensorGrid::Array{Float64})
+function prediction_comp(btg::BTG, WeightTensorGrid::Array{Float64}) #depends on both train_data and test_data
+    update_test_buffer!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTrainingData)
     # line 100-159 in tensorgrid.jl
     return pdf, cdf, pdf_deriv
 end
 
-function add_point!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
-    btg.nx = size(x, 1)
-    btg.x[1:btg.nx, :] = x
-    btg.z[1:btg.nx] = z
-    btg.X[1:btg.nx, :] = X
-    btg.nx += 1
-end
-
-function add_points!(btg::BTG, x::Array{Float64}, z::Array{Float64,1}, X::Array{Float64})
-    n_new = size(x, 1) # number of new points
-    btg.x[btg.nx+1: btg.nx+n_new, :] = x
-    btg.z[btg.nx+1: btg.nx+n_new] = z
-    btg.X[btg.nx+1: btg.nx+n_new, :] = X
-    btg.nx += n_new
-end

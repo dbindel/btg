@@ -8,30 +8,54 @@ using FastGaussQuadrature
 #More importantly, it provides a composite type which stores nodes and weight. 
 
 """
-Data-type which stores quadrature nodes and weights
+Data-type which stores quadrature nodes and weights. 
+Nodes and weights are both matrices of size d x num
 """
- 
-
-mutable struct nodesWeights{T1<:Array{Float64}, T2<:Array{Float64}}
-    nodes::T1
-    weights::T2  
+struct nodesWeights
+    nodes::Array{Float64, 2}
+    weights::  Array{Float64, 2}
+    d::Int64 #number of dimensions/length scales
+    num::Int64 #number of quadrature nodes
+    #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
+    function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12)
+            d = Base.size(ranges, 1)
+            N = Array{Float64, 2}(undef, d, num_pts)
+            if quadtype == "Gaussian"
+                nodes, weights = gausslegendre(num_pts)
+                for i = 1:Base.size(ranges, 1)
+                    N[i, :] = affineTransform(nodes, ranges[i, :])
+                end
+            else
+                throw(ArgumentError("Quadrature type not supported. Please enter \"Gaussian\""))
+            end
+            return new(N, repeat(weights', d, 1), d, num_pts)
+    end    
 end
 
 """
-Apply affine transformation to nodes to integration over range r (linear change of variables)
-Support both 1-dimensional and multi-dimensional cases
-INPUTS: 
-    nw: nodesweights structure including nodes and weights
-    r, 2*d array storing range of theta_i for i in 1:d, where d is the dimension of space
+Get dimensions of nodes or weights matrix
 """
-function affineTransformNodes(nw::nodesWeights{O}, r::Array{Float64}) where O<:Union{Array{Float64, 2}, Array{Float64, 1}}
-    center = (r[2,:] .+ r[1,:])./2
-    length = (r[2,:] .- r[1,:])./2
-    N = zeros(size(nw.nodes, 1), size(r, 2))
-    for i in 1:size(r, 2)
-        N[:,i] = length[i] .* nw.nodes .+ center[i]
-    end
-    nw.nodes = N
+size(nw::nodesWeights) = (d, num)
+
+function getNodes(nw::nodesWeights)
+    return nw.nodes
+end
+
+function getWeights(nw::nodesWeights)
+    return nw.weights
+end
+
+
+"""
+Apply affine transformation to nodes to integration over range r (linear change of variables)
+Input nodes are assumed to be tailored to [-1, 1]. Transformation of nodes gives integration nodes
+for new domain [r[1], r[2]]
+"""
+function affineTransform(nodes::O, r::O) where O<:Array{Float64, 1}
+    center = (r[2] + r[1]) /2
+    length = (r[2] - r[1]) /2
+    nodes = length .* nodes .+ center
+    return nodes
 end
 
 

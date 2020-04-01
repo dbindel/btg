@@ -88,6 +88,8 @@ function getTensorGrid(integrand, train::trainingData{T1, T2}, test::testingData
         end
         jacTensorGrid = repeat((1-p/n) .* jacvals, n1, 1, n3)
 
+    
+
         powerGrid =  qTensorGrid + detTensorGrid + jacTensorGrid #sum of exponents
         powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
         powerGrid = powerGrid .* weightsTensorGrid

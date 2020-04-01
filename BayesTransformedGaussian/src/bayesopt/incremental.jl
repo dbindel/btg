@@ -1,7 +1,7 @@
 using LinearAlgebra
 
 import Base: size, inv, getindex, setindex
-import LinearAlgebra: ldiv!, det, logdet, isposdef
+import LinearAlgebra: ldiv!, det, logdet, isposdef, diag
 
 #####
 ##### Incremental Cholesky Decomposition

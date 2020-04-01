@@ -15,8 +15,8 @@ mutable struct train_buffer
     capacity::Int64 #size of Σθ, maximum value of n
     n::Int64 #number data points incorporated
     k::AbstractCorrelation
-    θ::Float64
-    function train_buffer(θ::Float64, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
+    θ::Array{Real, 1}
+    function train_buffer(θ::Array{Real, 1}, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
         x = train.x
         Fx = train.Fx
         n = train.n
@@ -42,7 +42,7 @@ mutable struct test_buffer
     Hθ::Array{Float64, 2}
     Cθ::Array{Float64, 2}
     test_buffer() = new()
-    function test_buffer(θ::Float64, trainingData::AbstractTrainingData, testingData::AbstractTestingData, corr::AbstractCorrelation)::test_buffer 
+    function test_buffer(θ::Array{Real, 1}, trainingData::AbstractTrainingData, testingData::AbstractTestingData, corr::AbstractCorrelation)::test_buffer 
         Eθ = correlation(corr, θ, testingData.x0)    
         Bθ = cross_correlation(corr, θ, testingData.x0, trainingData.x)  
         ΣθinvBθ = trainingData.choleskyΣθ\Bθ'
@@ -56,11 +56,11 @@ end
 """
 Initialize dictionary of training buffers for a collection of θ-values corresponding to all quadrature nodes in a nodesWeights object
 """
-function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())::Dict{Real, T} where T<:train_buffer
-    train_buffer_dict = Dict{Real, train_buffer}
+function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())::Dict{Union{Array{Real, 1}, Real}, T} where T<:train_buffer
+    train_buffer_dict = Dict{Union{Array{Real, 1}, Real}, train_buffer}
     nodeSet = Set(nw.nodes[i, j] for i = 1:size(nw, 1) for j = 1:size(nw, 2))
     for node in nodeSet
-        push!(train_buffer_dict, node => init_train_buffer(node, trainingData, corr))
+        push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
     end
     return train_buffer_dict 
 end
@@ -87,7 +87,7 @@ function update_train_buffer!(train_buffer::train_buffer, test_buffer::test_buff
     @assert typeof(y0)<:Array{T, 1} where T<:Real 
     @assert train_buffer.n < trainingData.n #train_train_buffer must be "older" than trainingData
     k = trainingData.n - train_buffer.n 
-    A12, A2 = extend!(train_buffer.choleskyΣθ, k) #two view objects 
+    A12, A2 = extend(train_buffer.choleskyΣθ, k) #two view objects 
     #A12 = cross_correlation(train_buffer.k(), train_buffer.θ, trainingData.x[1:end-k], trainingData.x[end-k+1:end])
     #A2 = correlation(train_buffer.k(), train_buffer.θ, trainingData.x[end-k+1:end]) #Σθ should get updated automatically, but only upper triangular portion
     A12 = test_buffer.Bθ'
@@ -103,7 +103,7 @@ Update second buffer, which depends on testing data, training data, and first bu
 """
 function update_test_buffer!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
     test_buffer.Eθ = correlation(trainingData.k, trainingData.θ, testingData.x0)    
-    test_buffer.Bθ = cross_correlation(trainingData.k, trainingData.θ, testingData.x0, trainingData.x)  
+    test_buffer.Bθ = cross_correlation(trainingData.k, train_buffer.θ, testingData.x0, trainingData.x)  
     test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\Bθ'
     test_buffer.Dθ = Eθ - Bθ*ΣθinvBθ
     test_buffer.Hθ = testingData.Fx0 - Bθ*(train_buffer.Σθ_inv_X) 

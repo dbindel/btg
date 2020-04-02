@@ -66,12 +66,13 @@ function update!(btg::btg, x0, Fx0, y0) #extend system step, invariant is
 end
 
 function solve(btg::btg)
-    WeightTensorGrid = weight_comp(btg::btg)
-    pdf, cdf, pdf_deriv = prediction_comp(btg, WeightTensorGrid)
+    weightTensorGrid = weight_comp(btg::btg)
+    (pdf, cdf, dpdf) = prediction_comp(btg, weightTensorGrid)
 end
 
 """
-Compute weights in the mixture of T-distributions
+Stably compute weights in the mixture of T-distributions, i.e. |Σθ|^(-1/2) * |X'ΣθX|^(-1/2) * qtilde^(-(n-p)/2) * Jac(z)^(1-p/n) * pθ(θ) * pλ(λ),
+for all combinations of quadrature nodes in θ and λ
 """
 function weight_comp(btg::btg)#depends on train_data and not test_data
     # line 36-99 in tensorgrid.jl 
@@ -115,7 +116,7 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
         detTensorGridXΣX[I] = -1.0 * sum(log.(diag(choleskyXΣX.U))) 
     end
     
-    #compute exponents of (Jac(z)^(1-p/n)
+    #compute exponents of Jac(z)^(1-p/n)
     jacTensorGrid = similar(weightsTensorGrid)
     jacvals = zeros(1, nq)
     for i = 1:nq
@@ -146,79 +147,44 @@ end
 Compute pdf and cdf functions
 """
 function prediction_comp(btg::btg, weightTensorGrid::Array{Float64}) #depends on both train_data and test_data
-    update_test_buffer!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTrainingData)
     #preallocate some space to store dpdf, pdf, and cdf functions for all (θ, λ) quadrature node combinations
-    tgrid_pdf_deriv = similar(weightsTensorGrid) 
-    tgrid_pdf = similar(weightsTensorGrid) 
-    tgrid_cdf = similar(weightsTensorGrid)
+    tgridpdfderiv = similar(weightsTensorGrid) 
+    tgridpdf = similar(weightsTensorGrid) 
+    tgridcdf = similar(weightsTensorGrid)
 
     R = CartesianIndex(weightsTensorGrid)
     for I in R
+        θ = getNodeSequence(getNodes(nodesWeightsθ), Tuple(I)[1:end-1]) 
+        λ = getNodeSequence(getNodes(nodesWeightsλ), Tuple(I)[end]) 
         (dpdf, pdf, cdf) = comp_tdist(btg, θ, λ)
-        tgrid_pdf_deriv[I] = dpdf
+        tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf
     end
+    
+    function checkInput(x0, Fx0, y0)
+        @assert typeof(x0) <: Array{T, 2} where T <: Real
+        @assert typeof(Fx0) <:Array{T, 2} where T <: Real
+        @assert typeof(y0) <:Array{T, 1} where T <: Real
+        return nothing
+    end
+    
+    function evalgrid(f, x0, Fx0, y0)
+        checkInput(x0, Fx0, y0) 
+        for I in R
+            res[I] = f[I](x0, Fx0, y0) 
+        end
+        return res
+    end
 
-    for i = 1:l1
-        for j = 1:l2 
-            funcs = integrand(nodesθ[i], nodesλ[j], train, test, boxCoxObj, theta_param_list[i], quadtype)
-            for k = 1:l3
-                #tgrid[i, j, k] = funcs[k]       
-                tgridpdf[i, j, k] = funcs[1][k]
-                tgridcdf[i, j, k] = funcs[2][k]
-            end
-        end
-    end
-    function evalTgrid_pdf(z0)
-        res = Array{Float64, 3}(undef, l1, l2, l3)
-        for i=1:l1
-            for j = 1:l2
-                for k =1:l3
-                    #println("tgridpdf(z0): ", tgridpdf[i, j, k](z0))
-                    res[i, j, k] = tgridpdf[i, j, k](x0, Fx0, y0)[1]
-                end
-            end
-        end 
-        return res
-    end
-    function evalTgrid_cdf(z0)
-        res = Array{Float64, 3}(undef, l1, l2, l3)
-        for i=1:l1
-            for j = 1:l2
-                for k =1:l3
-                    res[i, j, k] = tgridcdf[i, j, k](x0, Fx0, y0)
-                end
-            end
-        end 
-        return res
-    end
-    #product rule loop for Turan quadrature (k>1). In the k=1 case, this reduces to taking the dot
-    # product between the tensor grid and weights grid.
-    function pdf(x0, Fx0, y0)
-        grid = evalTgrid_pdf(z0)
-        res = 0
-        for i = 1:n3
-            for j = 1:i
-                res = binomial(i, j) * dot(grid[:, :, j],  weightsTensorGrid[:, :, n3-j+1])  
-            end
-        end
-        return res
-    end
-    function cdf(x0, Fx0, y0)
-        grid = evalTgrid_cdf(z0)
-        res = 0
-        for i = 1:n3
-            for j = 1:i
-                res = binomial(i, j) * dot(grid[:, :, j], weightsTensorGrid[:, :, n3-j+1])  
-            end
-        end
-        return res
-    end
-    return (pdf, cdf)
+    dpdf_evalgrid = (x0, Fx0, y0) -> evalgrid(tgridpdfderiv, x0, Fx0, y0)
+    pdf_evalgrid = (x0, Fx0, y0) -> evalgrid(tgridpdf, x0, Fx0, y0) 
+    cdf_evalgrid = (x0, Fx0, y0) -> evalgrid(tgridcdf, x0, Fx0, y0)
+
+    dpdf = (x0, Fx0, y0) ->  dpdf_evalgrid(x0, Fx0, y0) .* weightsTensorGrid
+    pdf = (x0, Fx0, y0) ->  pdf_evalgrid(x0, Fx0, y0) .* weightsTensorGrid
+    cdf = (x0, Fx0, y0) ->  cdf_evalgrid(x0, Fx0, y0) .* weightsTensorGrid
     
-    
-    # line 100-159 in tensorgrid.jl
-    return pdf, cdf, pdf_deriv
+    return (pdf_deriv, pdf, cdf) 
 end
 

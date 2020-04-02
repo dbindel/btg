@@ -53,8 +53,8 @@ mutable struct test_buffer
     end
 end
 
-function unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX)
-function unpack(b::test_buffer) = (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
+unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX)
+unpack(b::test_buffer) = (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
 
 """
 Initialize dictionary of training buffers for a collection of θ-values corresponding to all quadrature nodes in a nodesWeights object

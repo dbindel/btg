@@ -9,7 +9,6 @@ using FastGaussQuadrature
 
 """
 Data-type which stores quadrature nodes and weights. 
-Nodes and weights are both matrices of size d x num
 """
 struct nodesWeights
     nodes::Array{Float64, 2}

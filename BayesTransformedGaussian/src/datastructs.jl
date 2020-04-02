@@ -20,13 +20,6 @@ getDimension(td::trainingData) = td.d
 getCovDimension(td::trainingData) = td.p
 getNumPts(td::trainingData) = td.n
 
-x = getPosition(trainingData)
-Fx = getCovariates(trainingData)
-y = getLabel(trainingData)
-d = getDimension(trainingData) #num data poins
-n = getNumPts(trainingData)
-p = getCovDimension(trainingData)
-
 unpack(t::trainingData) = (t.x, t.Fx, t.y, t.d, t.n, t.p)
 
 """
@@ -58,10 +51,10 @@ end
 Represents a set of testing data. Currently supports single-point prediction.
 """
 mutable struct testingData<:AbstractTestingData
-    x0::Array{Real, 2}
-    Fx0::Array{Real, 2}
+    x0::Array{T, 2} where T<:Float64
+    Fx0::Array{T, 2} where T<:Float64
     k::Int64
-    testingData(x0::Array{Real, 2}, Fx0::{Array{Real, 1}}) = new(x0, Fx0, size(x0, 1))
+    testingData(x0::Array{Real, 2}, Fx0::Array{Real, 1}) = new(x0, Fx0, size(x0, 1))
 end
 
 #unpack(t::testingData) = (t.x0, t.Fx0, t.k) #never used, because we will always supply this data when calling pdf, cdf, etc.

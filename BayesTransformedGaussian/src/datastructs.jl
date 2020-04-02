@@ -4,10 +4,10 @@ abstract type AbstractTestingData end
 """
 Represents training dataset for GP regression problem. 
 """
-struct trainingData{T<:Array{Float64, 2}, S<:Array{Float64, 1}} <: AbstractTrainingData
-    x::T #matrix of horizontal location vectors stacked vertically
-    Fx::T #matrix of covariates
-    y::S #array of labels
+struct trainingData <: AbstractTrainingData
+    x::Array{Float64, 2} #matrix of horizontal location vectors stacked vertically
+    Fx::Array{Float64, 2} #matrix of covariates
+    y::Array{Float64, 1} #array of labels
     d::Int64 #dimension of location vectors in x
     p::Int64 #dimension of covariate vectors in Fx
     n:: Int64 # number of incorporated points
@@ -16,6 +16,18 @@ end
 getLabel(td::trainingData) = td.y
 getPosition(td::trainingData) = td.x
 getCovariates(td::trainingData) = td.Fx
+getDimension(td::trainingData) = td.d
+getCovDimension(td::trainingData) = td.p
+getNumPts(td::trainingData) = td.n
+
+x = getPosition(trainingData)
+Fx = getCovariates(trainingData)
+y = getLabel(trainingData)
+d = getDimension(trainingData) #num data poins
+n = getNumPts(trainingData)
+p = getCovDimension(trainingData)
+
+unpack(t::trainingData) = (t.x, t.Fx, t.y, t.d, t.n, t.p)
 
 """
 Represents mutable training dataset which can be extended with each newly incorporated observation 
@@ -45,11 +57,14 @@ end
 """
 Represents a set of testing data. Currently supports single-point prediction.
 """
-mutable struct testingData{T<:Array{Float64, 2}} <:AbstractTestingData
-    x0::T
-    Fx0::T
+mutable struct testingData<:AbstractTestingData
+    x0::Array{Real, 2}
+    Fx0::Array{Real, 2}
+    k::Int64
+    testingData(x0::Array{Real, 2}, Fx0::{Array{Real, 1}}) = new(x0, Fx0, size(x0, 1))
 end
 
+#unpack(t::testingData) = (t.x0, t.Fx0, t.k) #never used, because we will always supply this data when calling pdf, cdf, etc.
 
 """
 Updates extensible training dataset with new data points (locations, covariates, labels)
@@ -73,11 +88,12 @@ end
 Replaces prediction location and covariates in testingData with new
 new locations and covariates 
 """
-function update!(e:: AbstracttestingData, x0, Fx0)
+function update!(e:: AbstractTestingData, x0, Fx0)
     @assert typeof(x0)<:Array{T, 2} where T<:Real
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
     e.x = x0
     e.Fx = Fx0
+    e.k = size(x0, 1)
     return nothing
 end
 

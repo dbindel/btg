@@ -35,7 +35,7 @@ end
 """
 Get dimensions of nodes or weights matrix
 """
-size(nw::nodesWeights) = (d, num)
+size(nw::nodesWeights) = (nw.d, nw.num)
 getProd(arr::Array{Float64, 2}, I) = reduce(*, [arr[i, j] for i =1:size(arr, 1) for j = I[i]] ) 
 getNodeSequence(arr::Array{Float64, 2}, I) = [arr[i, j] for i =1:size(arr, 1) for j = I[i]]
 

@@ -1,9 +1,8 @@
-include("settings.jl")
-include("quadrature/tensorgrid0.jl")
 include("transforms/transforms.jl")
 include("kernels/kernel.jl")
 include("priors/priors.jl")
-include("computation/buffers.jl")
+include("computation/buffers0.jl")
+include("dataStructs.jl")
 
 """
 BTG object may include (some may be unnecessary)
@@ -35,14 +34,20 @@ mutable struct btg
     train_buffer_dict::Dict{Float64, train_buffer}  #buffer for each theta value
     test_buffer_dict::Dict{Float64, test_buffer} #buffer for each theta value
     capacity::Int64
-    btg(train_data::AbstractTrainingData, rangeθ, rangeλ; corr::AbstractCorrelation = Gaussian(), priorθ::priorType = Uniform(rangeθ), priorλ::priorType = Uniform(rangeλ), quadtype::String = "Gaussian", transform:NonlinearTransform = BoxCox())
+    function btg(train_data::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = "Gaussian", transform = BoxCox())
+        @assert typeof(corr)<:AbstractCorrelation
+        @assert typeof(priorθ)<:priorType
+        @assert typeof(priorλ)<:priorType
+        @assert typeof(quadtype)<:String
+        @assert typeof(transform)<: NonlinearTransform
         #a btg object really should contain a bunch of train buffers correpsonding to different theta-values
         #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
         nodesWeightsθ = nodesWeights(rangeθ, quadtype)
         nodesWeightsλ = nodesWeights(rangeλ, quadtype)
         train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, training_data, corr)
         test_buffer_dict = Dict{Array{Real, 1}, test_buffer}() #empty dict
-        new(train_data, 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, getCapacity(train_data))
+        cap = capacity(train_data)
+        new(train_data, 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, cap)
     end
 end
 
@@ -68,7 +73,7 @@ end
 """
 Compute weights in the mixture of T-distributions
 """
-function weight_comp(btg::BTG)#depends on train_data and not test_data
+function weight_comp(btg::btg)#depends on train_data and not test_data
     # line 36-99 in tensorgrid.jl 
     nd = btg.nodesWeightsθ.d + 1 #number of dimensions of theta (d) plus number dimensions of lambda (1)
     nq = btg.nodesWeightsθ.num #number of quadrature nodes
@@ -76,7 +81,7 @@ function weight_comp(btg::BTG)#depends on train_data and not test_data
     weightsTensorGrid = Array{Float64, nd}(undef, Tuple([nq for i = 1:nd])) #initialize tensor grid
     R = CartesianIndices(weightsTensorGrid)
     for I in R #I is multi-index
-        weightsTensorGrid[I] = getProd(vcat(btg.nodesWeightsθ.weights, btg.nodesWeightsλ.weights) #this step can be simplified because the tensor is symmetric (weights are the same along each dimension)
+        weightsTensorGrid[I] = getProd(vcat(btg.nodesWeightsθ.weights, btg.nodesWeightsλ.weights), I) #this step can be simplified because the tensor is symmetric (weights are the same along each dimension)
     end
 
     #compute exponents of qtilde^(-(n-p)/2)
@@ -103,7 +108,7 @@ function weight_comp(btg::BTG)#depends on train_data and not test_data
     detTensorGridΣθ = similar(weightsTensorGrid)
     detTensorGridXΣX = similar(weightsTensorGrid) 
     for I in R
-        train_buffer = btg.train_buffer_dict[getNodeSequence(Tuple(I)[1:end-1])] #look up train buffer based on combination of theta quadrature nodes
+        train_buffer = btg.train_buffer_dict[getNodeSequence(getNodes(btg.nodesWeightsθ), Tuple(I)[1:end-1])] #look up train buffer based on combination of theta quadrature nodes
         choleskyΣθ = train_buffer.choleskyΣθ
         choleskyXΣX = train_buffer.choleskyXΣX
         detTensorGridΣθ[I] = -0.5 * logdet((choleskyΣθ)) #log determinant of incremental cholesky
@@ -119,14 +124,18 @@ function weight_comp(btg::BTG)#depends on train_data and not test_data
     for I in R
         jacTensorGrid[I] = (1-p/n) * jacvals[Tuple(I)[end]]
     end
-
+    
     #compute exponents of pθ(θ)*pλ(λ)
+    priorTensorGrid = similar(weightsTensorGrid)
     for I in R
-        
+        tup = Tupl(I); r1 = tup[1:end-1]; r2 = tup[end]
+        t1 = getNodeSequence(getNodes(btg.nodesWeightsθ), r1)
+        t2 = getNodeSequence(getNodes(btg.nodesWeightsλ), r2)
+        priorTensorGrid[I] = logProb(btg.priorθ, t1) + logProb(btg.priorλ, t2)
     end
 
     @assert size(qTensorGrid) == size(detTensorGridΣθ) == size(detTensorGridXΣX) == size(jacTensorGrid) == size(priorTensorGrid)
-    powerGrid =  qTensorGrid + detTensorGrid + jacTensorGrid #sum of exponents
+    powerGrid =  qTensorGrid + detTensorGridΣθ + detTensorGridXΣX + jacTensorGrid + priorTensorGrid #sum of exponents
     powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
     weightsTensorGrid = powerGrid .* weightsTensorGrid
     weightsTensorGrid =  weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
@@ -136,16 +145,19 @@ end
 """
 Compute pdf and cdf functions
 """
-function prediction_comp(btg::BTG, weightTensorGrid::Array{Float64}) #depends on both train_data and test_data
+function prediction_comp(btg::btg, weightTensorGrid::Array{Float64}) #depends on both train_data and test_data
     update_test_buffer!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTrainingData)
-    
-    tgridpdf = similar(weightsTensorGrid) 
-    #tensor grid for CDF P(z0|theta, lambda, z)
-    tgridcdf = similar(weightsTensorGrid)
+    #preallocate some space to store dpdf, pdf, and cdf functions for all (θ, λ) quadrature node combinations
+    tgrid_pdf_deriv = similar(weightsTensorGrid) 
+    tgrid_pdf = similar(weightsTensorGrid) 
+    tgrid_cdf = similar(weightsTensorGrid)
+
     R = CartesianIndex(weightsTensorGrid)
     for I in R
-        tgridpdf[I] = 
-        tgridcdf[I] =  
+        (dpdf, pdf, cdf) = comp_tdist(btg, θ, λ)
+        tgrid_pdf_deriv[I] = dpdf
+        tgridpdf[I] = pdf
+        tgridcdf[I] = cdf
     end
 
     for i = 1:l1

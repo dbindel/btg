@@ -1,5 +1,4 @@
 abstract type priorType end
-abstract type Uni
 
 """
 Represents a uniform prior on range = [a, b]
@@ -16,17 +15,18 @@ struct Uniform <:priorType
             range = reshape(range, 1, 2)
             return new(range, 1, lengths)
         else 
-            @assert size(range, 2) == 2
-            return new(range, size(range, 1), lengths)
+            @assert Base.size(range, 2) == 2
+            return new(range, Base.size(range, 1), lengths)
         end
     end
 end
 
 getRange(u::Uniform) = u.range #internal range array
 getNum(u::Uniform) = u.d #number of dimensions of interal range array
-getLengths(u::Uniform) = u.lengths
+getLength(u::Uniform) = u.lengths
+logProb(u::Uniform, x) = (@assert length(x) == u.d; l = getLength(u); -sum(log.(l)))#density function
+prob(u::Uniform, x) = (@assert length(x) == u.d; l = getLength(u); 1/prob(l))#density function
 
-(u::Uniform)(x) = (@assert length(x) == u.d; l = getLength(u); 1/prod(l))#density function
 
 partialx(u::Uniform, x) = 0
 

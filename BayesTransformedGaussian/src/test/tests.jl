@@ -2,6 +2,7 @@ using Test
 using Distributions
 include("../kernels/kernel.jl")
 include("../computation/finitedifference.jl")
+include("../computation/tdist.jl")
 include("../transforms/transforms.jl")
 include("../datastructs.jl")
 
@@ -74,6 +75,6 @@ end
    # @test_broken BoundsError update!(x, o3, p3, z3) 
 end
 
-@testset "incremental.jl" begin
-    
+@testset "tdist.jl" begin
+   # checkDerivative()
 end

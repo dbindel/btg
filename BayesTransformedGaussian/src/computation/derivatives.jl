@@ -2,7 +2,7 @@
 # compute partial derivatives by chain-ruling built-in T-Dist pdf and cdf with derivatives of sub-functions 
 
 include("../kernels/kernel.jl")
-include("../transforms.jl")
+include("../transforms/transforms.jl")
 include("buffers.jl")
 include("../priors.jl")
 include("../computation/buffers.jl")

@@ -53,6 +53,9 @@ mutable struct test_buffer
     end
 end
 
+function unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX)
+function unpack(b::test_buffer) = (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
+
 """
 Initialize dictionary of training buffers for a collection of θ-values corresponding to all quadrature nodes in a nodesWeights object
 """
@@ -81,7 +84,7 @@ end
 Updates training buffer with testing buffer
 NOTE: trainingData field of btg must be updated before train_buffer is updated
 """
-function update_train_buffer!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData)  #use incremental cholesky to update training train_buffer
+function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData)  #use incremental cholesky to update training train_buffer
     @assert typeof(x0)<:Array{T, 2} where T<:Real
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
     @assert typeof(y0)<:Array{T, 1} where T<:Real 
@@ -101,7 +104,7 @@ end
 """
 Update second buffer, which depends on testing data, training data, and first buffer. 
 """
-function update_test_buffer!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
+function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
     test_buffer.Eθ = correlation(trainingData.k, trainingData.θ, testingData.x0)    
     test_buffer.Bθ = cross_correlation(trainingData.k, train_buffer.θ, testingData.x0, trainingData.x)  
     test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\Bθ'

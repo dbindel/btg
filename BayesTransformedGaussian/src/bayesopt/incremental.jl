@@ -1,6 +1,6 @@
 using LinearAlgebra
 
-import Base: size, inv, getindex, setindex
+import Base: size, inv, getindex, setindex, copy, display
 import LinearAlgebra: ldiv!, det, logdet, isposdef, diag
 
 #####
@@ -26,15 +26,18 @@ function incremental_cholesky(T, capacity)
     return incremental_cholesky!(Array{T}(undef, capacity, capacity), 0)
 end
 
-valid_update(R::IncrementalCholesky, k) = 0 <= R.n + k <= size(R.R, 1) 
+valid_update(R::IncrementalCholesky, k) = 0 <= R.n + k <= size(R.R, 1)
 
-function extend(R::IncrementalCholesky, k)
+# extend is deprecated in favor of view_next
+extend(R::IncrementalCholesky, k) = view_next(sd, k)
+function view_next(R::IncrementalCholesky, k)
     valid_update(R, k) || throw(ErrorException("Size cannot exceed capacity"))
     return @views R.R[1:R.n, R.n+1:R.n+k], R.R[R.n+1:R.n+k, R.n+1:R.n+k]
 end
 
-
-function update!(R::IncrementalCholesky, k; check=true)
+# update! is depracated in favor of compute_next!
+update!(R::IncrementalCholesky, k) = compute_next!(sd, k)
+function compute_next!(R::IncrementalCholesky, k; check=true)
     valid_update(R, k) || throw(ErrorException("Size cannot exceed capacity"))
     @views A12, A2 = R.R[1:R.n, R.n+1:R.n+k], R.R[R.n+1:R.n+k, R.n+1:R.n+k]
     
@@ -47,7 +50,9 @@ function update!(R::IncrementalCholesky, k; check=true)
     return nothing
 end
 
-function remove!(R::IncrementalCholesky, k)
+# remove! is depracated in favor of remove_last!
+remove!(R::IncrementalCholesky, k) = remove_last!(sd, k)
+function remove_last!(R::IncrementalCholesky, k)
     valid_update(R, -k) || throw(ErrorException("Size cannot be negative"))
     R.n -= k
     return nothing
@@ -69,6 +74,8 @@ det(R::IncrementalCholesky) = det(get_chol(R))
 logdet(R::IncrementalCholesky) = logdet(get_chol(R))
 
 isposdef(R::IncrementalCholesky) = R.info == 0
+
+display(R::IncrementalCholesky) = display(get_chol(R))
 
 #####
 ##### Growable Data Array
@@ -96,18 +103,25 @@ setindex!(A::DataArray, args...) = setindex!(array_view(A), args...)
 
 valid_update(A::DataArray, k) = 0 <= A.n + k <= size(A.A)[end] 
 
-function extend(A::DataArray, k)
+
+# extend is deprecated in favor of view_next
+extend(A::DataArray, k) = view_next(A, k)
+function view_next(A::DataArray, k)
     valid_update(A, k) || throw(ErrorException("Size cannot exceed capacity"))
     return view(A.A, :, A.n+1:A.n+k)
 end
 
-function update!(A::DataArray, k)
+# update! is depracated in favor of compute_next!
+update!(A::DataArray, k) = compute_next!(A, k)
+function compute_next!(A::DataArray, k)
     valid_update(A, k) || throw(ErrorException("Size cannot exceed capacity"))
     A.n += k
     return nothing
 end
 
-function remove!(A::DataArray, k)
+# remove! is depracated in favor of remove_last!
+remove!(A::DataArray, k) = remove_last!(A, k)
+function remove_last!(A::DataArray, k)
     valid_update(A, -k) || throw(ErrorException("Size cannot be negative"))
     A.n -= k
     return nothing

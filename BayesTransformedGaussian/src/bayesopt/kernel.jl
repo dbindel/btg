@@ -30,7 +30,7 @@ function correlation!(out, k::AbstractCorrelation, x, θ...; jitter = 0)
     pairwise!(out, dist, x, dims=2)
     out .= (τ -> k(τ, θ...)).(out)
     if jitter != 0
-        out += jitter * I
+        out[diagind(out)] .+= jitter
         out ./= out[1, 1]
     end
     return nothing

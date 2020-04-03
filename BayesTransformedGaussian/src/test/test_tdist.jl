@@ -26,7 +26,7 @@ trainingData1 = trainingData(x, Fx, y) #training data used for testing various f
 
 d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
 #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ
-rangeθ = [100 200]
+rangeθ = [100.0 200]
 rangeλ = [0.5 5] #we will always used 1 range scale for lambda
 btg1 = btg(trainingData1, rangeθ, rangeλ)
 (dpdf, pdf, cdf) = solve(btg1)

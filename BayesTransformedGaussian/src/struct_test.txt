@@ -1,4 +1,0 @@
-struct x
-a
-end
-

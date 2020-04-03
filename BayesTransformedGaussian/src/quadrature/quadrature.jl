@@ -12,7 +12,7 @@ Data-type which stores quadrature nodes and weights.
 """
 struct nodesWeights
     nodes::Array{Float64, 2}
-    weights::  Array{Float64, 2}
+    weights::Array{Float64, 2}
     d::Int64 #number of dimensions/length scales
     num::Int64 #number of quadrature nodes
     #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
@@ -34,9 +34,15 @@ end
 """
 Get dimensions of nodes or weights matrix
 """
+getNum(nw::nodesWeights) = nw.num
+getDimension(nw::nodesWeights) = nw.d
 size(nw::nodesWeights) = (nw.d, nw.num)
 getProd(arr::Array{Float64, 2}, I) = reduce(*, [arr[i, j] for i =1:size(arr, 1) for j = I[i]] ) 
 getNodeSequence(arr::Array{Float64, 2}, I) = [arr[i, j] for i =1:size(arr, 1) for j = I[i]]
+
+function getNumLengthScales(nw::nodesWeights)
+    return nw.d
+end
 
 function getNodes(nw::nodesWeights)
     return nw.nodes

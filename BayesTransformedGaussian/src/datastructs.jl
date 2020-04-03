@@ -36,7 +36,7 @@ mutable struct extensible_trainingData<:AbstractTrainingData
     n::Int64 #number of incorporated points so far
     capacity::Int64 #amount of preallocated space
     function extensible_trainingData(d::Int64, p::Int64, capacity=100)::extensible_trainingData
-        x = Array{Float64}(undef, capacity, dimension)
+        x = Array{Float64}(undef, capacity, d)
         Fx = Array{Float64}(undef, capacity, p)
         y = Array{Float64}(undef, capacity)
         n = 0 #number incorporated points
@@ -53,9 +53,17 @@ Represents a set of testing data. Currently supports single-point prediction.
 mutable struct testingData<:AbstractTestingData
     x0::Array{T, 2} where T<:Float64
     Fx0::Array{T, 2} where T<:Float64
+    d::Int64
+    p::Int64
     k::Int64
-    testingData(x0::Array{Real, 2}, Fx0::Array{Real, 1}) = new(x0, Fx0, size(x0, 1))
+    testingData() = new()
+    testingData(x0::Array{Real, 2}, Fx0::Array{Real, 1}) = (@assert size(x0, 1)==size(Fx0, 1);  new(x0, Fx0, size(x0, 2), size(Fx0, 2), size(x0, 1)))
 end
+getPosition(td::testingData) = td.x0
+getCovariates(td::testingData) = td.Fx0
+getDimension(td::testingData) = td.d
+getCovDimension(td::testingData) = td.p
+getNumPts(td::testingData) = td.k
 
 #unpack(t::testingData) = (t.x0, t.Fx0, t.k) #never used, because we will always supply this data when calling pdf, cdf, etc.
 
@@ -84,8 +92,11 @@ new locations and covariates
 function update!(e:: AbstractTestingData, x0, Fx0)
     @assert typeof(x0)<:Array{T, 2} where T<:Real
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
-    e.x = x0
-    e.Fx = Fx0
+    @assert size(x0, 1) == size(Fx0, 1)
+    e.x0 = x0
+    e.Fx0 = Fx0
+    e.d = size(x0, 2)
+    e.p = size(Fx0, 2)
     e.k = size(x0, 1)
     return nothing
 end
@@ -94,5 +105,9 @@ end
 Get capacity of extensible training object or number of data points in vanilla training object
 """
 function getCapacity(e::AbstractTrainingData)
-    typeof(e)<:ExtensibleTrainingData ? e.capacity : e.n
+    typeof(e)<:extensible_trainingData ? e.capacity : e.n
+end
+
+function checkCompatibility(x::AbstractTrainingData, y::AbstractTestingData)
+    return getDimension(x) == getDimension(y) && getCovDimension(x) == getCovDimension(y)
 end

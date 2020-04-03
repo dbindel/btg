@@ -13,8 +13,6 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
         d2f0 = hessian(x0)
     end
 
-    println(typeof(f))
-    debugvals = f.(.9:.001:1.1)
     if size(x0, 2)>1
         dx = rand(size(x0, 1), size(x0, 2))
     else
@@ -24,17 +22,10 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     for i=1:length(h)
         h[i] = exp(-h[i]) 
     end
-    println("h: ", h)
     A = zeros(length(h))
-    fis = zeros(1, length(h))
-    vals = zeros(100, length(h))
     for i = 1:length(h) 
-        #println(x0)
-        #println(h[i]*dx)
-        vals[:, i] = f.(collect(.1:.1:10))
         fi = f.(x0 .+ h[i]*dx)[1]
-        fis[i] = fi[1]
-        if true #debug
+        if false #debug
             println("x0: ", x0)
             println("dx: ", dx)
             println("fi: ", fi)
@@ -53,11 +44,10 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
                 #println("caught in check deriv")
                 A[i] = norm((fi .- f0) .- df0 .* (h[i] * dx))
             end
-           
         end
     end
     r1 = log.(h)
     r2 = log.(A)
     plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
-    return (r1, r2, plt, polyfit(r1, r2, 1), fis, vals, debugvals)
+    return (r1, r2, plt, polyfit(r1, r2, 1))
 end

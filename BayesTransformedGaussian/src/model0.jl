@@ -22,7 +22,8 @@ BTG object may include (some may be unnecessary)
     θ_buffers: the old θ_params struct
 """
 mutable struct btg
-    train_data::AbstractTrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
+    trainingData::AbstractTrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
+    testingData::AbstractTestingData 
     n::Int64 #number of points in kernel system, if 0 then uninitialized
     g:: NonlinearTransform #transform family, e.g. BoxCox()
     k::AbstractCorrelation  #kernel family, e.g. Gaussian()
@@ -31,23 +32,24 @@ mutable struct btg
     priorλ::priorType
     nodesWeightsθ #integration nodes and weights for θ
     nodesWeightsλ #integration nodes and weights for λ; nodes and weights should remain constant throughout the lifetime of the btg object
-    train_buffer_dict::Dict{Float64, train_buffer}  #buffer for each theta value
-    test_buffer_dict::Dict{Float64, test_buffer} #buffer for each theta value
+    train_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, train_buffer}   #buffer for each theta value
+    test_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, test_buffer}  #buffer for each theta value
     capacity::Int64
-    function btg(train_data::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = "Gaussian", transform = BoxCox())
+    function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = "Gaussian", transform = BoxCox())
         @assert typeof(corr)<:AbstractCorrelation
         @assert typeof(priorθ)<:priorType
         @assert typeof(priorλ)<:priorType
         @assert typeof(quadtype)<:String
         @assert typeof(transform)<: NonlinearTransform
+        @assert size(rangeθ, 1) == getDimension(trainingData) || size(rangeθ, 1)==1
         #a btg object really should contain a bunch of train buffers correpsonding to different theta-values
         #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
         nodesWeightsθ = nodesWeights(rangeθ, quadtype)
         nodesWeightsλ = nodesWeights(rangeλ, quadtype)
-        train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, training_data, corr)
-        test_buffer_dict = Dict{Array{Real, 1}, test_buffer}() #empty dict
-        cap = capacity(train_data)
-        new(train_data, 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, cap)
+        train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr)
+        test_buffer_dict = Dict{Union{Array{T, 1}, T} where T<:Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict)) #initialize keys of dict with unitialized test buffer values
+        cap = getCapacity(trainingData)
+        new(trainingData, testingData(), 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, cap)
     end
 end
 
@@ -61,12 +63,12 @@ end
 Updates btg object with newly observed data points. Used in the context of BO.
 """
 function update!(btg::btg, x0, Fx0, y0) #extend system step, invariant is 
-    update!(btg.train_data, x0, Fx0, y0)    
+    update!(btg.trainingData, x0, Fx0, y0)    
     update_train_buffer!(btg.train_buffer, btg.train)
 end
 
 function solve(btg::btg)
-    weightTensorGrid = weight_comp(btg::btg)
+    weightTensorGrid = weight_comp(btg)
     (pdf, cdf, dpdf) = prediction_comp(btg, weightTensorGrid)
 end
 
@@ -78,7 +80,7 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
     # line 36-99 in tensorgrid.jl 
     nd = btg.nodesWeightsθ.d + 1 #number of dimensions of theta (d) plus number dimensions of lambda (1)
     nq = btg.nodesWeightsθ.num #number of quadrature nodes
-    n =  btg.train_data.n; p = btg.train_data.p #number of training points and dimension of covariates
+    n =  btg.trainingData.n; p = btg.trainingData.p #number of training points and dimension of covariates
     weightsTensorGrid = Array{Float64, nd}(undef, Tuple([nq for i = 1:nd])) #initialize tensor grid
     R = CartesianIndices(weightsTensorGrid)
     for I in R #I is multi-index
@@ -87,22 +89,22 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
 
     #compute exponents of qtilde^(-(n-p)/2)
     qTensorGrid = similar(weightsTensorGrid)
-    z = getLabel(btg.train_data)
+    z = getLabel(btg.trainingData)
     g = (x, λ) -> btg.g(x, λ); dg = (x, λ) -> partialx(btg.g, x, λ)
     lmbda = λ -> g(z, λ)
     gλvals = Array{Float64, 2}(undef, length(z), nq) #preallocate space to store gλz arrays
     for i = 1:nq 
         gλvals[:, i] = lmbda(btg.nodesWeightsλ.nodes[i])
     end
-    Fx = getCovariates(btg.train_data)
+    Fx = getCovariates(btg.trainingData)
     for I in R
-        train_buffer = btg.train_buffer_dict[getNodeSequence(Tuple(I)[1:end-1])] #look up train buffer based on combination of theta quadrature nodes
+        train_buffer = btg.train_buffer_dict[getNodeSequence(getNodes(btg.nodesWeightsθ), Tuple(I)[1:end-1])] #look up train buffer based on combination of theta quadrature nodes
         choleskyXΣX = train_buffer.choleskyXΣX
         choleskyΣθ = train_buffer.choleskyΣθ
         gλz = gλvals[:, Tuple(I)[end]]
         βhat = choleskyXΣX\(Fx'*(choleskyΣθ\gλz)) 
         qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
-        qTensorGrid(I) = -(n-p)/2 * log(qtilde)
+        qTensorGrid[I] = -(n-p)/2 * log(qtilde)
     end
 
     #compute exponents of |Σθ|^(-1/2) and |X'ΣθX|^(-1/2)  
@@ -129,33 +131,36 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
     #compute exponents of pθ(θ)*pλ(λ)
     priorTensorGrid = similar(weightsTensorGrid)
     for I in R
-        tup = Tupl(I); r1 = tup[1:end-1]; r2 = tup[end]
+        tup = Tuple(I); r1 = tup[1:end-1]; r2 = tup[end]
         t1 = getNodeSequence(getNodes(btg.nodesWeightsθ), r1)
         t2 = getNodeSequence(getNodes(btg.nodesWeightsλ), r2)
         priorTensorGrid[I] = logProb(btg.priorθ, t1) + logProb(btg.priorλ, t2)
     end
-
-    @assert size(qTensorGrid) == size(detTensorGridΣθ) == size(detTensorGridXΣX) == size(jacTensorGrid) == size(priorTensorGrid)
+    @assert Base.size(qTensorGrid) == Base.size(detTensorGridΣθ) == Base.size(detTensorGridXΣX) == Base.size(jacTensorGrid) == Base.size(priorTensorGrid)
     powerGrid =  qTensorGrid + detTensorGridΣθ + detTensorGridXΣX + jacTensorGrid + priorTensorGrid #sum of exponents
     powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
     weightsTensorGrid = powerGrid .* weightsTensorGrid
     weightsTensorGrid =  weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
-    return WeightTensorGrid
+    return weightsTensorGrid
 end
 
 """
 Compute pdf and cdf functions
 """
-function prediction_comp(btg::btg, weightTensorGrid::Array{Float64}) #depends on both train_data and test_data
+function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends on both train_data and test_data
     #preallocate some space to store dpdf, pdf, and cdf functions for all (θ, λ) quadrature node combinations
-    tgridpdfderiv = similar(weightsTensorGrid) 
-    tgridpdf = similar(weightsTensorGrid) 
-    tgridcdf = similar(weightsTensorGrid)
+    tgridpdfderiv = Array{Function, getNumLengthScales(btg.nodesWeightsθ) + 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
+    tgridpdf = Array{Function, getNumLengthScales(btg.nodesWeightsθ) +1}(undef, Base.size(weightsTensorGrid))
+    tgridcdf = Array{Function, getNumLengthScales(btg.nodesWeightsθ)+1 }(undef, Base.size(weightsTensorGrid))
 
-    R = CartesianIndex(weightsTensorGrid)
+    #similar(weightsTensorGrid) 
+    #tgridpdf = similar(weightsTensorGrid) 
+    #tgridcdf = similar(weightsTensorGrid)
+
+    R = CartesianIndices(weightsTensorGrid)
     for I in R
-        θ = getNodeSequence(getNodes(nodesWeightsθ), Tuple(I)[1:end-1]) 
-        λ = getNodeSequence(getNodes(nodesWeightsλ), Tuple(I)[end]) 
+        θ = getNodeSequence(getNodes(btg.nodesWeightsθ), Tuple(I)[1:end-1]) 
+        λ = getNodeSequence(getNodes(btg.nodesWeightsλ), Tuple(I)[end]) 
         (dpdf, pdf, cdf) = comp_tdist(btg, θ, λ)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
@@ -165,26 +170,36 @@ function prediction_comp(btg::btg, weightTensorGrid::Array{Float64}) #depends on
     function checkInput(x0, Fx0, y0)
         @assert typeof(x0) <: Array{T, 2} where T <: Real
         @assert typeof(Fx0) <:Array{T, 2} where T <: Real
-        @assert typeof(y0) <:Array{T, 1} where T <: Real
+        @assert (typeof(y0) <:Array{T, 1} where T<: Real && length(y0) == size(x0, 1) == size(Fx0, 1)) || typeof(y0) <:Real
         return nothing
     end
-    
-    function evalgrid(f, x0, Fx0, y0)
+
+    d = ndims(weightsTensorGrid) #replace end
+    nq = getNum(btg.nodesWeightsθ)
+    grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = @view grid_pdf_deriv[[1:nq for i = 1:d]...]
+    grid_pdf = similar(weightsTensorGrid); view_pdf = @view grid_pdf[[1:nq for i = 1:d]...]
+    grid_cdf = similar(weightsTensorGrid); view_cdf =  @view grid_cdf[[1:nq for i = 1:d]...]
+
+    function evalgrid!(f, x0, Fx0, y0, view)
         checkInput(x0, Fx0, y0) 
         for I in R
-            res[I] = f[I](x0, Fx0, y0) 
+            view[I] = f[I](x0, Fx0, y0) 
         end
-        return res
+        return nothing
     end
 
-    dpdf_evalgrid = (x0, Fx0, y0) -> evalgrid(tgridpdfderiv, x0, Fx0, y0)
-    pdf_evalgrid = (x0, Fx0, y0) -> evalgrid(tgridpdf, x0, Fx0, y0) 
-    cdf_evalgrid = (x0, Fx0, y0) -> evalgrid(tgridcdf, x0, Fx0, y0)
+    #dpdf_evalgrid = (x0, Fx0, y0) -> evalgrid!(tgridpdfderiv, x0, Fx0, y0, @view grid_pdf_deriv[1:end for i in 1:ndims(weightsTensorGrid)])
+    #pdf_evalgrid = (x0, Fx0, y0) -> evalgrid!(tgridpdf, x0, Fx0, y0, @view grid_pdf[1:end for i in 1:ndims(weightsTensorGrid)]) 
+    #cdf_evalgrid = (x0, Fx0, y0) -> evalgrid!(tgridcdf, x0, Fx0, y0, @view grid_cdf[1:end for i in 1:ndims(weightsTensorGrid)])
 
-    dpdf = (x0, Fx0, y0) ->  dpdf_evalgrid(x0, Fx0, y0) .* weightsTensorGrid
-    pdf = (x0, Fx0, y0) ->  pdf_evalgrid(x0, Fx0, y0) .* weightsTensorGrid
-    cdf = (x0, Fx0, y0) ->  cdf_evalgrid(x0, Fx0, y0) .* weightsTensorGrid
+    evalgrid_dpdf!(x0, Fx0, y0) = evalgrid!(tgridpdfderiv, x0, Fx0, y0, view_pdf_deriv)
+    evalgrid_pdf!(x0, Fx0, y0) = evalgrid!(tgridpdf, x0, Fx0, y0, view_pdf)
+    evalgrid_cdf!(x0, Fx0, y0) = evalgrid!(tgridcdf, x0, Fx0, y0, view_cdf)
+
+    dpdf = (x0, Fx0, y0) -> (evalgrid_dpdf!(x0, Fx0, y0); dot(grid_pdf_deriv, weightsTensorGrid))
+    pdf = (x0, Fx0, y0) -> (evalgrid_pdf!(x0, Fx0, y0); dot(grid_pdf, weightsTensorGrid))
+    cdf = (x0, Fx0, y0) ->  (evalgrid_cdf!(x0, Fx0, y0); dot(grid_cdf, weightsTensorGrid))
     
-    return (pdf_deriv, pdf, cdf) 
+    return (dpdf, pdf, cdf) 
 end
 

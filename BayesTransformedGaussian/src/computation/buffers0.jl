@@ -16,14 +16,17 @@ mutable struct train_buffer
     n::Int64 #number data points incorporated
     k::AbstractCorrelation
     θ::Array{Real, 1}
-    function train_buffer(θ::Array{Real, 1}, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
+    function train_buffer(θ::Array{Float64, 1}, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
         x = train.x
         Fx = train.Fx
         n = train.n
         capacity = typeof(train)<: extensible_trainingData ? train.capacity : n #if not extensible training type, then set size of buffer to be number of data points
         Σθ = Array{Float64}(undef, capacity, capacity)
+        #println("n: ", n)
+        #println("size of x: ", size(x))
+        #println("size of θ: ", size(θ))
         Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]) #note that length scale θ is applied on the numerator
-        println(Σθ[1:n, 1:n])
+        #println(Σθ[1:n, 1:n])
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         Σθ_inv_X = (choleskyΣθ\Fx)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
@@ -56,20 +59,27 @@ end
 unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX)
 unpack(b::test_buffer) = (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
 
+
 """
-Initialize dictionary of training buffers for a collection of θ-values corresponding to all quadrature nodes in a nodesWeights object
+Initialize θ to train_buffer dictionary
 """
-function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())::Dict{Union{Array{Real, 1}, Real}, T} where T<:train_buffer
-    train_buffer_dict = Dict{Union{Array{Real, 1}, Real}, train_buffer}
-    nodeSet = Set(nw.nodes[i, j] for i = 1:size(nw, 1) for j = 1:size(nw, 2))
-    for node in nodeSet
+function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())::Dict{Union{Array{Float64, 1}, Float64}, train_buffer}
+    train_buffer_dict = Dict{Union{Array{Float64, 1}, Float64}, train_buffer}() #turn this into NodeSequence
+    #println("size nw nodes: ", size(nw.nodes))
+    CI = CartesianIndices(Tuple([size(nw)[2] for i = 1:size(nw)[1]]))
+    nodeSet = Set(getNodeSequence(nw.nodes, I) for I in CI)
+    println("Iterating over nodeset to build train_buffer_dict...")
+    counter = 1
+    for node in nodeSet #this loop is pretty expensive
+        #println(typeof(node))
+        #println("Iteration: ", counter); counter += 1
         push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
     end
     return train_buffer_dict 
 end
 
 """
-Initialize dictionary of training buffers for a collection of θ-values corresponding to all quadrature nodes in a nodesWeights object
+Initialize θ to test_buffer dictionary
 """
 function init_test_buffer_dict(nw::nodesWeights, train::AbstractTrainingData, test::AbstractTestingData, corr)
     test_buffer_dict = Dict{Real, test_buffer}
@@ -105,11 +115,16 @@ end
 Update second buffer, which depends on testing data, training data, and first buffer. 
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
-    test_buffer.Eθ = correlation(trainingData.k, trainingData.θ, testingData.x0)    
-    test_buffer.Bθ = cross_correlation(trainingData.k, train_buffer.θ, testingData.x0, trainingData.x)  
-    test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\Bθ'
-    test_buffer.Dθ = Eθ - Bθ*ΣθinvBθ
-    test_buffer.Hθ = testingData.Fx0 - Bθ*(train_buffer.Σθ_inv_X) 
-    test_buffer.Cθ = Dθ + Hθ*(train_buffer.choleskyXΣX\Hθ') 
+    @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
+    test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0)    
+    test_buffer.Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
+    test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
+    test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
+    #println("shape of Dtheta: ", size(test_buffer.Dθ ))
+    #println("shape of Btheta: ", size(test_buffer.Bθ ))
+    #println("shape of Fx0: " , size(testingData.Fx0))
+    #println("shape of train_buffer.Σθ_inv_X", size(train_buffer.Σθ_inv_X))
+    test_buffer.Hθ = testingData.Fx0 - test_buffer.Bθ*(train_buffer.Σθ_inv_X) 
+    test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
     return nothing
 end

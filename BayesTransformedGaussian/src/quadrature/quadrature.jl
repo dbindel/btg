@@ -19,15 +19,16 @@ struct nodesWeights
     function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12)
             d = Base.size(ranges, 1)
             N = Array{Float64, 2}(undef, d, num_pts)
+            W = Array{Float64, 2}(undef, d, num_pts)
             if quadtype == "Gaussian"
                 nodes, weights = gausslegendre(num_pts)
                 for i = 1:Base.size(ranges, 1)
-                    N[i, :] = affineTransform(nodes, ranges[i, :])
+                    N[i, :], W[i, :] = affineTransform(nodes, weights, ranges[i, :])
                 end
             else
                 throw(ArgumentError("Quadrature type not supported. Please enter \"Gaussian\""))
             end
-            return new(N, repeat(weights', d, 1), d, num_pts)
+            return new(N, W, d, num_pts)
     end    
 end
 
@@ -58,11 +59,12 @@ Apply affine transformation to nodes to integration over range r (linear change 
 Input nodes are assumed to be tailored to [-1, 1]. Transformation of nodes gives integration nodes
 for new domain [r[1], r[2]]
 """
-function affineTransform(nodes::O, r::O) where O<:Array{Float64, 1}
+function affineTransform(nodes::O, weights::O, r::O) where O<:Array{Float64, 1}
     center = (r[2] + r[1]) /2
     length = (r[2] - r[1]) /2
-    nodes = length .* nodes .+ center
-    return nodes
+    nodes = length .* nodes .+ center #shift and scale nodes
+    weights = weights .* length #linarly scale weights
+    return (nodes, weights)
 end
 
 

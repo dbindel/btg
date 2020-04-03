@@ -1,9 +1,10 @@
-using LinearAlgebra
-include("../datastructs.jl")
-include("../kernels/kernel.jl")
-include("../bayesopt/incremental.jl")
-include("../quadrature/quadrature.jl")
-
+#using LinearAlgebra
+#include("../datastructs.jl")
+#include("../kernels/kernel.jl")
+#include("../bayesopt/incremental.jl")
+#include("../quadrature/quadrature.jl")
+#module buffers0
+#export train_buffer, test_buffer, init_train_buffer_dict, init_test_buffer_dict, update!
 """
 Buffer of θ-dependent quantities
 """
@@ -25,8 +26,10 @@ mutable struct train_buffer
         #println("n: ", n)
         #println("size of x: ", size(x))
         #println("size of θ: ", size(θ))
-        Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]) #note that length scale θ is applied on the numerator
-        #println(Σθ[1:n, 1:n])
+        if length(θ)==1 #check if θ is an array of length 1  
+            unboxedθ = θ[1] #unbox θ, so correlation knows to use a single length scale 
+        end
+        Σθ[1:n, 1:n] = correlation(corr, unboxedθ, x[1:n, :]; jitter = 1e-8) #note that length scale θ is applied on the numerator
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         Σθ_inv_X = (choleskyΣθ\Fx)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
@@ -112,12 +115,15 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
 end
 
 """
-Update second buffer, which depends on testing data, training data, and first buffer. 
+Update test_buffer, which depends on testing data, training data, and train_buffer. 
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
     @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
-    test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0)    
-    test_buffer.Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
+    if length(train_buffer.θ)==1 #check if θ is an array of length 1
+        unboxedθ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 
+    end
+    test_buffer.Eθ = correlation(train_buffer.k,  unboxedθ, testingData.x0)    
+    test_buffer.Bθ = cross_correlation(train_buffer.k,  unboxedθ, testingData.x0, trainingData.x)  
     test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
     test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
     #println("shape of Dtheta: ", size(test_buffer.Dθ ))
@@ -128,3 +134,4 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
     return nothing
 end
+

@@ -1,8 +1,8 @@
-include("transforms/transforms.jl")
-include("kernels/kernel.jl")
-include("priors/priors.jl")
-include("computation/buffers0.jl")
-include("dataStructs.jl")
+#include("transforms/transforms.jl")
+#include("kernels/kernel.jl")
+#include("priors/priors.jl")
+#include("computation/buffers0.jl")
+#include("dataStructs.jl")
 
 """
 BTG object may include (some may be unnecessary)

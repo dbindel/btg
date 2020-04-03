@@ -14,6 +14,7 @@ Pkg.add("Random")
 Pkg.add("Distances")
 Pkg.add("LinearAlgebra")
 Pkg.add("FastGaussQuadrature")
+Pkg.add("SparseArrays")
 
 #data analysis 
 Pkg.add("Plots") 

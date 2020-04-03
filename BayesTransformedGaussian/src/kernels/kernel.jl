@@ -1,18 +1,25 @@
 using Distances
 using LinearAlgebra
+using SparseArrays
 include("../tools/plotting.jl")
 #
 #
-# CONVENTIONS:
+# CONVENTIONS ON x AND y:
 # locations x and y will always be arrays, whether it's 1D or 2D
 #
-#
-# NOTES:
+# NOTES ABOUT DISTANCES.JL
 # - WeightedSqEuclidean([3, 4])(x, y) from Distances.jl will default to SqEuclidean if x and y aren't arrays
 #   it will throw an error of x and y are arrays but not the same length as the weights vector
 # - one can input single length scale as scalar or array of length 1
 #   and multiple length scale as array
 # - SqEuclidean and other distance functions from Distances.jl only take in 2-D arrays as inputs
+# 
+# HOW TO DETECT MULTIPLE LENGTH SCALES?
+# - when θ is passed as a Real, then distance will default to SqEuclidean (single length scale)
+# - when θ is passed as an Array, then distance will default to WeightedSqEuclidean (multiple length scales)
+#
+#
+#
 #
 @doc raw"""
     AbstractCorrelation
@@ -57,7 +64,7 @@ dims: 1 if data points are arranged row-wise and 2 if col-wise
 """
 function correlation(k::AbstractCorrelation, θ, x; jitter = 0, dims=1) 
     ret = Array{Float64}(undef, size(x, dims), size(x, dims))
-    correlation!(ret, k, θ, x; jitter = jitter)
+    correlation!(ret, k, θ, x, jitter = jitter)
     return ret
 end
 
@@ -79,9 +86,9 @@ function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 0, dims=1)
     x = reshape(x, size(x, 1), size(x, 2))
     dist = distance(k, θ)
     pairwise!(out, dist, x, dims=dims)
-    out .= (τ -> k(τ, θ)).(out)
+    out .= (τ -> k(τ, θ)).(out) 
     if jitter != 0
-        out +=UniformScaling(jitter) 
+        out[diagind(out)] .+= jitter 
         out ./= out[1, 1] #covariance must be in [0, 1]
     end
     return nothing

@@ -1,7 +1,10 @@
 using Distances
 using LinearAlgebra
 using SparseArrays
+import Base: size
 include("../tools/plotting.jl")
+
+
 #
 #
 # CONVENTIONS ON x AND y:

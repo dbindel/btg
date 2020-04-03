@@ -3,6 +3,7 @@
 #include("priors/priors.jl")
 #include("computation/buffers0.jl")
 #include("dataStructs.jl")
+using StatsFuns
 
 """
 BTG object may include (some may be unnecessary)
@@ -41,7 +42,7 @@ mutable struct btg
         @assert typeof(priorλ)<:priorType
         @assert typeof(quadtype)<:String
         @assert typeof(transform)<: NonlinearTransform
-        @assert size(rangeθ, 1) == getDimension(trainingData) || size(rangeθ, 1)==1
+        @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
         #a btg object really should contain a bunch of train buffers correpsonding to different theta-values
         #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
         nodesWeightsθ = nodesWeights(rangeθ, quadtype)
@@ -215,14 +216,15 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     dpdf = (x0, Fx0, y0) -> (evalgrid_dpdf!(x0, Fx0, y0); dot(grid_pdf_deriv, weightsTensorGrid))
     pdf = (x0, Fx0, y0) -> (evalgrid_pdf!(x0, Fx0, y0); dot(grid_pdf, weightsTensorGrid))
     cdf = (x0, Fx0, y0) -> (evalgrid_cdf!(x0, Fx0, y0); dot(grid_cdf, weightsTensorGrid))
+  
     # compute estimated quantile
     x_ref = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))
     var_ref = (x0, Fx0) -> (evalgrid_sigma_m!(x0, Fx0); dot(grid_sigma_m, weightsTensorGrid))
     n = btg.trainingData.n; p = btg.trainingData.p
     v = n-p
-    sigma_mix = (x0, Fx0) -> sqrt(var_ref(x0, Fx0) * (v-2)/v)
-    TmixInfo = [x_ref, sigma_mix, v]
-
-    return (dpdf, pdf, cdf, TmixInfo) 
+    # sigma_mix = (x0, Fx0) -> sqrt(var_ref(x0, Fx0) * (v-2)/v)
+    # TmixInfo = [x_ref, sigma_mix, v]
+    quant_estimt = (x0, Fx0, p) -> sqrt(var_ref(x0, Fx0) * (v-2)/v) * tdistinvcdf(v, p) + x_ref(x0, Fx0)
+    return (dpdf, pdf, cdf, quant_estimt) 
 end
 

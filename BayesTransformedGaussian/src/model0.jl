@@ -152,8 +152,8 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     tgridpdfderiv = Array{Function, getNumLengthScales(btg.nodesWeightsθ) + 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
     tgridpdf = Array{Function, getNumLengthScales(btg.nodesWeightsθ) +1}(undef, Base.size(weightsTensorGrid))
     tgridcdf = Array{Function, getNumLengthScales(btg.nodesWeightsθ)+1 }(undef, Base.size(weightsTensorGrid))
-    tgridm = Array{Float64, getNumLengthScales(btg.nodesWeightsθ)+1 }(undef, Base.size(weightsTensorGrid))
-    tgridsigma_m = Array{Float64, getNumLengthScales(btg.nodesWeightsθ)+1}(undef, Base.size(weightsTensorGrid))
+    tgridm = Array{Function, getNumLengthScales(btg.nodesWeightsθ)+1 }(undef, Base.size(weightsTensorGrid))
+    tgridsigma_m = Array{Function, getNumLengthScales(btg.nodesWeightsθ)+1}(undef, Base.size(weightsTensorGrid))
 
     #similar(weightsTensorGrid) 
     #tgridpdf = similar(weightsTensorGrid) 
@@ -163,7 +163,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     for I in R
         θ = getNodeSequence(getNodes(btg.nodesWeightsθ), Tuple(I)[1:end-1]) 
         λ = getNodeSequence(getNodes(btg.nodesWeightsλ), Tuple(I)[end]) 
-        (dpdf, pdf, cdf, m, sigma) = comp_tdist(btg, θ, λ)
+        (dpdf, pdf, cdf, m, sigma_m) = comp_tdist(btg, θ, λ)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf

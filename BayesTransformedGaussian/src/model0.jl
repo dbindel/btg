@@ -148,10 +148,12 @@ end
 Compute pdf and cdf functions
 """
 function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends on both train_data and test_data
-    #preallocate some space to store dpdf, pdf, and cdf functions for all (θ, λ) quadrature node combinations
+    #preallocate some space to store dpdf, pdf, and cdf functions, as well as location parameters, for all (θ, λ) quadrature node combinations
     tgridpdfderiv = Array{Function, getNumLengthScales(btg.nodesWeightsθ) + 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
     tgridpdf = Array{Function, getNumLengthScales(btg.nodesWeightsθ) +1}(undef, Base.size(weightsTensorGrid))
     tgridcdf = Array{Function, getNumLengthScales(btg.nodesWeightsθ)+1 }(undef, Base.size(weightsTensorGrid))
+    tgridm = Array{Float64, getNumLengthScales(btg.nodesWeightsθ)+1 }(undef, Base.size(weightsTensorGrid))
+    tgridsigma = Array{Float64, getNumLengthScales(btg.nodesWeightsθ)+1}(undef, Base.size(weightsTensorGrid))
 
     #similar(weightsTensorGrid) 
     #tgridpdf = similar(weightsTensorGrid) 
@@ -161,12 +163,14 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     for I in R
         θ = getNodeSequence(getNodes(btg.nodesWeightsθ), Tuple(I)[1:end-1]) 
         λ = getNodeSequence(getNodes(btg.nodesWeightsλ), Tuple(I)[end]) 
-        (dpdf, pdf, cdf) = comp_tdist(btg, θ, λ)
+        (dpdf, pdf, cdf, m, sigma) = comp_tdist(btg, θ, λ)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf
+        tgridm[I] = m
+        tgridsigma[I] = sigma_m
     end
-    
+    # store 
     function checkInput(x0, Fx0, y0)
         @assert typeof(x0) <: Array{T, 2} where T <: Real
         @assert typeof(Fx0) <:Array{T, 2} where T <: Real
@@ -200,6 +204,14 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     pdf = (x0, Fx0, y0) -> (evalgrid_pdf!(x0, Fx0, y0); dot(grid_pdf, weightsTensorGrid))
     cdf = (x0, Fx0, y0) ->  (evalgrid_cdf!(x0, Fx0, y0); dot(grid_cdf, weightsTensorGrid))
     
-    return (dpdf, pdf, cdf) 
+    # compute estimated quantile
+    x_ref = dot(tgridm, weightsTensorGrid)
+    var_ref = dot(tgridsigma, weightsTensorGrid) - x_ref^2
+    n = btg.trainingData.n; p = btg.trainingData.p
+    v = n-p
+    sigma_mix = sqrt(var_ref * (v-2)/v)
+    TmixInfo = [x_ref, sigma_mix, v]
+
+    return (dpdf, pdf, cdf, TmixInfo) 
 end
 

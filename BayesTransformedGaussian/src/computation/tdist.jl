@@ -26,8 +26,9 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
         (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
         m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
         qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
-        t = LocationScale(m[1], sqrt(qtilde[1]*Cθ[1]/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
-        return f(y0, t, m, qC)
+        sigma_m = qC/(n-p-2) + m^2 
+        t = LocationScale(m[1], sigma, TDist(n-p)) #avail ourselves of built-in tdist
+        return f(y0, t, m, qC), m, sigma_m # return location parameter to utilize T mixture structure
     end
     
     main_pdf = (y0, t, m, qC) -> (Distributions.pdf.(t, g(y0, λ)) * jac(y0))
@@ -38,10 +39,9 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is in fact a stable computation
     main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ); 
                     Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
+    pdf_deriv, _, _ = (x0, Fx0, y0) -> compute(main_pdf_deriv, x0, Fx0, y0) 
+    pdf, m, sigma_m = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0)
+    cdf, _, _ = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0) 
 
-    pdf_deriv = (x0, Fx0, y0) -> compute(main_pdf_deriv, x0, Fx0, y0) 
-    pdf = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0)
-    cdf = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0) 
-
-    return (pdf_deriv, pdf, cdf)
+    return (pdf_deriv, pdf, cdf, m, sigma_m)
 end

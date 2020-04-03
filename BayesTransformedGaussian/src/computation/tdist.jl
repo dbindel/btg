@@ -39,9 +39,10 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is in fact a stable computation
     main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ); 
                     Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
-    pdf_deriv, _, _ = (x0, Fx0, y0) -> compute(main_pdf_deriv, x0, Fx0, y0) 
-    pdf, m, sigma_m = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0)
-    cdf, _, _ = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0) 
+    pdf_deriv = (x0, Fx0, y0) -> compute(main_pdf_deriv, x0, Fx0, y0)[1]
+    pdf = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0)[1]
+    m, sigma_m = compute(main_pdf, x0, Fx0, y0)[2:3]
+    cdf = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0)[1]
 
     return (pdf_deriv, pdf, cdf, m, sigma_m)
 end

@@ -6,15 +6,9 @@ Compute cdf, pdf, and pdf_deriv of T-distribution
 """
 function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     trainingData = btg.trainingData
-    # println(typeof(train_buffer))
-    if ~ (θ in keys(btg.train_buffer_dict))
-        blah = train_buffer(θ, trainingData)
-    else #this second branch is used for debugging purposes. When comp_tdist is called, all θs which are quadrature node tuples should already be in btg.train_buffer_dict 
-        train_buffer = btg.train_buffer_dict[θ] 
-    end
     g = btg.g #nonlinear transform, e.g. BoxCox
 
-    (_, Σθ_inv_X, choleskyΣθ, _) = unpack(train_buffer)
+    (_, Σθ_inv_X, choleskyΣθ, _) = unpack( btg.train_buffer_dict[θ])
     (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
 
     gλy = g(y, λ) #apply nonlinar transform to observed labels y
@@ -28,7 +22,7 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     
     function compute_qmC(x0, Fx0)
         update!(btg.testingData, x0, Fx0)#update testing data with x0, Fx0
-        update!(blah, btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
+        update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
         (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
         m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
         qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction

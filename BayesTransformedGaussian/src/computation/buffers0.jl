@@ -27,9 +27,9 @@ mutable struct train_buffer
         #println("size of x: ", size(x))
         #println("size of θ: ", size(θ))
         if length(θ)==1 #check if θ is an array of length 1  
-            unboxedθ = θ[1] #unbox θ, so correlation knows to use a single length scale 
+            θ = θ[1] #unbox θ, so correlation knows to use a single length scale 
         end
-        Σθ[1:n, 1:n] = correlation(corr, unboxedθ, x[1:n, :]; jitter = 1e-8) #note that length scale θ is applied on the numerator
+        Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #note that length scale θ is applied on the numerator
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         Σθ_inv_X = (choleskyΣθ\Fx)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization

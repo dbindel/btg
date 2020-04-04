@@ -1,6 +1,8 @@
 #include("../model0.jl")
 #include("../computation/buffers0.jl")
 
+using Cubature
+
 """
 Compute cdf, pdf, and pdf_deriv of T-distribution
 """
@@ -48,8 +50,9 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     pdf = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0)
     cdf = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0)
 
-    m = (x0, Fx0) -> compute_qmC(x0, Fx0)[1]
-    sigma_m = (x0, Fx0) -> compute_qmC(x0, Fx0)[3]
-
-    return (pdf_deriv, pdf, cdf, m, sigma_m)
+    # m = (x0, Fx0) -> hquadrature(y0 -> y0 * pdf(x0, Fx0, y0) * abs.(dg(y0, λ)), 0, 2)[1]
+    # Ex2 = (x0, Fx0) -> hquadrature(y0 -> y0^2 * pdf(x0, Fx0, y0) * abs.(dg(y0, λ)), 0, 2)[1]
+    # m = (x0, Fx0) -> compute_qmC(x0, Fx0)[1] 
+    # sigma_m = (x0, Fx0) -> compute_qmC(x0, Fx0)[3] 
+    return (pdf_deriv, pdf, cdf)
 end

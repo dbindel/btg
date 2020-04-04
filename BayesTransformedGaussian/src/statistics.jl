@@ -10,8 +10,8 @@ Given pdf, cdf and maybe pdf_deriv,
 compute median, quantile, mode, symmetric/narrowest credible intervel.
 Warning: only for normalized values
 """
-function median(pdf, cdf, TmixInfo; pdf_deriv=nothing)
-    med = quantile(pdf, cdf, TmixInfo)
+function median(pdf, cdf, quant0; pdf_deriv=nothing)
+    med = quantile(pdf, cdf, quant0)
     return med
 end
 
@@ -20,12 +20,8 @@ end
 #   return med
 # end
 
-function quantile(pdf, cdf, TmixInfo; pdf_deriv=nothing, p::R=.5) where R <: Real
-    x_ref = TmixInfo[1]
-    sigma_mix = TmixInfo[2]
-    v = TmixInfo[3]
-    initial_guess = sigma_mix * tdistinvcdf(v, p) + x_ref
-    quant = Roots.find_zero(y0 -> cdf(x0, Fx0, y0) - p, initial_guess) 
+function quantile(pdf, cdf, quant0; pdf_deriv=nothing, p::R=.5) where R <: Real
+    quant = Roots.find_zero(y0 -> cdf(y0) - p, quant0(p)) 
     return quant
 end
 
@@ -36,19 +32,19 @@ function mode(pdf, cdf; pdf_deriv=nothing)
     return mod
 end
 
-function credible_interval(pdf, cdf, TmixInfo; pdf_deriv=nothing, wp::R=.95, mode=:equal) where R <: Real
+function credible_interval(pdf, cdf, quant0; pdf_deriv=nothing, wp::R=.95, mode=:equal) where R <: Real
     return credible_interval(pdf, cdf, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
 end
 
-function credible_interval(pdf, cdf, TmixInfo, ::Val{:equal}; pdf_deriv=nothing, wp::R=.95) where R <: Real
+function credible_interval(pdf, cdf, quant0, ::Val{:equal}; pdf_deriv=nothing, wp::R=.95) where R <: Real
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
-    lower_quant = quantile(pdf, cdf, TmixInfo; p=lower_qp)
-    upper_quant = quantile(pdf, cdf, TmixInfo; p=upper_qp)
+    lower_quant = quantile(pdf, cdf, quant0; p=lower_qp)
+    upper_quant = quantile(pdf, cdf, quant0; p=upper_qp)
     return [lower_quant, upper_quant]
 end
 
-function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing, wp::R=.95) where R <: Real
+function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, wp::R=.95) where R <: Real
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp

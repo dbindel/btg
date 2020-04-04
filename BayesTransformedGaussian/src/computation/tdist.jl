@@ -8,23 +8,9 @@ Compute cdf, pdf, and pdf_deriv of T-distribution
 """
 function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     trainingData = btg.trainingData
-<<<<<<< HEAD
-    #println(typeof(train_buffer))
-    #if ~ (θ in keys(btg.train_buffer_dict))
-    #    println("theta not in keys")
-    #    blah = train_buffer(θ, trainingData)
-    #else #this second branch is used for debugging purposes. When comp_tdist is called, all θs which are quadrature node tuples should already be in btg.train_buffer_dict 
-    #    println("theta in keys")
-        #blah = btg.train_buffer_dict[θ] 
-    #end
-    blah = btg.train_buffer_dict[θ] 
-    g = btg.g #nonlinear transform, e.g. BoxCox
-    (_, Σθ_inv_X, choleskyΣθ, _) = unpack(blah)
-=======
     g = btg.g #nonlinear transform, e.g. BoxCox
 
     (_, Σθ_inv_X, choleskyΣθ, _) = unpack( btg.train_buffer_dict[θ])
->>>>>>> ae145666b5d3486499db2356e2f7dbd1e6508ba3
     (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
 
     gλy = g(y, λ) #apply nonlinar transform to observed labels y
@@ -46,22 +32,12 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
         m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
         #println("m: ", m[1])
         qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
-<<<<<<< HEAD
-        sigma_m = qC/(n-p-2) .+ m .^2 
-=======
         sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
->>>>>>> ae145666b5d3486499db2356e2f7dbd1e6508ba3
         return m[1], qC, sigma_m
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
-<<<<<<< HEAD
-        m, qC, sigma_m = compute_qmC(x0, Fx0)
-        #println("n: ", n)
-        #println("p: ", p)
-=======
         m, qC, _ = compute_qmC(x0, Fx0)
->>>>>>> ae145666b5d3486499db2356e2f7dbd1e6508ba3
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
     end

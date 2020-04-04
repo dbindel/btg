@@ -6,15 +6,17 @@ Compute cdf, pdf, and pdf_deriv of T-distribution
 """
 function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     trainingData = btg.trainingData
-    println(typeof(train_buffer))
-    if ~ (θ in keys(btg.train_buffer_dict))
-        blah = train_buffer(θ, trainingData)
-    else #this second branch is used for debugging purposes. When comp_tdist is called, all θs which are quadrature node tuples should already be in btg.train_buffer_dict 
-        train_buffer = btg.train_buffer_dict[θ] 
-    end
+    #println(typeof(train_buffer))
+    #if ~ (θ in keys(btg.train_buffer_dict))
+    #    println("theta not in keys")
+    #    blah = train_buffer(θ, trainingData)
+    #else #this second branch is used for debugging purposes. When comp_tdist is called, all θs which are quadrature node tuples should already be in btg.train_buffer_dict 
+    #    println("theta in keys")
+        #blah = btg.train_buffer_dict[θ] 
+    #end
+    blah = btg.train_buffer_dict[θ] 
     g = btg.g #nonlinear transform, e.g. BoxCox
-
-    (_, Σθ_inv_X, choleskyΣθ, _) = unpack(train_buffer)
+    (_, Σθ_inv_X, choleskyΣθ, _) = unpack(blah)
     (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
 
     gλy = g(y, λ) #apply nonlinar transform to observed labels y
@@ -28,16 +30,22 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     
     function compute_qmC(x0, Fx0)
         update!(btg.testingData, x0, Fx0)#update testing data with x0, Fx0
-        update!(blah, btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
+        update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
         (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+        #println("Bθ: ", Bθ)
+        #println("Hθ: ", Hθ)
+        #println("Cθ: ", Cθ)
         m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
+        #println("m: ", m[1])
         qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
-        sigma_m = qC/(n-p-2) + m^2 
+        sigma_m = qC/(n-p-2) .+ m .^2 
         return m[1], qC, sigma_m
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
         m, qC, sigma_m = compute_qmC(x0, Fx0)
+        #println("n: ", n)
+        #println("p: ", p)
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
     end

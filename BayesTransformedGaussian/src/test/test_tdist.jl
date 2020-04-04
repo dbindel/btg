@@ -52,7 +52,9 @@ if true #test comp_tdist
     cdf_fixed = y0 -> cdf(x0, Fx0, y0)
     
     (r1, r2, plt1, pol) = checkDerivative(pdf_fixed, cdf_fixed, 0.5, nothing, 8, 16, 10)
-
+    display(plt1)
+    plt(pdf_fixed, .01, 1, 150)
+    plt!(cdf_fixed, .01, 1, 150, title = "PDF and CDF of Bayesian Predictive Distribution")
 end
 
 if false

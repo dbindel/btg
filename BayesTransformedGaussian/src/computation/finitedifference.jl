@@ -24,14 +24,15 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     end
     A = zeros(length(h))
     for i = 1:length(h) 
-        fi = f.(x0 .+ h[i]*dx)[1]
-        if false #debug
+        fi = f(x0 .+ h[i]*dx)[1] #f incremented
+        if true#debug
             println("x0: ", x0)
             println("dx: ", dx)
             println("fi: ", fi)
             println("f0: ", f0)
             println("df0: ", df0)
             println("increment", h[i]*dx)
+            println("h[i]: ", h[i])
         end
        
             if hessian!=nothing
@@ -39,11 +40,12 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
                 A[i] = norm((fi - f0) - df0' * inc .- 0.5* inc' * d2f0 * inc)
             else
                 try
-                A[i] = norm((fi - f0) - df0' * (h[i] * dx)) 
-            catch DimensionMismatch #we catch the case when f: R^1 -> R^n, in which case  df0'*dx will yield an error
-                #println("caught in check deriv")
-                A[i] = norm((fi .- f0) .- df0 .* (h[i] * dx))
-            end
+        
+                A[i] = norm((fi - f0) .- df0' * (h[i] * dx)) 
+                catch DimensionMismatch #we catch the case when f: R^1 -> R^n, in which case  df0'*dx will yield an error
+                    println("Warning: finitedifference dimension mismatch")
+                    A[i] = norm((fi .- f0) .- df0 .* (h[i] * dx))
+                end
         end
     end
     r1 = log.(h)

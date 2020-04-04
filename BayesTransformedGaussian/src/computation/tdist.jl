@@ -26,7 +26,11 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
         update!(btg.testingData, x0, Fx0)#update testing data with x0, Fx0
         update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
         (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+        #println("Bθ: ", Bθ)
+        #println("Hθ: ", Hθ)
+        #println("Cθ: ", Cθ)
         m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
+        #println("m: ", m[1])
         qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
         sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
         return m[1], qC, sigma_m

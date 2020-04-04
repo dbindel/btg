@@ -4,6 +4,9 @@ using CSV
 using FastGaussQuadrature
 import Base: size
 
+import Base.size
+
+
 #This file contains various renditions of  which perform numerical
 #quadrature given integration endpoints and a function handle
 #More importantly, it provides a composite type which stores nodes and weight. 

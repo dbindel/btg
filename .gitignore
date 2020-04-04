@@ -9,6 +9,4 @@ BayesTransformedGaussian/examples/Test_statistics.ipynb
 BayesTransformedGaussian/examples/Test_kernel.ipynb
 BayesTransformedGaussian/src/test/test_quantile.ipynb
 BayesTransformedGaussian/src/test/test_quantile.jl
-BayesTransformedGaussian/src/test/Test_2d.ipynb
-BayesTransformedGaussian/src/test/Test_1d.ipynb
 .gitignore

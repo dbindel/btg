@@ -34,11 +34,11 @@ d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimensi
 Fx0 = reshape(data[pind, 1:2], 1, 2)
 x0 = reshape(data[pind, 1:3], 1, d) 
 rangeθ = [100.0 200]
+rangeθ = repeat(rangeθ, d, 1)
 rangeλ = [0.5 5] #we will always used 1 range scale for lambda
 
 btg1 = btg(trainingData1, rangeθ, rangeλ)
-(dpdf, pdf, cdf, quant0) = solve(btg1)
+(dpdf, pdf, cdf) = solve(btg1)
 dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
 pdf_fixed = y0 -> pdf(x0, Fx0, y0)
 cdf_fixed = y0 -> cdf(x0, Fx0, y0)
-quant0_fixed = p -> quant0(x0, Fx0, p) 

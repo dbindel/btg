@@ -188,7 +188,13 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     # grid_sigma_m = similar(weightsTensorGrid); view_sigma_m =  @view grid_m[[1:nq for i = 1:d]...]
     
     function evalgrid!(f, x0, Fx0, y0, view)
-        checkInput(x0, Fx0, y0) 
+        checkInput(x0, Fx0, y0)
+        #println("x0: ", x0)
+        #println("Fx0: ", Fx0)
+        #println("y0: ", y0) 
+        #println("type of x0: ", typeof(x0))
+        #println("type of Fx0: ", typeof(Fx0))
+        #println("type of y0: ", typeof(y0)) 
         for I in R
             view[I] = f[I](x0, Fx0, y0) 
         end
@@ -213,9 +219,10 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     # evalgrid_m!(x0, Fx0) = evalgrid_quant!(tgridm, x0, Fx0, view_m)
     # evalgrid_sigma_m!(x0, Fx0) = evalgrid_quant!(tgridsigma_m, x0, Fx0, view_sigma_m)
 
-    dpdf = (x0, Fx0, y0) -> (evalgrid_dpdf!(x0, Fx0, y0); dot(grid_pdf_deriv, weightsTensorGrid))
-    pdf = (x0, Fx0, y0) -> (evalgrid_pdf!(x0, Fx0, y0); dot(grid_pdf, weightsTensorGrid))
-    cdf = (x0, Fx0, y0) -> (evalgrid_cdf!(x0, Fx0, y0); dot(grid_cdf, weightsTensorGrid))
+    #below we write y0[1] instead of y0, because sometimes the output will have a box around it, due to matrix-operations in the internal implementation
+    dpdf = (x0, Fx0, y0) -> (evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
+    pdf = (x0, Fx0, y0) -> (evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
+    cdf = (x0, Fx0, y0) -> (evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
     return (dpdf, pdf, cdf)
     # compute estimated quantile
     # x_ref = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))

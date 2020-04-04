@@ -21,7 +21,7 @@ include("model0.jl") #buffers, datastructs, several auxiliary                   
 include("computation/tdist.jl") #model0 and buffer0                             #
 #################################################################################
 
-
+############################### Load in data
 df = DataFrame(CSV.File("datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
@@ -29,7 +29,7 @@ normalizing_constant = maximum(target)
 target = target/normalizing_constant #normalization
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(Problem Setup)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-ind = 11:2000
+ind = 11:200
 posx = 1:7 #locations 
 posc = 1:1 #covariates 
 x = data[ind, posx] 
@@ -70,13 +70,9 @@ if true #test solve_btg
     if true
     #plt(a, .01, 1, 150)
     println("Plotting pdf...")
-    (x, y) = plt(b, .001, 1, 200)
+    (x, y) = plt(b, .001, 1, 200, label = "pdf")
     println("Plotting cdf...")
-    (x1, y1) = plt!(c, 0.001, 1, 200)
-    Plots.plot!(target[pind], seriestype = :vline, title = "PDF and CDF of Bayesian Predictive Distribution")
-
-    Plots.plot(x, y, label = "pdf")
-    Plots.plot!(x1, y1, label = "cdf")
-    Plots.plot!(target[pind], seriestype = :vline, label = "actual", title = "PDF and CDF of Bayesian Predictive Distribution")
+    (x1, y1) = plt!(c, 0.001, 1, 200, label = "cdf")
+    Plots.plot!(target[pind], seriestype = :vline, title = "PDF and CDF of Bayesian Predictive Distribution", label = "actual")
     end
 end

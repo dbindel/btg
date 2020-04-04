@@ -25,7 +25,7 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     A = zeros(length(h))
     for i = 1:length(h) 
         fi = f(x0 .+ h[i]*dx)[1] #f incremented
-        if true#debug
+        if false#debug
             println("x0: ", x0)
             println("dx: ", dx)
             println("fi: ", fi)
@@ -50,6 +50,6 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     end
     r1 = log.(h)
     r2 = log.(A)
-    plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error",fontfamily=font(48, "Courier") , reuse = false)
+    plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error")#, fontfamily = font(48, "Courier") , reuse = false)
     return (r1, r2, plt, polyfit(r1, r2, 1))
 end

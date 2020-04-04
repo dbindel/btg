@@ -109,5 +109,10 @@ function getCapacity(e::AbstractTrainingData)
 end
 
 function checkCompatibility(x::AbstractTrainingData, y::AbstractTestingData)
+    #println("getDimension(x): ", getDimension(x))
+    #println("getDimension(y): ", getDimension(y))
+    #println("getCovDimension(x): ", getCovDimension(x))
+    #println("getCovDimension(y): ", getCovDimension(y))
+
     return getDimension(x) == getDimension(y) && getCovDimension(x) == getCovDimension(y)
 end

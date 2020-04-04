@@ -44,18 +44,28 @@ rangeλ = [0.5 5] #we will always used 1 range scale for lambda
     @test coeffs(pol)[end] ≈ 2 atol = 1e-1
     end
 
-if true #test comp_tdist 
-    btg1 = btg(trainingData1, rangeθ, rangeλ)
-    (dpdf, pdf, cdf) = comp_tdist(btg1, [.3], [1.4]) 
-    dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
-    pdf_fixed = y0 -> pdf(x0, Fx0, y0)
-    cdf_fixed = y0 -> cdf(x0, Fx0, y0)
+    if false #test comp_tdist 
+        (dpdf, pdf, cdf) = comp_tdist(btg1, [θ1], [1.4]) 
+        dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
+        pdf_fixed = y0 -> pdf(x0, Fx0, y0)
+        cdf_fixed = y0 -> cdf(x0, Fx0, y0)
+        a = pdf_fixed
+        b = cdf_fixed
+        c = dpdf_fixed
     
-    (r1, r2, plt1, pol) = checkDerivative(pdf_fixed, cdf_fixed, 0.5, nothing, 8, 16, 10)
-    display(plt1)
-    plt(pdf_fixed, .01, 1, 150)
-    plt!(cdf_fixed, .01, 1, 150, title = "PDF and CDF of Bayesian Predictive Distribution")
-end
+        rr = 8:16
+        h = abs.(b.(.5 .+ [2.718 ^(-i) for i=rr]) .- b.(.5) - [2.718 ^(-i) for i = rr] .* a(.5))
+        xx = [2.718 ^(-i) for i=rr]
+        lxx = log.(xx)
+        lh = log.(h)
+        polyfit(lxx, lh, 1)
+    
+        (r1, r2, plt1, pol) = checkDerivative(a, c, 0.5, nothing, 8, 16, 10) #
+    
+        @testset "comp_tdist" begin
+            @test coeffs(pol)[end] ≈ 2 atol = 1e-1
+        end
+    end
 
 if false
 #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ

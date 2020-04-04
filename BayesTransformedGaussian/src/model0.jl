@@ -70,11 +70,7 @@ end
 
 function solve(btg::btg)
     weightTensorGrid = weight_comp(btg)
-<<<<<<< HEAD
-    (dpdf, pdf, cdf, TmixInfo) = prediction_comp(btg, weightTensorGrid)
-=======
     (pdf, cdf, dpdf) = prediction_comp(btg, weightTensorGrid)
->>>>>>> ae145666b5d3486499db2356e2f7dbd1e6508ba3
 end
 
 """

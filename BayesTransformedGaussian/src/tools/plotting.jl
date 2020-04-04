@@ -21,6 +21,7 @@ function plt(f, a, b, numpts=100; label = "y", title="")
     x = collect(a:h:b)
     y = map(f, x)
     display(Plots.plot(x, y, label = label, title = title))
+    return (x, y)
 end
 
 function plt!(f, a, b, numpts=100; label = "y", title = "")
@@ -29,6 +30,7 @@ function plt!(f, a, b, numpts=100; label = "y", title = "")
     x = collect(a:h:b)
     y = map(f, x)
     display(Plots.plot!(x, y, label = label, title = title))
+    return(x, y)
 end
 
 """

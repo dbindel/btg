@@ -16,20 +16,19 @@ mutable struct train_buffer
     capacity::Int64 #size of Σθ, maximum value of n
     n::Int64 #number data points incorporated
     k::AbstractCorrelation
-    θ::Array{Real, 1}
+    θ::Array{T, 1} where T<:Real
     function train_buffer(θ::Array{Float64, 1}, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
         x = train.x
         Fx = train.Fx
         n = train.n
         capacity = typeof(train)<: extensible_trainingData ? train.capacity : n #if not extensible training type, then set size of buffer to be number of data points
+        
         Σθ = Array{Float64}(undef, capacity, capacity)
-        #println("n: ", n)
-        #println("size of x: ", size(x))
-        #println("size of θ: ", size(θ))
-        if length(θ)==1 #check if θ is an array of length 1  
-            θ = θ[1] #unbox θ, so correlation knows to use a single length scale 
+        if length(θ)>1
+            Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
+        else
+            Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
         end
-        Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #note that length scale θ is applied on the numerator
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         Σθ_inv_X = (choleskyΣθ\Fx)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
@@ -74,8 +73,7 @@ function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTraining
     println("Iterating over nodeset to build train_buffer_dict...")
     counter = 1
     for node in nodeSet #this loop is pretty expensive
-        #println(typeof(node))
-        #println("Iteration: ", counter); counter += 1
+        println("Iteration: ", counter); counter += 1
         push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
     end
     return train_buffer_dict 

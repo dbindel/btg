@@ -7,7 +7,7 @@ using StatsFuns
 
 """
 Given pdf, cdf and maybe pdf_deriv, 
-compute median, quantile, mode, symmetric/narrowest credible intervel.
+compute median, quantile, mode, symmetric/narrowest credible interval.
 Warning: only for normalized values
 """
 function median(pdf, cdf, quant0; pdf_deriv=nothing)

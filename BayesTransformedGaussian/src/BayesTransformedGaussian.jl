@@ -28,10 +28,10 @@ target = convert(Array, df[:, 9]) #age
 normalizing_constant = maximum(target)
 target = target/normalizing_constant #normalization
 
-#const ind = 120:125
-ind = [100:110;200:220]
-posx = [1;4] #location 
-posc = 1:4 #covariates 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(Problem Setup)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ind = 11:2000
+posx = 1:7 #locations 
+posc = 1:1 #covariates 
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
 Fx = data[ind, posc]
@@ -44,9 +44,9 @@ Fx0 = reshape(data[pind, posc], 1, length(posc)) #Pind associate with test data
 x0 = reshape(data[pind, posx], 1, length(posx))
 #rangeθ = [10.0 20]
 #rangeθ = [10.0 1000.0; 10.0 1000]
-rangeθ = [1000.0 10000.0; 1000.0 10000]
+rangeθ = [1000.0 10000.0]
 rangeλ = [-3 3.0] #we will always used 1 range scale for lambda
-
+#################################################################################
 #init btg object for testing various functions
 btg1 = btg(trainingData1, rangeθ, rangeλ)
    
@@ -70,8 +70,13 @@ if true #test solve_btg
     if true
     #plt(a, .01, 1, 150)
     println("Plotting pdf...")
-    (x, y) = plt(b, .001, 1, 200, title = "PDF and CDF of Bayesian Predictive Distribution")
+    (x, y) = plt(b, .001, 1, 200)
     println("Plotting cdf...")
     (x1, y1) = plt!(c, 0.001, 1, 200)
+    Plots.plot!(target[pind], seriestype = :vline, title = "PDF and CDF of Bayesian Predictive Distribution")
+
+    Plots.plot(x, y, label = "pdf")
+    Plots.plot!(x1, y1, label = "cdf")
+    Plots.plot!(target[pind], seriestype = :vline, label = "actual", title = "PDF and CDF of Bayesian Predictive Distribution")
     end
 end

@@ -1,5 +1,5 @@
-using PyPlot
-using Plots
+import Plots
+import PyPlot
 
 """
 Generates data for plotting f on [a, b]

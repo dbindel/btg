@@ -2,6 +2,7 @@ using LinearAlgebra
 using DataFrames
 using CSV
 using FastGaussQuadrature
+import Base: size
 
 import Base.size
 
@@ -20,12 +21,12 @@ struct nodesWeights
     num::Int64 #number of quadrature nodes
     #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
     function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12)
-            d = Base.size(ranges, 1)
+            d = size(ranges, 1)
             N = Array{Float64, 2}(undef, d, num_pts)
             W = Array{Float64, 2}(undef, d, num_pts)
             if quadtype == "Gaussian"
                 nodes, weights = gausslegendre(num_pts)
-                for i = 1:Base.size(ranges, 1)
+                for i = 1:size(ranges, 1)
                     N[i, :], W[i, :] = affineTransform(nodes, weights, ranges[i, :])
                 end
             else

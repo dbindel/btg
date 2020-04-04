@@ -27,9 +27,9 @@ mutable struct train_buffer
         #println("size of x: ", size(x))
         #println("size of θ: ", size(θ))
         if length(θ)==1 #check if θ is an array of length 1  
-            unboxedθ = θ[1] #unbox θ, so correlation knows to use a single length scale 
+            θ = θ[1] #unbox θ, so correlation knows to use a single length scale 
         end
-        Σθ[1:n, 1:n] = correlation(corr, unboxedθ, x[1:n, :]; jitter = 1e-8) #note that length scale θ is applied on the numerator
+        Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #note that length scale θ is applied on the numerator
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         Σθ_inv_X = (choleskyΣθ\Fx)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
@@ -120,10 +120,12 @@ Update test_buffer, which depends on testing data, training data, and train_buff
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
     @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
     if length(train_buffer.θ)==1 #check if θ is an array of length 1
-        unboxedθ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 
+        θ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 
+    else 
+        θ = train_buffer.θ
     end
-    test_buffer.Eθ = correlation(train_buffer.k,  unboxedθ, testingData.x0)    
-    test_buffer.Bθ = cross_correlation(train_buffer.k,  unboxedθ, testingData.x0, trainingData.x)  
+    test_buffer.Eθ = correlation(train_buffer.k, θ, testingData.x0)    
+    test_buffer.Bθ = cross_correlation(train_buffer.k, θ, testingData.x0, trainingData.x)  
     test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
     test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
     #println("shape of Dtheta: ", size(test_buffer.Dθ ))

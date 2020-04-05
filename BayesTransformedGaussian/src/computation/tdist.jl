@@ -58,7 +58,8 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
         m, q, C = compute_qmC(x0, Fx0)
         qC = q*C
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
-        (C, jacC) = compute_higher_derivs(btg, θ, x0, Fx0, y0)
+        #(C, jacC) = compute_higher_derivs(btg, θ, x0, Fx0, y0)
+        (func, jacobian, hessian) = compute_higher_derivs(btg, θ, x0, Fx0, y0)
     end
     
     main_pdf = (y0, t, m, qC) -> (Distributions.pdf.(t, g(y0, λ)) * jac(y0))
@@ -100,31 +101,66 @@ function compute_higher_derivs(btg::btg, θ, x0, Fx0, y0)
     (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
     (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
     #check if theta is an array of length d
+    println("size of Fx: ", size( Fx))
     println("size of H: ", size( Hθ))
     println("size of B: ", size(Bθ))
-
     @assert typeof(θ)<:Array{T, 1} where T 
     @assert length(θ) ==d
-
     S = repeat(x0, n, 1) .- x # n x d 
     println("size of S: ", size(S))
-
     jacB =   diagm(Bθ[:]) * S * diagm(- θ[:]) #n x d
     println("size of jacB: ", size(jacB))
-
     jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
     println("size of jacD: ", size(jacD))
-
     #assuming linear polynomial basis
     jacFx0 = vcat(zeros(1, d), diagm(ones(d))) #p x d
     println("size of Fx0: ", size(Fx0))
-
     jacH = jacFx0' - jacB' * Σθ_inv_X #d x p
     println("size of jacH: ", size(jacH))
-
     jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
+    #second order derivatives (Hessian) compute_location_derivs
+    ΣinvjacB  = choleskyΣθ\jacB 
+    W = zeros(d, d)
+    Stheta = S * diagm(- θ[:]) # n x d
+    for i = 1:d
+        for j = 1:d
+            arg = Bθ' .* Stheta[:, i:i] .* Stheta[:, j:j] 
+            if i==j   
+                eq = Bθ * (choleskyΣθ \ (-θ[i] .* Bθ'))
+            else
+                eq = 0
+            end
+            W[i, j] = (Bθ * (choleskyΣθ\arg) .+ eq)[1]
+        end
+    end
+    hessD = -2*jacB' * ΣinvjacB - 2*W #d x d
 
-    return (Cθ, jacC') #dimensions of jacobian needs to be correct with respect to input and output dimensinos
+    #compute hessian of C
+    V = zeros(d, d)
+    for i = 1:d
+        for j = 1:d
+            arg = Bθ' .* Stheta[:, i:i] .* Stheta[:, j:j] 
+            if i==j   
+                eq = (-θ[i] .* Bθ')
+            else
+                eq = 0
+            end
+            #println("size arg: ", size(arg))
+            #println("size eq: ", size(eq))
+            # println(arg .+ eq)
+            # println((Fx' * (choleskyΣθ \ (arg .+ eq))))
+            # println((choleskyXΣX \ (Fx' * (choleskyΣθ \ (arg .+ eq)))))
+            # println(Hθ)
+            V[i, j] =  (Hθ * (choleskyXΣX \ ( - Fx' * (choleskyΣθ \ (arg .+ eq)))))[1]
+        end
+    end
+    hessC = hessD + 2*jacH*(choleskyXΣX\jacH') + 2*V
+
+    #return (Bθ*(choleskyΣθ\Bθ'), 2*Bθ*(choleskyΣθ\jacB), 2 * jacB' * (choleskyΣθ\ jacB))
+
+    #return (Dθ, jacD', hessD)
+
+    return (Cθ, jacC', hessC) #dimensions of jacobian needs to be correct with respect to input and output dimensinos
 
     #return 
 end

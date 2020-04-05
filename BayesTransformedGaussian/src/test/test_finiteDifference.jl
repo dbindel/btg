@@ -27,7 +27,6 @@ include("../computation/finitedifference.jl")
     @test coeffs(pol)[end] ≈ 3 atol = 3e-1
 end
 
-
 @testset "R^3 -> R^1" begin
     ff = xx ->  xx[1]^2 * sin(xx[2]*xx[3])
     jacf = xx -> [2*xx[1]*sin(xx[2]*xx[3])  xx[1]^2*xx[3]*cos(xx[2]*xx[3])  xx[1]^2*xx[2]*cos(xx[2]*xx[3])]

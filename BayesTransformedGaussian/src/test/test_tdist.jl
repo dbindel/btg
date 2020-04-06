@@ -34,7 +34,7 @@ target = target/normalizing_constant #normalization
 
 ind = 120:130
 posx = 1:3 #
-posc = 1:2
+posc = 1:3
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
 Fx = data[ind, posc] 
@@ -51,6 +51,8 @@ rangeλ = [0.5 5] #we will always used 1 range scale for lambda
 btg1 = btg(trainingData1, rangeθ, rangeλ)
 θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
 ##################################################################################################
+
+if false #test btg1, including comp_tdist and comp_btg_dist
 
 if true  #test comp_tdist 
     (dpdf, pdf, cdf) = comp_tdist(btg1, [θ1], [1.4]) 
@@ -100,6 +102,10 @@ if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv)
     end
 end
 
+end
+
+
+if true #test btg2
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~(btg2)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Attributes: 
 # - 2 length scales
@@ -116,7 +122,6 @@ y = float(target[ind])
 pind = 10:10 #prediction index
 trainingData1 = trainingData(x, Fx, y) #training data used for testing various functions
 
-
 d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
 Fx0 = reshape(data[pind, posc], 1, length(posc))
 x0 = reshape(data[pind, posx], 1, length(posx)) 
@@ -126,7 +131,7 @@ btg2 = btg(trainingData1, rangeθ, rangeλ)
 θ2 = btg2.nodesWeightsθ.nodes[1:2, 6] #pick some theta value which doubles as quadrature node
 ##################################################################################################
 
-if true  #test comp_tdist for btg2
+if false  #test comp_tdist for btg2
     (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, [1.4]) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
@@ -142,7 +147,7 @@ if true  #test comp_tdist for btg2
     end
 end
 
-if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
+if false #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
     #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ
     (dpdf, pdf, cdf) = solve(btg2)  
     a = y0 -> dpdf(x0, Fx0, y0) 
@@ -165,6 +170,46 @@ if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
     end
 end
 
+
+if true #test derivatives of location, and derivatives of auxiliary functions w.r.t location
+    ### test jacobian and Hessian of C
+    if true
+        Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
+        y0 = .5
+        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, [1.4])      
+        C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[1]
+        jacC = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[2]
+        hessC = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
+        init_x = x[1:1, :] + rand(1, length(posx)) .* 1e-3
+        println(size(init_x))
+        (_, _, plt2, pol) = checkDerivative(C, jacC, init_x, nothing, 9, 16, 10) #first arg is function, second arg is derivative
+        @test coeffs(pol)[end] ≈ 2 atol = 3e-1
+        (_, _, plt2, pol) = checkDerivative(C, jacC, init_x, hessC, 4, 10, 10) #first arg is function, second arg is derivative
+        @test coeffs(pol)[end] ≈ 3 atol = 3e-1
+    end
+
+    ### test jacobian and Hessian of D 
+    if false
+        Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
+        y0 = .5
+        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, [1.4])      
+        A = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[1]
+        B = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[2]
+        C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
+        init_x = x[1:1, :] + rand(1, length(posx)) .* 1e-3
+        println(size(init_x))
+        #test Jacobian
+        (_, _, plt2, pol) = checkDerivative(A, B, init_x, nothing, 9, 16, 10) #first arg is function, second arg is derivative
+        @test coeffs(pol)[end] ≈ 2 atol = 3e-1
+        #test Hessian
+        (_, _, plt2, pol) = checkDerivative(A, B, init_x, C, 3, 12, 10) #first arg is function, second arg is derivative
+        @test coeffs(pol)[end] ≈ 3 atol = 3e-1
+    end
+end
+
+
+end
+if false #test btg3
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~(btg3)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Attributes: 
 # - 2 length scales
@@ -191,7 +236,7 @@ btg3 = btg(trainingData1, rangeθ, rangeλ)
 θ3 = btg3.nodesWeightsθ.nodes[1:3, 6] #pick some theta value which doubles as quadrature node
 ##################################################################################################
 
-if true  #test comp_tdist for btg2
+if true  #test comp_tdist for btg3
     (dpdf, pdf, cdf) = comp_tdist(btg3, θ3, [1.4]) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
@@ -207,7 +252,7 @@ if true  #test comp_tdist for btg2
     end
 end
 
-if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
+if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 3
     #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ
     (dpdf, pdf, cdf) = solve(btg3)  
     a = y0 -> dpdf(x0, Fx0, y0) 
@@ -229,3 +274,6 @@ if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
         plt!(c, .1, 1, 100, title = "PDF and CDF of Bayesian Predictive Distribution")
     end
 end
+end
+
+

@@ -116,6 +116,10 @@ end
 Update test_buffer, which depends on testing data, training data, and train_buffer. 
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
+
+
+
+    
     @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
     if length(train_buffer.θ)==1 #check if θ is an array of length 1
         θ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 

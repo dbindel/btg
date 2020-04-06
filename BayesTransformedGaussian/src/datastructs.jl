@@ -113,6 +113,6 @@ function checkCompatibility(x::AbstractTrainingData, y::AbstractTestingData)
     #println("getDimension(y): ", getDimension(y))
     #println("getCovDimension(x): ", getCovDimension(x))
     #println("getCovDimension(y): ", getCovDimension(y))
-
+    
     return getDimension(x) == getDimension(y) && getCovDimension(x) == getCovDimension(y)
 end

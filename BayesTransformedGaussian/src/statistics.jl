@@ -4,47 +4,75 @@ using Roots
 using StatsFuns
 
 # import Statistics: median, pdf, cdf
+"pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support"
+function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quant0::Function) where T<:Float64
+    quant0_estimate(p) = quant0(x0, Fx0, p) 
+    pdf_fixed(y) = pdf(x0, Fx0, y)
+    cdf_fixed(y) = cdf(x0, Fx0, y)
+    dpdf_fixed(y) = dpdf(x0, Fx0, y)
+    support = [.1, 5.]
+    function support_comp!(pdf, support)
+      current = pdf(support[1])
+      for i in 1:14
+        next = pdf(support[1]/10)
+        if next < current
+          support[1] /= 10
+        else
+          break
+        end
+        current = next
+      end
+      while pdf(support[2]) > 1e-6 
+        support[2] *= 1.2
+      end
+      return nothing
+    end
+    support_comp!(pdf_fixed, support)
+    return (pdf_fixed, cdf_fixed, quant0_estimate, support)
+end
 
 """
 Given pdf, cdf and maybe pdf_deriv, 
 compute median, quantile, mode, symmetric/narrowest credible interval.
 Warning: only for normalized values
 """
-function median(pdf, cdf, quant0; pdf_deriv=nothing)
-    med = quantile(pdf, cdf, quant0)
-    return med
+function median(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; pdf_deriv=nothing) where T<:Float64
+    return quantile(pdf, cdf, quant0, support)
 end
 
-# function median2(pdf, cdf; pdf_deriv=nothing)
-#   med = quantile(pdf, cdf)
-#   return med
-# end
-
-function quantile(pdf, cdf, quant0; pdf_deriv=nothing, p::R=.5) where R <: Real
-    quant = Roots.find_zero(y0 -> cdf(y0) - p, quant0(p)) 
-    return quant
+function quantile(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; pdf_deriv=nothing, p::T=.5) where T<:Float64
+    quant0_estimate = quant0(p) 
+    # quant = find_zero(y0 -> cdf(y0) - p, quant0_estimate) 
+    quant = fzero(y0 -> cdf(y0) - p, support[1], support[2]) 
+    err = abs(p-cdf(quant))/p
+    # status = err < 1e-5 ? 1 : 0
+    return (quant, err)
 end
 
-function mode(pdf, cdf; pdf_deriv=nothing) 
+function mode(pdf::Function, cdf::Function, support::Array{T,1}; pdf_deriv=nothing) where T<:Float64
     # maximize the pdf 
-    routine = optimize(x -> -pdf(x), 0., 5.) 
+    routine = optimize(x -> -pdf(x), support[1], support[2]) 
     mod = Optim.minimizer(routine)
     return mod
 end
 
-function credible_interval(pdf, cdf, quant0; pdf_deriv=nothing, wp::R=.95, mode=:equal) where R <: Real
-    return credible_interval(pdf, cdf, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
+function credible_interval(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; 
+                            pdf_deriv=nothing, wp::T=.95, mode=:equal) where T<:Float64
+    return credible_interval(pdf, cdf, quant0, support, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
 end
 
-function credible_interval(pdf, cdf, quant0, ::Val{:equal}; pdf_deriv=nothing, wp::R=.95) where R <: Real
+function credible_interval(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}, ::Val{:equal};  
+                            pdf_deriv=nothing, wp::T=.95) where T<:Float64
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
-    lower_quant = quantile(pdf, cdf, quant0; p=lower_qp)
-    upper_quant = quantile(pdf, cdf, quant0; p=upper_qp)
-    return [lower_quant, upper_quant]
+    lower_quant = quantile(pdf, cdf, quant0, support; p=lower_qp)[1]
+    upper_quant = quantile(pdf, cdf, quant0, support; p=upper_qp)[1]
+    err = abs(cdf(upper_quant) -  cdf(lower_quant) - wp)/wp
+    return ([lower_quant, upper_quant], err)
 end
 
-function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, wp::R=.95) where R <: Real
+function credible_interval(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}, ::Val{:narrow}; 
+                            pdf_deriv=nothing, wp::T=.95) where T<:Float64
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp
@@ -73,7 +101,7 @@ function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, 
       e.g. integral_heightue, error = hquadrature(f, a, b) gives integral of f on [a,b] with some error
       we mostly use this to compute integral of pdf on [alpha, beta] for different alpha and beta
   =#
-   
+
  # helper functions
   #= 
   given a height l_height, find the two intersections s.t. pdf(α) = pdf(β) = l_height
@@ -86,13 +114,20 @@ function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, 
   =#
   function find_αβ(l_height, α_intvl, β_intvl)
     # find α and β within ginve intervals α_intvl and β_intvl respectively
-    routine_α = optimize(x -> abs(pdf(x) - l_height), α_intvl[1], α_intvl[2], GoldenSection())
-    α = Optim.minimizer(routine_α)
-    routine_β = optimize(x -> abs(pdf(x) - l_height), β_intvl[1], β_intvl[2], GoldenSection())
-    β = Optim.minimizer(routine_β)
+    # routine_α = optimize(x -> abs(pdf(x) - l_height), α_intvl[1], α_intvl[2], GoldenSection())
+    # α = Optim.minimizer(routine_α)
+    # routine_β = optimize(x -> abs(pdf(x) - l_height), β_intvl[1], β_intvl[2], GoldenSection())
+    # β = Optim.minimizer(routine_β)
+    # int = hquadrature(x -> pdf(x), α, β)[1]
+    temp_fun(x) = pdf(x) - l_height
+    α = fzero(temp_fun,  α_intvl[1], α_intvl[2])
+    β = fzero(temp_fun,  β_intvl[1], β_intvl[2])
+    # α = find_zero(x -> pdf(x) - l_height,  (α_intvl[1]+α_intvl[2])/2)
+    # β = find_zero(x -> pdf(x) - l_height, (β_intvl[1]+β_intvl[2])/2)
     int = hquadrature(x -> pdf(x), α, β)[1]
     return α, β, int
   end
+
 
   #= 
   Adjust the height in case initial choice of low/high is not proper 
@@ -112,7 +147,7 @@ function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, 
     if MODE == "low"
         while int < wp
             l /= 2
-            α, β, int = find_αβ(l, [0, α], [β, bound])
+            α, β, int = find_αβ(l, [support[1], α], [β, support[2]])
         end
     else
         while int > wp
@@ -123,16 +158,15 @@ function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, 
     return l, α, β, int
   end
 
-  # assume we have the mode
-  mode_d = mode(pdf, cdf)
+  mode_d = mode(pdf, cdf, support)
   # z normalized to [0,1], so reasonably pdf(10) ~= 0
-  bound = 3*mode_d
+  bound = 4*mode_d
   l_height_low = 1e-3
-  α_low, β_low, int_low = find_αβ(l_height_low, [0, mode_d], [mode_d, bound])
+  α_low, β_low, int_low = find_αβ(l_height_low, [support[1], mode_d], [mode_d, support[2]])
   # adjust height if l low is not lower than l* (i.e. int < wp)
   l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
   l_height_high = pdf(mode_d) - 1e-6
-  α_high, β_high, int_high = find_αβ(l_height_high, [0, mode_d], [mode_d, bound])
+  α_high, β_high, int_high = find_αβ(l_height_high, [support[1], mode_d], [mode_d, support[2]])
   # adjust height if l_high is not higher than l* (i.e. int > wp)
   l_height_high, α_high, β_high, int_high = adjust(l_height_high, α_high, β_high, int_high, "high")
 
@@ -155,7 +189,9 @@ function credible_interval(pdf, cdf, quant0, ::Val{:narrow}; pdf_deriv=nothing, 
   end
   N += 1
   end
-  return [α_mid, β_mid]
+  err1 = abs(cdf(β_mid) -  cdf(α_mid) - wp)/wp
+  err = max(err1, abs(pdf(α_mid)- pdf(β_mid))/abs(pdf(β_mid)))
+  return ([α_mid, β_mid], err)
 
  
 end

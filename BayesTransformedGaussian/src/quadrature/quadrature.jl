@@ -2,9 +2,9 @@ using LinearAlgebra
 using DataFrames
 using CSV
 using FastGaussQuadrature
+using Distributions
 import Base: size
 
-import Base.size
 
 
 #This file contains various renditions of  which perform numerical
@@ -20,17 +20,24 @@ struct nodesWeights
     d::Int64 #number of dimensions/length scales
     num::Int64 #number of quadrature nodes
     #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
-    function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12)
+    function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12, num_MC = 200)
             d = size(ranges, 1)
-            N = Array{Float64, 2}(undef, d, num_pts)
-            W = Array{Float64, 2}(undef, d, num_pts)
             if quadtype == "Gaussian"
+                N = Array{Float64, 2}(undef, d, num_pts)
+                W = Array{Float64, 2}(undef, d, num_pts)
                 nodes, weights = gausslegendre(num_pts)
                 for i = 1:size(ranges, 1)
                     N[i, :], W[i, :] = affineTransform(nodes, weights, ranges[i, :])
                 end
+            elseif quadtype == "MonteCarlo"
+                num_pts = num_MC 
+                N = Array{Float64, 2}(undef, d, num_pts)
+                W = ones(num_pts, 1)
+                for i = 1:size(ranges, 1)
+                    N[i, :] = rand(Distributions.Uniform(ranges[i, 1], ranges[i, 2]), num_pts)
+                end
             else
-                throw(ArgumentError("Quadrature type not supported. Please enter \"Gaussian\""))
+                throw(ArgumentError("Quadrature type not supported. Please enter \"Gaussian\" or \"MonteCarlo\""))
             end
             return new(N, W, d, num_pts)
     end    
@@ -42,8 +49,14 @@ Get dimensions of nodes or weights matrix
 getNum(nw::nodesWeights) = nw.num
 getDimension(nw::nodesWeights) = nw.d
 size(nw::nodesWeights) = (nw.d, nw.num)
-getProd(arr::Array{Float64, 2}, I) = reduce(*, [arr[i, j] for i =1:size(arr, 1) for j = I[i]] ) 
 getNodeSequence(arr::Array{Float64, 2}, I) = [arr[i, j] for i =1:size(arr, 1) for j = I[i]]
+# getProd(arr::Array{Float64, 2}, I) = reduce(*, [arr[i, j] for i =1:size(arr, 1) for j = I[i]]) 
+function getProd(w1::Array{Float64, 2}, w2::Array{Float64, 2}, I)
+    n1 = size(w1, 1)
+    n3 = size(w2, 1)
+    nodes_tuple = vcat([w1[i, j] for i =1:n1 for j = I[i]], [w2[i, j] for i=1:n3 for j = I[i+n1]])
+    return reduce(*, nodes_tuple) 
+end
 
 function getNumLengthScales(nw::nodesWeights)
     return nw.d

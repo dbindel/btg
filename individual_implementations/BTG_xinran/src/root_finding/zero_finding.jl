@@ -10,6 +10,8 @@ function zero_finding(f, kmax, tol, b0)
     b = b0
     k = 0
     iter = 0
+
+    
     intvl = [b, 2*b]
 
 

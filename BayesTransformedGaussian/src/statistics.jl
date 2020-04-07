@@ -37,7 +37,8 @@ compute median, quantile, mode, symmetric/narrowest credible interval.
 Warning: only for normalized values
 """
 function median(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; pdf_deriv=nothing) where T<:Float64
-    return quantile(pdf, cdf, quant0, support)
+    (med, err) = quantile(pdf, cdf, quant0, support)
+    return (med, err)
 end
 
 function quantile(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; pdf_deriv=nothing, p::T=.5) where T<:Float64

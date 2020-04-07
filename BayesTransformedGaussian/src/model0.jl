@@ -45,8 +45,8 @@ mutable struct btg
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
         #a btg object really should contain a bunch of train buffers correpsonding to different theta-values
         #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
-        nodesWeightsθ = nodesWeights(rangeθ, quadtype; num_pts = 10)
-        nodesWeightsλ = nodesWeights(rangeλ, quadtype; num_pts = nodesWeightsθ.num)
+        nodesWeightsθ = nodesWeights(rangeθ, quadtype; num_pts = 18, num_MC = 400)
+        nodesWeightsλ = nodesWeights(rangeλ, quadtype; num_pts = 18, num_MC = 400)
         train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype)
         test_buffer_dict = Dict{Union{Array{T, 1}, T} where T<:Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict)) #initialize keys of dict with unitialized test buffer values
         cap = getCapacity(trainingData)

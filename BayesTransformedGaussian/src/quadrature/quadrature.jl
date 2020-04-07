@@ -20,7 +20,7 @@ struct nodesWeights
     d::Int64 #number of dimensions/length scales
     num::Int64 #number of quadrature nodes
     #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
-    function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12)
+    function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12, num_MC = 200)
             d = size(ranges, 1)
             if quadtype == "Gaussian"
                 N = Array{Float64, 2}(undef, d, num_pts)
@@ -30,7 +30,7 @@ struct nodesWeights
                     N[i, :], W[i, :] = affineTransform(nodes, weights, ranges[i, :])
                 end
             elseif quadtype == "MonteCarlo"
-                num_pts = num_pts < 20 ? 200 : num_pts
+                num_pts = num_MC 
                 N = Array{Float64, 2}(undef, d, num_pts)
                 W = ones(num_pts, 1)
                 for i = 1:size(ranges, 1)

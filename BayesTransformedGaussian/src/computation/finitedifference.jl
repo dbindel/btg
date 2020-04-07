@@ -25,11 +25,11 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     m = length(f0) 
     @assert size(f0, 2)==1 #no reason for f0 to be 2D
     println(size(df0))
-    println(m)
-    println(n)
+    println("m: ", m)
+    println("n: ", n)
     #@assert size(df0) == (m, n) ||  size(df0) == (m, ) #keep 1D list as possibility
-    println(size(df0, 1))
-    println(size(df0, 2))
+    println("size df0, 1: ", size(df0, 1))
+    println("size df0, 2: ", size(df0, 2))
     @assert size(df0, 1) == m && size(df0, 2) == n 
     try 
         df0 = reshape(df0, m, n) #reshapes to m x n if non-scalar

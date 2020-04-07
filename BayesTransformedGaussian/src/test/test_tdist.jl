@@ -26,6 +26,12 @@ target = convert(Array, df[:, 9]) #age
 normalizing_constant = maximum(target)
 target = target/normalizing_constant #normalization
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~(to test or not to test)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test_btg1 = false 
+test_btg2 = true
+test_btg3 = false
+
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~(btg1)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Attributes: 
 # - single length scale
@@ -37,6 +43,7 @@ posx = 1:3 #
 posc = 1:3
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
+
 Fx = data[ind, posc] 
 y = float(target[ind])
 pind = 10:10 #prediction index
@@ -52,9 +59,8 @@ btg1 = btg(trainingData1, rangeθ, rangeλ)
 θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
 ##################################################################################################
 
-if false #test btg1, including comp_tdist and comp_btg_dist
+if test_btg1  #test comp_tdist 
 
-if true  #test comp_tdist 
     (dpdf, pdf, cdf) = comp_tdist(btg1, [θ1], [1.4]) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
@@ -74,7 +80,7 @@ if true  #test comp_tdist
         @test coeffs(pol1)[end] ≈ 2 atol = 1e-1
         @test coeffs(pol2)[end] ≈ 2 atol = 1e-1
     end
-end
+
 
 if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv)
     #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ
@@ -105,25 +111,36 @@ end
 end
 
 
-if true #test btg2
+if test_btg2 #test btg2
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~(btg2)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Attributes: 
 # - 2 length scales
 # - 3-dimensional covariate vectors
 # - 2-dimensional location vectors
+# polynomial mean basis
 
 ind = 120:140
 posx = [1;4] #
 posc = 1:3
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
-Fx = data[ind, posc] 
+POLYNOMIAL_BASIS_COVARIATES = true
+if POLYNOMIAL_BASIS_COVARIATES
+    Fx = hcat(ones(length(ind), 1), data[ind, 1:2])
+else 
+    Fx = data[ind, posc] 
+end
+ 
 y = float(target[ind])
 pind = 10:10 #prediction index
 trainingData1 = trainingData(x, Fx, y) #training data used for testing various functions
 
 d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
-Fx0 = reshape(data[pind, posc], 1, length(posc))
+if POLYNOMIAL_BASIS_COVARIATES
+    Fx0 = hcat(ones(length(pind), 1), data[pind, 1:(length(posc)-1)])
+else 
+    Fx0 = reshape(data[pind, posc], 1, length(posc))
+end
 x0 = reshape(data[pind, posx], 1, length(posx)) 
 rangeθ = [100.0 200; 200.0 400.0]
 rangeλ = [0.5 5] #we will always used 1 range scale for lambda
@@ -131,7 +148,7 @@ btg2 = btg(trainingData1, rangeθ, rangeλ)
 θ2 = btg2.nodesWeightsθ.nodes[1:2, 6] #pick some theta value which doubles as quadrature node
 ##################################################################################################
 
-if false  #test comp_tdist for btg2
+if true  #test comp_tdist for btg2
     (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, [1.4]) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
@@ -147,7 +164,7 @@ if false  #test comp_tdist for btg2
     end
 end
 
-if false #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
+if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
     #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ
     (dpdf, pdf, cdf) = solve(btg2)  
     a = y0 -> dpdf(x0, Fx0, y0) 
@@ -172,24 +189,8 @@ end
 
 
 if true #test derivatives of location, and derivatives of auxiliary functions w.r.t location
-    ### test jacobian and Hessian of C
-    if true
-        Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
-        y0 = .5
-        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, [1.4])      
-        C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[1]
-        jacC = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[2]
-        hessC = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
-        init_x = x[1:1, :] + rand(1, length(posx)) .* 1e-3
-        println(size(init_x))
-        (_, _, plt2, pol) = checkDerivative(C, jacC, init_x, nothing, 9, 16, 10) #first arg is function, second arg is derivative
-        @test coeffs(pol)[end] ≈ 2 atol = 3e-1
-        (_, _, plt2, pol) = checkDerivative(C, jacC, init_x, hessC, 4, 10, 10) #first arg is function, second arg is derivative
-        @test coeffs(pol)[end] ≈ 3 atol = 3e-1
-    end
-
-    ### test jacobian and Hessian of D 
-    if false
+    ### test jacobian and Hessian of C, D, m, etc.
+    @testset begin  
         Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
         y0 = .5
         (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, [1.4])      
@@ -198,18 +199,20 @@ if true #test derivatives of location, and derivatives of auxiliary functions w.
         C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
         init_x = x[1:1, :] + rand(1, length(posx)) .* 1e-3
         println(size(init_x))
-        #test Jacobian
-        (_, _, plt2, pol) = checkDerivative(A, B, init_x, nothing, 9, 16, 10) #first arg is function, second arg is derivative
-        @test coeffs(pol)[end] ≈ 2 atol = 3e-1
-        #test Hessian
-        (_, _, plt2, pol) = checkDerivative(A, B, init_x, C, 3, 12, 10) #first arg is function, second arg is derivative
-        @test coeffs(pol)[end] ≈ 3 atol = 3e-1
+        (_, _, plt1, pol1) = checkDerivative(A, B, init_x, nothing, 2, 5, 10) #first arg is function, second arg is derivative
+        @test coeffs(pol1)[end] > 2 - 3e-1
+        println("pol1: ", pol1)
+        display(plt1)
+        (_, _, plt2, pol2) = checkDerivative(A, B, init_x, C, 2, 6, 10) #first arg is function, second arg is derivative
+        @test coeffs(pol2)[end] > 3 - 3e-1
+        println("pol2: ", pol2)
+        display(plt2)
     end
 end
 
 
 end
-if false #test btg3
+if test_btg3 #test btg3
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~(btg3)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Attributes: 
 # - 2 length scales

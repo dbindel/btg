@@ -101,6 +101,17 @@ function update!(e:: AbstractTestingData, x0, Fx0)
     return nothing
 end
 
+function update_needed(e::AbstractTestingData, x0, Fx0)
+    try 
+        a = getPosition(e) != x0 
+        b = getCovariates(e) != Fx0
+        return ( a || b )
+    catch UndefRefError #test buffer has not yet been initialized
+        return true
+    end
+        
+end
+
 """
 Get capacity of extensible training object or number of data points in vanilla training object
 """

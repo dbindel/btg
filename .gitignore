@@ -10,3 +10,5 @@ BayesTransformedGaussian/examples/Test_kernel.ipynb
 BayesTransformedGaussian/src/test/test_quantile.ipynb
 BayesTransformedGaussian/src/test/test_quantile.jl
 .gitignore
+BayesTransformedGaussian/src/test/Untitled.ipynb
+BayesTransformedGaussian/src/test/Test_MC.ipynb

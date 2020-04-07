@@ -28,7 +28,7 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
       return nothing
     end
     support_comp!(pdf_fixed, support)
-    return (pdf_fixed, cdf_fixed, quant0_estimate, support)
+    return (pdf_fixed, cdf_fixed, dpdf_fixed, quant0_estimate, support)
 end
 
 """

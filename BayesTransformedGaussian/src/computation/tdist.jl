@@ -29,8 +29,8 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
         x1, y1 = getDimension(btg.trainingData), getDimension(btg.testingData)
         x2, y2 = getCovDimension(btg.trainingData), getCovDimension(btg.testingData)
         #if (~ (x1==y1) || ~ (x2 == y2))
-            println("dimension of train is $x1 but dimension of test is $y1")
-            println("covariance dimensions of train is $x2 but covariance dimension of test is $y2")
+            # println("dimension of train is $x1 but dimension of test is $y1")
+            # println("covariance dimensions of train is $x2 but covariance dimension of test is $y2")
         #end
         update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
         (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])

@@ -28,7 +28,7 @@ mutable struct btg
     n::Int64 #number of points in kernel system, if 0 then uninitialized
     g:: NonlinearTransform #transform family, e.g. BoxCox()
     k::AbstractCorrelation  #kernel family, e.g. Gaussian()
-    quadType::String #Gaussian, Turan, or MonteCarlo
+    quadType::Array{String,1} #type for theta and lambda respectively, Gaussian, Turan, or MonteCarlo
     priorθ::priorType
     priorλ::priorType
     nodesWeightsθ #integration nodes and weights for θ
@@ -36,18 +36,18 @@ mutable struct btg
     train_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, train_buffer}   #buffer for each theta value
     test_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, test_buffer}  #buffer for each theta value
     capacity::Int64
-    function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = "Gaussian", transform = BoxCox())
+    function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
         @assert typeof(corr)<:AbstractCorrelation
         @assert typeof(priorθ)<:priorType
         @assert typeof(priorλ)<:priorType
-        @assert typeof(quadtype)<:String
+        @assert typeof(quadtype)<:Array{String,1}
         @assert typeof(transform)<: NonlinearTransform
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
         #a btg object really should contain a bunch of train buffers correpsonding to different theta-values
         #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
-        nodesWeightsθ = nodesWeights(rangeθ, quadtype; num_pts = 18, num_MC = 400)
-        nodesWeightsλ = nodesWeights(rangeλ, quadtype; num_pts = 18, num_MC = 400)
-        train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype)
+        nodesWeightsθ = nodesWeights(rangeθ, quadtype[1]; num_pts = 18, num_MC = 400)
+        nodesWeightsλ = nodesWeights(rangeλ, quadtype[2]; num_pts = 18, num_MC = 400)
+        train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1])
         test_buffer_dict = Dict{Union{Array{T, 1}, T} where T<:Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict)) #initialize keys of dict with unitialized test buffer values
         cap = getCapacity(trainingData)
         new(trainingData, testingData(), 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, cap)
@@ -95,23 +95,27 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
         jacvals[i] = sum(log.(abs.(map( x-> dg(x, btg.nodesWeightsλ.nodes[i]), z))))
     end
     
-    if btg.quadType == "MonteCarlo"
+    if endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")
         weightsTensorGrid = Array{Float64, 1}(undef, nt2) 
         R = CartesianIndices(weightsTensorGrid)
-    else 
+    elseif btg.quadType == ["Gaussian", "Gaussian"]
         weightsTensorGrid = Array{Float64, nt1+nl1}(undef, Tuple(vcat([nt2 for i = 1:nt1], [nl2 for i = 1:nl1]))) #initialize tensor grid
         R = CartesianIndices(weightsTensorGrid)
         for I in R #I is multi-index
             weightsTensorGrid[I] = getProd(btg.nodesWeightsθ.weights, btg.nodesWeightsλ.weights, I) #this step can be simplified because the tensor is symmetric (weights are the same along each dimension)
         end
+    else
+        weightsTensorGrid = Array{Float64, 2}(undef, nt2, nl2) 
+        R = CartesianIndices(weightsTensorGrid)
+        weightsTensorGrid = repeat(btg.nodesWeightsλ.weights, nt2, 1) # add lambda weights 
     end
 
     powerGrid = similar(weightsTensorGrid) 
     for I in R
-        r1 = btg.quadType == "MonteCarlo" ? I : Tuple(I)[1:end-1]
-        r2 = btg.quadType == "MonteCarlo" ? I : Tuple(I)[end]
-        t1 = btg.quadType == "MonteCarlo" ? getNodes(btg.nodesWeightsθ)[:, I] : getNodeSequence(getNodes(btg.nodesWeightsθ), r1)
-        t2 = btg.quadType == "MonteCarlo" ? getNodes(btg.nodesWeightsλ)[:, I] : getNodeSequence(getNodes(btg.nodesWeightsλ), r2)
+        r1 = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? I : Tuple(I)[1:end-1] 
+        r2 = Tuple(I)[end]
+        t1 = btg.quadType[1] == "Gaussian" ? getNodeSequence(getNodes(btg.nodesWeightsθ), r1) : getNodes(btg.nodesWeightsθ)[:, r1[1]]
+        t2 = getNodes(btg.nodesWeightsλ)[:, r2] 
         train_buffer = btg.train_buffer_dict[t1] #look up train buffer based on combination of theta quadrature nodes
         choleskyXΣX = train_buffer.choleskyXΣX
         choleskyΣθ = train_buffer.choleskyΣθ
@@ -126,7 +130,7 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
         powerGrid[I] = qTensorGrid + detTensorGridΣθ + detTensorGridXΣX + jacTensorGrid + priorTensorGrid #sum of exponents
     end
     powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
-    weightsTensorGrid = btg.quadType == "MonteCarlo" ? powerGrid : weightsTensorGrid .* powerGrid 
+    weightsTensorGrid = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? powerGrid : weightsTensorGrid .* powerGrid 
     weightsTensorGrid = weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
     return weightsTensorGrid
 end
@@ -139,25 +143,31 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     nt2 = getNum(btg.nodesWeightsθ) #number of theta quadrature in each dimension
     nl2 = getNum(btg.nodesWeightsλ) #number of lambda quadrature in each dimension
     #preallocate some space to store dpdf, pdf, and cdf functions, as well as location parameters, for all (θ, λ) quadrature node combinations
-    if btg.quadType == "MonteCarlo"
+    if btg.quadType == ["Gaussian", "Gaussian"]
+        tgridpdfderiv = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
+        tgridpdf = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
+        tgridcdf = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
+        tgridm = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
+        tgridsigma_m = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
+    elseif endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")
         tgridpdfderiv = Array{Function, 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
         tgridpdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridcdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridm = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
     else
-        tgridpdfderiv = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
-        tgridpdf = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
-        tgridcdf = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
-        tgridm = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
-        tgridsigma_m = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
+        tgridpdfderiv = Array{Function, 2}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
+        tgridpdf = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
+        tgridcdf = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
+        tgridm = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
+        tgridsigma_m = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
     end
     R = CartesianIndices(weightsTensorGrid)
     for I in R
-        r1 = btg.quadType == "MonteCarlo" ? I : Tuple(I)[1:end-1]
-        r2 = btg.quadType == "MonteCarlo" ? I : Tuple(I)[end]
-        θ = btg.quadType == "MonteCarlo" ? getNodes(btg.nodesWeightsθ)[:, I] : getNodeSequence(getNodes(btg.nodesWeightsθ), r1)
-        λ = btg.quadType == "MonteCarlo" ? getNodes(btg.nodesWeightsλ)[:, I] : getNodeSequence(getNodes(btg.nodesWeightsλ), r2)
+        r1 = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? I : Tuple(I)[1:end-1] 
+        r2 = Tuple(I)[end]
+        θ = btg.quadType[1] == "Gaussian" ? getNodeSequence(getNodes(btg.nodesWeightsθ), r1) : getNodes(btg.nodesWeightsθ)[:, r1[1]]
+        λ = getNodes(btg.nodesWeightsλ)[:, r2] 
         (dpdf, pdf, cdf, _, m, sigma_m) = comp_tdist(btg, θ, λ)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
@@ -173,17 +183,22 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
         return nothing
     end
    
-    grid_pdf_deriv = similar(weightsTensorGrid)
-    view_pdf_deriv = btg.quadType == "MonteCarlo" ? (@view grid_pdf_deriv[:]) : (@view grid_pdf_deriv[[1:nt2 for i = 1:nt1]..., 1:nl2])
-    grid_pdf = similar(weightsTensorGrid)
-    view_pdf = btg.quadType == "MonteCarlo" ? (@view grid_pdf[:]) : (@view grid_pdf[[1:nt2 for i = 1:nt1]..., 1:nl2])
-    grid_cdf = similar(weightsTensorGrid)
-    view_cdf = btg.quadType == "MonteCarlo" ? (@view grid_cdf[:]) : (@view grid_cdf[[1:nt2 for i = 1:nt1]..., 1:nl2])
-    grid_m = similar(weightsTensorGrid)
-    view_m = btg.quadType == "MonteCarlo" ? (@view grid_m[:]) : (@view grid_m[[1:nt2 for i = 1:nt1]..., 1:nl2])
-    grid_sigma_m = similar(weightsTensorGrid)
-    view_sigma_m = btg.quadType == "MonteCarlo" ? (@view grid_sigma_m[:]) : (@view grid_sigma_m[[1:nt2 for i = 1:nt1]..., 1:nl2])
-    
+    function generate_view(grid)
+        if btg.quadType == ["Gaussian", "Gaussian"] # 3d grid
+            view_grid = @view grid[[1:nt2 for i = 1:nt1]..., 1:nl2]
+        elseif (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) # 1d grid
+            view_grid = @view grid[:]
+        else # 2d grid
+            view_grid = @view grid[:,:]
+        end
+        return view_grid
+    end
+    grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = generate_view(grid_pdf_deriv)
+    grid_pdf = similar(weightsTensorGrid); view_pdf = generate_view(grid_pdf)
+    grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf)
+    grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m)
+    grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m)
+
     function evalgrid!(f, x0, Fx0, y0, view)
         checkInput(x0, Fx0, y0)
         #println("x0: ", x0)

@@ -25,11 +25,34 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
       while pdf(support[2]) > 1e-6 
         support[2] *= 1.2
       end
+      # should make sure CDF(support[2]) - CDF(support[1]) > .96 to make 95% CI possible
+      INT = cdf_fixed(support[2]) - cdf_fixed(support[1])
+      @assert INT > .95 "pdf integral $INT"
       return nothing
     end
     support_comp!(pdf_fixed, support)
     return (pdf_fixed, cdf_fixed, dpdf_fixed, quant0_estimate, support)
 end
+
+"wrap up all statistics computation"
+function summary_comp(pdf_fixed::Function, cdf_fixed::Function, dpdf_fixed::Function, quant0::Function, support::Array{T,1};
+                       px = .5, confidence_level = .95) where T<:Float64
+    quant_p, error_quant = quantile(pdf_fixed, cdf_fixed, quant0, support; p=px)
+    med, error_med = median(pdf_fixed, cdf_fixed, quant0, support)
+    mod = mode(pdf_fixed, cdf_fixed, support)
+    CI_equal, error_CI_eq = credible_interval(pdf_fixed, cdf_fixed, quant0, support; 
+                                                mode=:equal, wp = confidence_level)
+    # CI_narrow, error_CI_nr = credible_interval(pdf_fixed, cdf_fixed, quant0, support;
+    #                                             mode=:narrow, wp = confidence_level)
+    quantileInfo = (level = px, value = quant_p, error = error_quant)
+    medianInfo = (value = med, error = error_med)
+    CIequalInfo = (equal = CI_equal, error = error_CI_eq)
+    # CInarrowInfo = (equal = CI_narrow, error = error_CI_nr)
+    CInarrowInfo = nothing
+    DistributionInfo = (quantile = quantileInfo, median = medianInfo, mode = mod, CIequal = CIequalInfo, CInarrow = CInarrowInfo)
+    return DistributionInfo
+end
+
 
 """
 Given pdf, cdf and maybe pdf_deriv, 
@@ -115,16 +138,9 @@ function credible_interval(pdf::Function, cdf::Function, quant0::Function, suppo
   =#
   function find_αβ(l_height, α_intvl, β_intvl)
     # find α and β within ginve intervals α_intvl and β_intvl respectively
-    # routine_α = optimize(x -> abs(pdf(x) - l_height), α_intvl[1], α_intvl[2], GoldenSection())
-    # α = Optim.minimizer(routine_α)
-    # routine_β = optimize(x -> abs(pdf(x) - l_height), β_intvl[1], β_intvl[2], GoldenSection())
-    # β = Optim.minimizer(routine_β)
-    # int = hquadrature(x -> pdf(x), α, β)[1]
     temp_fun(x) = pdf(x) - l_height
     α = fzero(temp_fun,  α_intvl[1], α_intvl[2])
     β = fzero(temp_fun,  β_intvl[1], β_intvl[2])
-    # α = find_zero(x -> pdf(x) - l_height,  (α_intvl[1]+α_intvl[2])/2)
-    # β = find_zero(x -> pdf(x) - l_height, (β_intvl[1]+β_intvl[2])/2)
     int = hquadrature(x -> pdf(x), α, β)[1]
     return α, β, int
   end
@@ -158,16 +174,16 @@ function credible_interval(pdf::Function, cdf::Function, quant0::Function, suppo
     end
     return l, α, β, int
   end
-
   mode_d = mode(pdf, cdf, support)
-  # z normalized to [0,1], so reasonably pdf(10) ~= 0
-  bound = 4*mode_d
-  l_height_low = 1e-3
-  α_low, β_low, int_low = find_αβ(l_height_low, [support[1], mode_d], [mode_d, support[2]])
+  l_height_low = pdf(support[1]) 
+  α_low = support[1]
+  β_low = fzero(x -> pdf(x) - l_height_low,  mode_d, support[2])
+  int_low = hquadrature(x -> pdf(x), α_low, β_low)[1]
+  # α_low, β_low, int_low = find_αβ(l_height_low, [support[1], mode_d], [mode_d, support[2]])
   # adjust height if l low is not lower than l* (i.e. int < wp)
-  l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
-  l_height_high = pdf(mode_d) - 1e-6
-  α_high, β_high, int_high = find_αβ(l_height_high, [support[1], mode_d], [mode_d, support[2]])
+  # l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
+  l_height_high = pdf(mode_d)*0.9
+  α_high, β_high, int_high = find_αβ(l_height_high, [α_low, mode_d], [mode_d, β_low])
   # adjust height if l_high is not higher than l* (i.e. int > wp)
   l_height_high, α_high, β_high, int_high = adjust(l_height_high, α_high, β_high, int_high, "high")
 

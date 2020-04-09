@@ -149,18 +149,21 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
         tgridcdf = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridm = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
+        tgridquantile = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid)) # store quantile of each T component
     elseif endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")
         tgridpdfderiv = Array{Function, 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
         tgridpdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridcdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridm = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
+        tgridquantile = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
     else
         tgridpdfderiv = Array{Function, 2}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
         tgridpdf = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
         tgridcdf = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
         tgridm = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
+        tgridquantile = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
     end
     R = CartesianIndices(weightsTensorGrid)
     for I in R
@@ -168,12 +171,13 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
         r2 = Tuple(I)[end]
         θ = btg.quadType[1] == "Gaussian" ? getNodeSequence(getNodes(btg.nodesWeightsθ), r1) : getNodes(btg.nodesWeightsθ)[:, r1[1]]
         λ = getNodes(btg.nodesWeightsλ)[:, r2] 
-        (dpdf, pdf, cdf, _, m, sigma_m) = comp_tdist(btg, θ, λ)
+        (dpdf, pdf, cdf, _, m, sigma_m, quantile_fun) = comp_tdist(btg, θ, λ)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf
         tgridm[I] = m
         tgridsigma_m[I] = sigma_m
+        tgridquantile[I] = quantile_fun # function of (x0, Fx0, q)
     end
     # store 
     function checkInput(x0, Fx0, y0)
@@ -198,25 +202,11 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf)
     grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m)
     grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m)
+    grid_quantile = similar(weightsTensorGrid); view_quantile = generate_view(grid_quantile)
 
-    function evalgrid!(f, x0, Fx0, y0, view)
-        checkInput(x0, Fx0, y0)
-        #println("x0: ", x0)
-        #println("Fx0: ", Fx0)
-        #println("y0: ", y0) 
-        #println("type of x0: ", typeof(x0))
-        #println("type of Fx0: ", typeof(Fx0))
-        #println("type of y0: ", typeof(y0)) 
+    function evalgrid!(f, view, x0, Fx0...)
         for I in R
-            view[I] = f[I](x0, Fx0, y0) 
-        end
-        return nothing
-    end
-
-    function evalgrid_quant!(f, x0, Fx0, view)
-        # checkInput(x0, Fx0, y0) 
-        for I in R
-            view[I] = f[I](x0, Fx0) 
+            view[I] = f[I](x0, Fx0...) 
         end
         return nothing
     end
@@ -225,37 +215,28 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
     #pdf_evalgrid = (x0, Fx0, y0) -> evalgrid!(tgridpdf, x0, Fx0, y0, @view grid_pdf[1:end for i in 1:ndims(weightsTensorGrid)]) 
     #cdf_evalgrid = (x0, Fx0, y0) -> evalgrid!(tgridcdf, x0, Fx0, y0, @view grid_cdf[1:end for i in 1:ndims(weightsTensorGrid)])
 
-    evalgrid_dpdf!(x0, Fx0, y0) = evalgrid!(tgridpdfderiv, x0, Fx0, y0, view_pdf_deriv)
-    evalgrid_pdf!(x0, Fx0, y0) = evalgrid!(tgridpdf, x0, Fx0, y0, view_pdf)
-    evalgrid_cdf!(x0, Fx0, y0) = evalgrid!(tgridcdf, x0, Fx0, y0, view_cdf)
-    evalgrid_m!(x0, Fx0) = evalgrid_quant!(tgridm, x0, Fx0, view_m)
-    evalgrid_sigma_m!(x0, Fx0) = evalgrid_quant!(tgridsigma_m, x0, Fx0, view_sigma_m)
+    evalgrid_dpdf!(x0, Fx0, y0) = evalgrid!(tgridpdfderiv, view_pdf_deriv, x0, Fx0, y0)
+    evalgrid_pdf!(x0, Fx0, y0) = evalgrid!(tgridpdf, view_pdf, x0, Fx0, y0)
+    evalgrid_cdf!(x0, Fx0, y0) = evalgrid!(tgridcdf, view_cdf, x0, Fx0, y0)
+    evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
+    evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
+    evalgrid_quantile!(x0, Fx0, q) = evalgrid!(tgridquantile, view_quantile, x0, Fx0, q)
 
     #below we write y0[1] instead of y0, because sometimes the output will have a box around it, due to matrix-operations in the internal implementation
     dpdf = (x0, Fx0, y0) -> (evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
     pdf = (x0, Fx0, y0) -> (evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
     cdf = (x0, Fx0, y0) -> (evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
     
-    # return (dpdf, pdf, cdf)
     # compute estimated quantile
     EY = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))
     EY2 = (x0, Fx0) -> (evalgrid_sigma_m!(x0, Fx0); dot(grid_sigma_m, weightsTensorGrid))
+    quantile_range = (x0, Fx0, q) -> (evalgrid_quantile!(x0, Fx0, q); grid_quantile)
+
     VarY =  (x0, Fx0) -> EY2(x0, Fx0) - (EY(x0, Fx0))^2
     v = btg.trainingData.n - btg.trainingData.p
     sigma_Y = (x0, Fx0) -> sqrt(VarY(x0, Fx0) * (v-2)/v)
     quant_estimt = (x0, Fx0, q) -> sigma_Y(x0, Fx0) * tdistinvcdf(v, q) + EY(x0, Fx0)
-    quantInfo = (quant_estimt, EY, EY2, sigma_Y)
-
-    # for debug
-    # function EY_grid(x0, Fx0)
-    #     evalgrid_m!(x0, Fx0)
-    #     return grid_m
-    # end
-
-    # function EY2_grid(x0, Fx0)
-    #     evalgrid_sigma_m!(x0, Fx0)
-    #     return grid_sigma_m
-    # end
+    quantInfo = (quant_estimt, EY, EY2, sigma_Y, quantile_range)
     
     return (pdf, cdf, dpdf, quantInfo) 
 

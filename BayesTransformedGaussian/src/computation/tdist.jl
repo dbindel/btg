@@ -9,7 +9,7 @@ Compute cdf, pdf, and pdf_deriv of T-distribution
 function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     trainingData = btg.trainingData
     g = btg.g #nonlinear transform, e.g. BoxCox
-
+    invg = (x, λ) -> inverse(btg.g, x, λ)
     (_, Σθ_inv_X, choleskyΣθ, _) = unpack( btg.train_buffer_dict[θ])
     (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
 
@@ -56,8 +56,7 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
         # 
     function compute_location_derivs(x0, Fx0, y0)
         m, q, C = compute_qmC(x0, Fx0)
-        qC = q*C
-        t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
+        t = LocationScale(m, sqrt(q*C/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         #(C, jacC) = compute_higher_derivs(btg, θ, x0, Fx0, y0)
         (func, jacobian, hessian) = compute_higher_derivs(btg, θ, x0, Fx0, y0)
     end
@@ -86,7 +85,16 @@ function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}) where T<:Float64
     Ex2 = (x0, Fx0) -> hquadrature(y0 -> y0^2 * pdf(x0, Fx0, y0), 0, 2)[1]
     # m = (x0, Fx0) -> compute_qmC(x0, Fx0)[1] 
     # sigma_m = (x0, Fx0) -> compute_qmC(x0, Fx0)[3] 
-    return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2)
+
+    # compute quantile q for each component
+    function q_fun(x0, Fx0, quant)
+        m, q, C = compute_qmC(x0, Fx0)
+        t = LocationScale(m, sqrt(q*C/(n-p)), TDist(n-p))
+        return Distributions.quantile(t, quant)
+    end
+    # q_fun = (x0, Fx0, q) -> (m, q, C = compute_qmC(x0, Fx0); invg(sqrt(q*C/(n-p))*tdistinvcdf(n-p, q)+m, λ))
+    
+    return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
 end
 
 

@@ -1,6 +1,7 @@
 using LinearAlgebra
 using DataFrames
 using CSV
+using Sobol
 using FastGaussQuadrature
 using Distributions
 import Base: size
@@ -36,6 +37,11 @@ struct nodesWeights
                 for i = 1:size(ranges, 1)
                     N[i, :] = rand(Distributions.Uniform(ranges[i, 1], ranges[i, 2]), num_pts)
                 end
+            elseif quadtype == "QuasiMonteCarlo"
+                num_pts = num_MC
+                s = SobolSeq(ranges[:,1], ranges[:,2])
+                N = hcat([next!(s) for i = 1:num_pts]...)
+                W = ones(num_pts, 1)
             else
                 throw(ArgumentError("Quadrature type not supported. Please enter \"Gaussian\" or \"MonteCarlo\""))
             end

@@ -24,12 +24,12 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     n = length(x0)
     m = length(f0) 
     @assert size(f0, 2)==1 #no reason for f0 to be 2D
-    println(size(df0))
-    println("m: ", m)
-    println("n: ", n)
+    #println(size(df0))
+    #println("m: ", m)
+    #println("n: ", n)
     #@assert size(df0) == (m, n) ||  size(df0) == (m, ) #keep 1D list as possibility
-    println("size df0, 1: ", size(df0, 1))
-    println("size df0, 2: ", size(df0, 2))
+    #println("size df0, 1: ", size(df0, 1))
+    #println("size df0, 2: ", size(df0, 2))
     @assert size(df0, 1) == m && size(df0, 2) == n 
     try 
         df0 = reshape(df0, m, n) #reshapes to m x n if non-scalar
@@ -69,8 +69,8 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
                 inc = h[i] .* dx
                 expr1 = fi .- f0
                 expr2 = df0 * inc .+ 0.5* inc' * d2f0 * inc
-                println("size expr1: ", size(expr1))
-                println("size expr2: ", size(expr2))
+                #println("size expr1: ", size(expr1))
+                #println("size expr2: ", size(expr2))
                 @assert size(expr1, 1) == size(expr2, 1) && size(expr1, 2) == size(expr2, 2)
                 A[i] = norm(expr1 .- expr2)
                 #A[i] = norm((fi - f0) - df0' * inc .- 0.5* inc' * d2f0 * inc)

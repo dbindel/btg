@@ -33,6 +33,12 @@ function plt!(f, a, b, numpts=100; label = "y", title = "")
     return(x, y)
 end
 
+function plot_multiple(a, b, c, r1=.001, r2=1, npts = 100)
+    plt(a, r1, r2, npts, label = "pdf")
+    plt!(b, r1, r2, npts, label = "cdf")
+    plt!(c, r1, r2, npts, label = "dpdf")
+end
+
 """
 plot pdf, median, mode and credible interval
 """

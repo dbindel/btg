@@ -36,6 +36,7 @@ mutable struct btg
     train_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, train_buffer}   #buffer for each theta value
     test_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, test_buffer}  #buffer for each theta value
     capacity::Int64
+    
     function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
         @assert typeof(corr)<:AbstractCorrelation
         @assert typeof(priorθ)<:priorType
@@ -150,6 +151,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends o
         tgridm = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridquantile = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid)) # store quantile of each T component
+
     elseif endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")
         tgridpdfderiv = Array{Function, 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
         tgridpdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))

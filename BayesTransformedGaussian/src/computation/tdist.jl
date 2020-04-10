@@ -240,10 +240,9 @@ function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_
             hess_G[i, j] = (expr1 .+ expr2)[1]
         end
     end
-    println("size G: ", size(G))
-    println("size jacG: ", size(jacG))
-    println("size hess_G: ", size(hess_G))
-
+    #println("size G: ", size(G))
+    #println("size jacG: ", size(jacG))
+    #println("size hess_G: ", size(hess_G))
 
     # println("cdf_eval: ", cdf_eval)
     # println("cdf_deriv: ", cdf_deriv)

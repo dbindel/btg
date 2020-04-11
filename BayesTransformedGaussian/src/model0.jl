@@ -33,10 +33,10 @@ mutable struct btg
     priorλ::priorType
     nodesWeightsθ #integration nodes and weights for θ
     nodesWeightsλ #integration nodes and weights for λ; nodes and weights should remain constant throughout the lifetime of the btg object
+    θλbuffer_dict::Dict{Any, θλbuffer} #key should be theta-lambda pair
     train_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, train_buffer}   #buffer for each theta value
     test_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, test_buffer}  #buffer for each theta value
     capacity::Int64
-    
     function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
         @assert typeof(corr)<:AbstractCorrelation
         @assert typeof(priorθ)<:priorType
@@ -48,10 +48,11 @@ mutable struct btg
         #we should add some fields to the nodesweights_theta data structure to figure out the number of dimensions we are integrating over...should we allow different length scale ranges w/ different quadrature nodes? I think so??
         nodesWeightsθ = nodesWeights(rangeθ, quadtype[1]; num_pts = 18, num_MC = 400)
         nodesWeightsλ = nodesWeights(rangeλ, quadtype[2]; num_pts = 18, num_MC = 400)
+        θλbuffer_dict = Dict{Any, θλbuffer}
         train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1])
         test_buffer_dict = Dict{Union{Array{T, 1}, T} where T<:Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict)) #initialize keys of dict with unitialized test buffer values
         cap = getCapacity(trainingData)
-        new(trainingData, testingData(), 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, cap)
+        new(trainingData, testingData(), 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, train_buffer_dict, test_buffer_dict, θλbuffer_dict, cap)
     end
 end
 
@@ -69,16 +70,18 @@ function update!(btg::btg, x0, Fx0, y0) #extend system step, invariant is
     update_train_buffer!(btg.train_buffer, btg.train)
 end
 
-function solve(btg::btg)
-    weightTensorGrid = weight_comp(btg)
-    (pdf, cdf, dpdf, quantInfo) = prediction_comp(btg, weightTensorGrid)
+"""
+"""
+function solve(btg::btg; validate = 0)
+    weightTensorGrid = weight_comp(btg; validate = validate)
+    (pdf, cdf, dpdf, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate)
 end
 
 """
 Stably compute weights in the mixture of T-distributions, i.e. |Σθ|^(-1/2) * |X'ΣθX|^(-1/2) * qtilde^(-(n-p)/2) * Jac(z)^(1-p/n) * pθ(θ) * pλ(λ),
 for all combinations of quadrature nodes in θ and λ
 """
-function weight_comp(btg::btg)#depends on train_data and not test_data
+function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_data
     nt1 = btg.nodesWeightsθ.d   #number of dimensions of theta 
     nt2 = btg.nodesWeightsθ.num #number of theta quadrature in each dimension
     nl1 = btg.nodesWeightsλ.d   #number of dimensions of lambda 
@@ -118,11 +121,13 @@ function weight_comp(btg::btg)#depends on train_data and not test_data
         t1 = btg.quadType[1] == "Gaussian" ? getNodeSequence(getNodes(btg.nodesWeightsθ), r1) : getNodes(btg.nodesWeightsθ)[:, r1[1]]
         t2 = getNodes(btg.nodesWeightsλ)[:, r2] 
         train_buffer = btg.train_buffer_dict[t1] #look up train buffer based on combination of theta quadrature nodes
+        
         choleskyXΣX = train_buffer.choleskyXΣX
         choleskyΣθ = train_buffer.choleskyΣθ
         gλz = gλvals[:, r2]
         βhat = choleskyXΣX\(Fx'*(choleskyΣθ\gλz)) 
         qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
+
         qTensorGrid = -(n-p)/2 * log(qtilde)  #compute exponents of qtilde^(-(n-p)/2) 
         detTensorGridΣθ = -0.5 * logdet((choleskyΣθ)) #compute exponents of |Σθ|^(-1/2) and |X'ΣθX|^(-1/2) 
         detTensorGridXΣX = -1.0 * sum(log.(diag(choleskyXΣX.U))) 
@@ -139,7 +144,7 @@ end
 """
 Compute pdf and cdf functions
 """
-function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}) #depends on both train_data and test_data
+function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate = 0) #depends on both train_data and test_data
     nt1 = getNumLengthScales(btg.nodesWeightsθ) # number of dimensions of theta
     nt2 = getNum(btg.nodesWeightsθ) #number of theta quadrature in each dimension
     nl2 = getNum(btg.nodesWeightsλ) #number of lambda quadrature in each dimension

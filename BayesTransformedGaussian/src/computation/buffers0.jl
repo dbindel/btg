@@ -6,11 +6,12 @@
 #module buffers0
 #export train_buffer, test_buffer, init_train_buffer_dict, init_test_buffer_dict, update!
 """
-Buffer of θ-dependent quantities
+θ-dependent buffer
 """
 mutable struct train_buffer
     Σθ::Array{Float64, 2}  #only top n by n block is filled
     Σθ_inv_X::Array{Float64, 2}
+    qr_Σθ_inv_X::LinearAlgebra.QRCompactWY{Float64,Array{Float64,2}}
     choleskyΣθ::IncrementalCholesky
     choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}
     capacity::Int64 #size of Σθ, maximum value of n
@@ -22,7 +23,6 @@ mutable struct train_buffer
         Fx = train.Fx
         n = train.n
         capacity = typeof(train)<: extensible_trainingData ? train.capacity : n #if not extensible training type, then set size of buffer to be number of data points
-        
         Σθ = Array{Float64}(undef, capacity, capacity)
         if length(θ)>1
             Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
@@ -31,13 +31,15 @@ mutable struct train_buffer
         end
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         Σθ_inv_X = (choleskyΣθ\Fx)
+        qr_Σθ_inv_X = qr(Σθ_inv_X)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
-        new(Σθ, Σθ_inv_X, choleskyΣθ, choleskyXΣX, capacity, n, corr, θ)
+        new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, capacity, n, corr, θ)
     end
 end
 
+
 """
-Buffer of (θ, testingData)-dependent quantities 
+(θ, testingData)-dependent quantities, also depends on training data, specifically Σθ
 """
 mutable struct test_buffer
     Eθ::Array{Float64, 2}
@@ -56,11 +58,25 @@ mutable struct test_buffer
         Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
         new(Eθ, Bθ, ΣθinvBθ, Dθ, Hθ , Cθ)
     end
+
+end
+"""
+Store results like Σθ_inv_y, so we have a fast way to do hat(Σθ)_inv_y, where hat(Σθ) is a submatrix
+"""
+mutable struct θλbuffer
+    θ::Array{T, 1} where T<:Real
+    λ::Array{T, 1} where T<:Real
+    βhat::Array{T} where T<:Real
+    qtilde::Array{T} where T<:Real
+    Σθ_inv_y::Array{T} where T<:Real
+    remainder::Array{T} where T<:Real
+    θλbuffer() = new()
+    θλbuffer(θ, λ, βhat, qtilde, Σθ_inv_y, Σθ_inv_X) = new(θ, λ, βhat, qtilde, Σθ_inv_y, Σθ_inv_X, Σθ_inv_y - Σθ_inv_X*βhat)
 end
 
-unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX)
+unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.qr_Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX)
 unpack(b::test_buffer) = (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
-
+unpack(b::θλbuffer) = (b.θ, b.λ, b.βhat, b.qtilde, b.meanvv, b.Σθ_inv_y)
 
 """
 Initialize θ to train_buffer dictionary

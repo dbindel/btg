@@ -267,7 +267,7 @@ function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTraining
     else
         train_buffer_dict = Dict{Array{Float64, 1}, train_buffer}()
     end
-    if quadtype == "MonteCarlo"
+    if endswith(quadtype, "MonteCarlo")
         for i in 1:size(nw)[2]
             node = nw.nodes[:, i]
             push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))

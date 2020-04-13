@@ -55,7 +55,7 @@ Get dimensions of nodes or weights matrix
 getNum(nw::nodesWeights) = nw.num
 getDimension(nw::nodesWeights) = nw.d
 size(nw::nodesWeights) = (nw.d, nw.num)
-getNodeSequence(arr::Array{Float64, 2}, I) = [arr[i, j] for i =1:size(arr, 1) for j = I[i]]
+getNodeSequence(arr::Array{Float64, 2}, I) = (ret = [arr[i, j] for i =1:size(arr, 1) for j = I[i]];  length(ret) == 1 ? ret[1] : ret) #if ret val is array of length 1, then unboxes the array 
 # getProd(arr::Array{Float64, 2}, I) = reduce(*, [arr[i, j] for i =1:size(arr, 1) for j = I[i]]) 
 function getProd(w1::Array{Float64, 2}, w2::Array{Float64, 2}, I)
     n1 = size(w1, 1)

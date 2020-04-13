@@ -7,8 +7,7 @@ using Distributions                                                             
 using DataFrames                                                                #          
 using CSV                                                                       #       
 using Polynomials                                                               #
-                                                                                # 
-include("../computation/finitedifference.jl")                                      #             
+include("../validation/loocv.jl")                                              # 
 include("../quadrature/quadrature.jl")                                             #
 include("../transforms/transforms.jl")                                             #
 include("../priors/priors.jl")                                                     #
@@ -16,7 +15,8 @@ include("../bayesopt/incremental.jl")                                           
 include("../kernels/kernel.jl")                                                    #
 include("../datastructs.jl")                                                       #
 include("../computation/buffers0.jl") #datastruct, kernel, incremental, quadrature #
-include("../model0.jl") #buffers, datastructs, several auxiliary                   #
+include("../model0.jl") #buffers, datastructs, several auxiliary   
+include("../computation/finitedifference.jl")                                      #                             #
 include("../computation/tdist.jl") #model0 and buffer0                             #
 #################################################################################
 
@@ -27,9 +27,9 @@ normalizing_constant = maximum(target)
 target = target/normalizing_constant #normalization
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~(to test or not to test)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test_btg1 = false
-test_btg2 = true
-test_btg3 = true
+test_btg1 = true
+test_btg2 = false
+test_btg3 = false
 test_btg4 = false #weird finite difference behavior when n >1000
 
 
@@ -40,7 +40,7 @@ test_btg4 = false #weird finite difference behavior when n >1000
 # - 2-dimensional covariates
 # - 3-multidimensional location vectors
 
-ind = 120:130
+ind = 120:125
 posx = 1:3 #
 posc = 1:3
 x = data[ind, posx] 
@@ -59,11 +59,11 @@ rangeθ = [100.0 200]
 rangeλ = [0.5 5] #we will always used 1 range scale for lambda
 btg1 = btg(trainingData1, rangeθ, rangeλ)
 θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
+λ1 = btg1.nodesWeightsλ.nodes[3]
 ##################################################################################################
 
 if (test_btg1)  #test comp_tdist 
-
-    (dpdf, pdf, cdf) = comp_tdist(btg1, [θ1], [1.4]) 
+    (dpdf, pdf, cdf) = comp_tdist(btg1, θ1, λ1) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
     cdf_fixed = y0 -> cdf(x0, Fx0, y0)
@@ -151,7 +151,7 @@ btg2 = btg(trainingData1, rangeθ, rangeλ)
 ##################################################################################################
 
 if true  #test comp_tdist for btg2
-    (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, [1.4]) 
+    (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, 1.4) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
     cdf_fixed = y0 -> cdf(x0, Fx0, y0)
@@ -196,7 +196,7 @@ if true #test derivatives of location, and derivatives of auxiliary functions w.
     @testset "location derivs in btg2" begin  
         Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
         y0 = .5
-        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, [1.4])      
+        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, 1.4)      
         A = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[1]
         B = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[2]
         C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
@@ -243,7 +243,7 @@ btg3 = btg(trainingData1, rangeθ, rangeλ)
 ##################################################################################################
 
 if true  #test comp_tdist for btg3
-    (dpdf, pdf, cdf) = comp_tdist(btg3, θ3, [1.4]) 
+    (dpdf, pdf, cdf) = comp_tdist(btg3, θ3, 1.4) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
     cdf_fixed = y0 -> cdf(x0, Fx0, y0)
@@ -312,7 +312,7 @@ if test_btg4 #test btg4
     ##################################################################################################
     
     if true  #test comp_tdist for btg4
-        (dpdf, pdf, cdf) = comp_tdist(btg4, θ4, [1.4]) 
+        (dpdf, pdf, cdf) = comp_tdist(btg4, θ4, 1.4) 
         dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
         pdf_fixed = y0 -> pdf(x0, Fx0, y0)
         cdf_fixed = y0 -> cdf(x0, Fx0, y0)

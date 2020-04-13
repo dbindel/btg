@@ -70,6 +70,9 @@ logdet(R::IncrementalCholesky) = logdet(get_chol(R))
 
 isposdef(R::IncrementalCholesky) = R.info == 0
 
+#lastindex(R::IncrementalCholesky{Float64}, t::Int64) = size(R)[1] #for doing R[2:end], for example
+
+
 #####
 ##### Growable Data Array
 ##### 

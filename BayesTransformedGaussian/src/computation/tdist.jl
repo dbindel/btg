@@ -1,81 +1,60 @@
 #include("../model0.jl")
-#include("../computation/buffers0.jl")
-include("../validation/loocv.jl")
+include("../computation/buffers0.jl")
+include("../bayesopt/kernel.jl")
 using Cubature
 
 """
 Compute cdf, pdf, and pdf_deriv of T-distribution
 """
-function comp_tdist(btg::btg, θ::Array{T, 1}, λ::Array{T, 1}; validate = 0) where T<:Float64
+function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real; validate = 0) 
     trainingData = btg.trainingData
     g = btg.g #nonlinear transform, e.g. BoxCox
     invg = (x, λ) -> inverse(btg.g, x, λ)
     (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
-    θλpair = [θ, λ]
+    θλpair = (θ, λ)
     if validate == 0 
-        (_, Σθ_inv_X, _, choleskyΣθ, _) = unpack(btg.train_buffer_dict[θ])
-        gλy = g(y, λ) #apply nonlinar transform to observed labels y
-        βhat = (Fx'*Σθ_inv_X)\(Fx'*(choleskyΣθ\gλy)) 
-        qtilde = (expr = gλy-Fx*βhat; expr'*(choleskyΣθ\expr)) 
-        meanvv = gλy - Fx*βhat
-        Σθ_inv_y = (choleskyΣθ\gλy)
-        push!(btg.θλbuffer_dict, θλpair => θλbuffer(θ, λ, βhat, qtilde, Σθ_inv_y, Σθ_inv_X))
+        #retrieve qtilde, gλy, βhat, Σθ_inv_y
+        (_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair])
+        #(_, _, _, _, _, logdetΣθ, logdetXΣX) = unpack(btg.train_buffer_dict[t1])
+        (_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
+    else 
+        asd = 5#retrieve qtilde_minus_i, etc.
+    end 
+    dg = (y, λ) -> partialx(g, y, λ) #derivative w.r.t z
+    dg2 = (y, λ) -> partialxx(g, y, λ) #second derivative w.r.t z
+    jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
 
-        θλbuffer_dict[θλpair]
-    else #cross validation with previously computed values
-        @assert typeof(validate)<:Int64 && validate <= size(trainingData)
-        (_, Σθ_inv_X, qr_Σθ_inv_X, _, _) = unpack(btg.train_buffer_dict[θ]) #will need QR factorization to perform fast LOOCV for least squares
-        θλbuf = btg.θλbuffer_dict[θλpair]
-        (θ, λ, βhat, qtilde, Σθ_inv_y, Σθ_inv_X, remainder) = unpack(θλbuf) =  #the key here is that βhat, qtilde, etc will already have been computed if we are now doing LOOCV on model
-        qtilde, βhat = lsq_loocv_single(Σθ_inv_X, qr_Σθ_inv_X, remainder, βhat); i = validate)  #compute qtilde and βhat for subsystem, in which one row and col of Σθ are deleted
-    end
-        dg = (y, λ) -> partialx(g, y, λ) #derivative w.r.t z
-        dg2 = (y, λ) -> partialxx(g, y, λ) #second derivative w.r.t z
-        jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
-    
-    function compute_qmC(x0, Fx0)#assume q and C are 1x1
+    #println("unpack in tdist: ", unpack)
+    function compute_qmC(x0, Fx0) #assume q and C are 1x1
         x0 = reshape(x0, 1, length(x0)) #reshape into 1 x d vector
-        update!(btg.testingData, x0, Fx0)#update testing data with x0, Fx0
-            
         x1, y1 = getDimension(btg.trainingData), getDimension(btg.testingData)
         x2, y2 = getCovDimension(btg.trainingData), getCovDimension(btg.testingData)
-        #if (~ (x1==y1) || ~ (x2 == y2))
-            # println("dimension of train is $x1 but dimension of test is $y1")
-            # println("covariance dimensions of train is $x2 but covariance dimension of test is $y2")
-        #end
         if validate == 0
-            update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
+            update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0
+            update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
             (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-            #println("Bθ: ", Bθ)
-            #println("Hθ: ", Hθ)
-            #println("Cθ: ", Cθ)
             m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
-            #println("m: ", m[1])
             qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
-        else #want to do validation
+            #retrieve 
+        else # want to do validation instead
             if length(train_buffer.θ)==1 #check if θ is an array of length 1
                 θ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 
             else 
                 θ = train_buffer.θ
             end
+            (b.θ, b.ΣθinvBθ) = unpack(b::validation_test_buffer) =
             (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
             (_, _, _, choleskyΣθ, b.choleskyXΣX) =  unpack(btg.train_buffer_dict[θ])
             U = get_chol(choleskyΣθ) #upper triangular cholesky factor
             ΣθinvBθ = lin_sys_loocv(ΣθinvBθ, U, validate) #new ΣθinvBθ of dimension n-1 x 1
-            inds = [1:validate-1; validate+1:end]
-            Bθ = @view Bθ[inds] #discard ith entry 
+            Bθ = @view Bθ[[1:validate-1; validate+1:end]] #discard ith entry 
             Dθ = Eθ - Bθ * ΣθinvBθ
-            
             Hθ = testingData.Fx0 - Bθ * train_buffer.Σθ_inv_X
-
             Cθ = Dθ + Hθ*(train_buffer.choleskyXΣX\Hθ') 
-
         #####
             #don't update test_buffer!
         end
-        
-        
         return m[1], qtilde[1], Cθ[1], βhat  #sigma_m
     end
 

@@ -109,7 +109,6 @@ function update_needed(e::AbstractTestingData, x0, Fx0)
     catch UndefRefError #test buffer has not yet been initialized
         return true
     end
-        
 end
 
 """

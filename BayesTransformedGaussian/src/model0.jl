@@ -146,16 +146,17 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     nt1 = getNumLengthScales(btg.nodesWeightsθ) # number of dimensions of theta
     nt2 = getNum(btg.nodesWeightsθ) #number of theta quadrature in each dimension
     nl2 = getNum(btg.nodesWeightsλ) #number of lambda quadrature in each dimension
+    quadType = btg.quadType
     (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile) = tgrids(nt1, nt2, nl2, quadType, weightsTensorGrid)
     R = CartesianIndices(weightsTensorGrid)
-    println("in predition comp...")
     for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
         r1 = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? I : Tuple(I)[1:end-1] 
         r2 = Tuple(I)[end]
         θ = btg.quadType[1] == "Gaussian" ? getNodeSequence(getNodes(btg.nodesWeightsθ), r1) : getNodes(btg.nodesWeightsθ)[:, r1[1]]
-        λ = getNodes(btg.nodesWeightsλ)[:, r2] 
-        println("r2: ", r2)
-        println("pred comp lambda: ", λ)
+        #λ = getNodes(btg.nodesWeightsλ)[:, r2] 
+        λ = getNodeSequence(getNodes(btg.nodesWeightsλ), r2)
+        #println("r2: ", r2)
+        #println("pred comp lambda: ", λ)
         (dpdf, pdf, cdf, _, m, sigma_m, quantile_fun) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
@@ -188,7 +189,9 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     function checkInput(x0, Fx0, y0)
         @assert typeof(x0) <: Array{T, 2} where T <: Real
         @assert typeof(Fx0) <:Array{T, 2} where T <: Real
-        @assert (typeof(y0) <:Array{T, 1} where T<: Real && length(y0) == size(x0, 1) == size(Fx0, 1)) || typeof(y0) <:Real
+        #@assert typeof(y0) <:Array{T, 1} where T<: Real 
+        #@assert(length(y0) == size(x0, 1))
+        #&&  == size(Fx0, 1)) || typeof(y0) <:Real
         return nothing
     end
     #below we write y0[1] instead of y0, because sometimes the output will have a box around it, due to matrix-operations in the internal implementation

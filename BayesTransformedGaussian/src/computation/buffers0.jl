@@ -168,8 +168,30 @@ mutable struct validation_λ_buffer
     end
 end
 
+function print(b::test_buffer)
+    println("Eθ: ", b.Eθ)
+    println("Bθ: ", b.Bθ)
+    println("ΣθinvBθ: ", b.ΣθinvBθ)
+    println("Dθ: ", b.Dθ)
+    println("Hθ: ", b.Hθ)
+    println("Cθ: ", b.Cθ)
+end
+
+###########   what's going on here???? ##############################
+function anotherone(b::test_buffer)
+    #println("in anotherone")
+    return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
+end
+
+function anotherone(b::θλbuffer)
+    return (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
+end
+
 unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.qr_Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX, b.logdetΣθ, b.logdetXΣX)
-unpack(b::test_buffer) = (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
+function unpack(b::test_buffer) 
+    #println("in unpack")
+    return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
+end
 unpack(b::θλbuffer) = (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
 unpack(b::λbuffer) = (b.λ, b.gλz, b.logjacval)
 
@@ -390,6 +412,7 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     else 
         θ = train_buffer.θ
     end
+    #println("updating test buffer for $θ")
     test_buffer.Eθ = correlation(train_buffer.k, θ, testingData.x0)    
     test_buffer.Bθ = cross_correlation(train_buffer.k, θ, testingData.x0, trainingData.x)  
     test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'

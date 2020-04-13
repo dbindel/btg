@@ -15,7 +15,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     if validate == 0 
         #retrieve qtilde, gλy, βhat, Σθ_inv_y
         (_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair])
-        #(_, _, _, _, _, logdetΣθ, logdetXΣX) = unpack(btg.train_buffer_dict[t1])
+        (_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
         (_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
     else 
         asd = 5#retrieve qtilde_minus_i, etc.
@@ -31,8 +31,16 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         x2, y2 = getCovDimension(btg.trainingData), getCovDimension(btg.testingData)
         if validate == 0
             update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0
+            
+            
             update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
-            (_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+            
+            #print((btg.test_buffer_dict[θ]))
+            #WHY CANT I USE THE SECOND LINE??##############################
+            (_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
+            #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+            ###############################################################
+            #println("past the breakpoint")
             m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
             qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
@@ -72,7 +80,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ);  
                     Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
     pdf_deriv = (x0, Fx0, y0) -> compute(main_pdf_deriv, x0, Fx0, y0)
-    pdf = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0)
+    pdf = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0) 
     cdf = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0)
 
     # parallel to compute, except used to compute derivatives w.r.t location
@@ -130,11 +138,13 @@ end
 function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_y, cdf_deriv, cdf_second_deriv, cdf_eval)
     x0 = reshape(x0, 1, length(x0))
     #unpack pertinent quantities
-    (_, Σθ_inv_X, choleskyΣθ, choleskyXΣX) = unpack(btg.train_buffer_dict[θ])
+    (_, Σθ_inv_X, _,  choleskyΣθ, choleskyXΣX) = unpack(btg.train_buffer_dict[θ])
     (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
     (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(compute gradients)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     #check if theta is an array of length d
+    #println("n (number data points in trainingData): ", n)
+    #println("d (number length scales): ", d)
     #println("size of Fx: ", size( Fx))
     #println("size of H: ", size( Hθ))
     #println("size of B: ", size(Bθ))
@@ -144,6 +154,9 @@ function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_
     #println("size of S: ", size(S))
     jacB =   diagm(Bθ[:]) * S * diagm(- θ[:]) #n x d
     #println("size of jacB: ", size(jacB))
+    #println("size of Bθ: ", size(Bθ))
+    #println("size of choleskyΣθ: ", size(choleskyΣθ))
+    #println("choleskyΣθ inv Bθ': ", size(choleskyΣθ \ Bθ'))
     jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
     #println("size of jacD: ", size(jacD))
     #assuming linear polynomial basis

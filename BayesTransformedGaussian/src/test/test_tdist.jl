@@ -28,9 +28,9 @@ target = target/normalizing_constant #normalization
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~(to test or not to test)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 test_btg1 = true
-test_btg2 = false
-test_btg3 = false
-test_btg4 = false #weird finite difference behavior when n >1000
+test_btg2 = true
+test_btg3 = true
+test_btg4 = true #weird finite difference behavior when n >1000
 
 
 
@@ -76,6 +76,15 @@ if (test_btg1)  #test comp_tdist
     #lxx = log.(xx)
     #lh = log.(h)
     #polyfit(lxx, lh, 1)
+    
+    
+    #buf = btg1.test_buffer_dict[θ1]
+    #println(buf.Eθ)
+    #unpack(buf)
+    
+    
+    #a = unpack(btg1.test_buffer_dict[θ1])
+    #println("unpacked val in test_tdist: ", a)
     (_, _, _, pol1) = checkDerivative(a, c, 0.5, nothing, 5, 13, 10) #function first, then derivative
     (_, _, _, pol2) = checkDerivative(b, a, 0.5, nothing, 5, 13, 10) #function first, then derivative
     @testset "comp_tdist" begin
@@ -93,12 +102,12 @@ if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv)
     c = y0 -> cdf(x0, Fx0, y0)
 
     #println("Checking derivative of btg_pdf...")
-    (_, _, plt1, pol1) = checkDerivative(b, a, 0.5, nothing, 8, 16, 10) #first arg is function, second arg is derivative
-    (_, _, plt2, pol2) = checkDerivative(c, b, 0.5, nothing, 8, 16, 10) #first arg is function, second arg is derivative
+    (_, _, plt1, pol1) = checkDerivative(b, a, 0.5, nothing, 4, 12, 10) #first arg is function, second arg is derivative
+    (_, _, plt2, pol2) = checkDerivative(c, b, 0.5, nothing, 4, 12, 10) #first arg is function, second arg is derivative
 
     @testset "comp_btg_dist" begin
-        @test coeffs(pol1)[end] ≈ 2 atol = 1e-1
-        @test coeffs(pol2)[end] ≈ 2 atol = 1e-1
+        @test coeffs(pol1)[end] ≈ 2 atol = 3e-1
+        @test coeffs(pol2)[end] ≈ 2 atol = 3e-1
     end
     #display(plt1)
     #println(pol)
@@ -148,10 +157,11 @@ rangeθ = [100.0 200; 200.0 400.0]
 rangeλ = [0.5 5] #we will always used 1 range scale for lambda
 btg2 = btg(trainingData1, rangeθ, rangeλ)
 θ2 = btg2.nodesWeightsθ.nodes[1:2, 6] #pick some theta value which doubles as quadrature node
+λ2 = btg1.nodesWeightsλ.nodes[3]
 ##################################################################################################
 
 if true  #test comp_tdist for btg2
-    (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, 1.4) 
+    (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, λ2) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
     cdf_fixed = y0 -> cdf(x0, Fx0, y0)
@@ -196,7 +206,7 @@ if true #test derivatives of location, and derivatives of auxiliary functions w.
     @testset "location derivs in btg2" begin  
         Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
         y0 = .5
-        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, 1.4)      
+        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, λ2)      
         A = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[1]
         B = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[2]
         C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
@@ -240,10 +250,11 @@ rangeθ = [100.0 200; 200.0 400.0; 100.0 1000.0]
 rangeλ = [0.5 5] #we will always used 1 range scale for lambda
 btg3 = btg(trainingData1, rangeθ, rangeλ)
 θ3 = btg3.nodesWeightsθ.nodes[1:3, 6] #pick some theta value which doubles as quadrature node
+λ3 = btg3.nodesWeightsλ.nodes[3]
 ##################################################################################################
 
 if true  #test comp_tdist for btg3
-    (dpdf, pdf, cdf) = comp_tdist(btg3, θ3, 1.4) 
+    (dpdf, pdf, cdf) = comp_tdist(btg3, θ3, λ3) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
     cdf_fixed = y0 -> cdf(x0, Fx0, y0)
@@ -292,7 +303,7 @@ if test_btg4 #test btg4
     # - 2-D location vectors
     #- use Monte-Carlo integration
     
-    ind = 120:1120
+    ind = 120:250
     posx = [1;3;4] #
     posc = 1:3
     x = data[ind, posx] 
@@ -309,18 +320,19 @@ if test_btg4 #test btg4
     rangeλ = [0.5 5] #we will always used 1 range scale for lambda
     btg4 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["MonteCarlo", "Gaussian"])
     θ4 = btg4.nodesWeightsθ.nodes[1:3, 6] #pick some theta value which doubles as quadrature node
+    λ4 = btg4.nodesWeightsλ.nodes[3]
     ##################################################################################################
     
     if true  #test comp_tdist for btg4
-        (dpdf, pdf, cdf) = comp_tdist(btg4, θ4, 1.4) 
+        (dpdf, pdf, cdf) = comp_tdist(btg4, θ4, λ4) 
         dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
         pdf_fixed = y0 -> pdf(x0, Fx0, y0)
         cdf_fixed = y0 -> cdf(x0, Fx0, y0)
         a = pdf_fixed
         b = cdf_fixed
         c = dpdf_fixed
-        (_, _, plt1, pol1) = checkDerivative(a, c, 0.5, nothing, -20, -10, 20) #function first, then derivative
-        (_, _, plt2, pol2) = checkDerivative(b, a, 0.5, nothing, -15, -10, 20) #function first, then derivative
+        (_, _, plt1, pol1) = checkDerivative(a, c, 0.5, nothing, 4, 12, 20) #function first, then derivative
+        (_, _, plt2, pol2) = checkDerivative(b, a, 0.5, nothing, 4, 12, 20) #function first, then derivative
         @testset "comp_tdist4" begin
             @test coeffs(pol1)[end] ≈ 2 atol = 3e-1
             @test coeffs(pol2)[end] ≈ 2 atol = 3e-1

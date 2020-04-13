@@ -144,7 +144,7 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
             (_, _, βhat, qtilde, _, _) = unpack(btg.θλbuffer_dict[θλpair])
             (_, _, _, _, _, logdetΣθ, logdetXΣX) = unpack(btg.train_buffer_dict[t1])
             (_, _, logjacval) = unpack(btg.λbuffer_dict[t2]) 
-        else 
+        else #validation values
             (_, _, _, logdetΣθ, logdetXΣX) = unpack(btg.validation_train_buffer_dict[t1]) 
             (_, _, _, βhat, qtilde) = unpack(btg.validation_θλ_buffer_dict[θλpair]) 
             logjacval = unpack(btg.validation_λ_buffer_dict[t2])

@@ -35,7 +35,7 @@ target = target/normalizing_constant #normalization
 # - 3-multidimensional location vectors
 
 #ind = 120:125
-ind = [5:9;11:30]
+ind = [5:9;11:17]
 posx = 1:3 #
 posc = 1:3
 x = data[ind, posx] 
@@ -57,19 +57,34 @@ btg1 = btg(trainingData1, rangeθ, rangeλ)
 λ1 = btg1.nodesWeightsλ.nodes[3]
 ##################################################################################################
 #(_, _, _) = solve(btg1)  
-(pdf, cdf, dpdf) = solve(btg1)  
-    a = y0 -> dpdf(x0, Fx0, y0) 
-    b = y0 -> pdf(x0, Fx0, y0)
-    c = y0 -> cdf(x0, Fx0, y0)
+(pdf, cdf, dpdf) = solve(btg1);  
+    a = y0 -> dpdf(x0, Fx0, y0); 
+    b = y0 -> pdf(x0, Fx0, y0);
+    c = y0 -> cdf(x0, Fx0, y0);
 
 #println("Checking derivative of btg_pdf...")
-(_, _, plt1, pol1) = checkDerivative(b, a, 0.5, nothing, 4, 12, 10) #first arg is function, second arg is derivative
-(_, _, plt2, pol2) = checkDerivative(c, b, 0.5, nothing, 4, 12, 10) #first arg is function, second arg is derivative
+(_, _, plt1, pol1) = checkDerivative(b, a, 0.5, nothing, 4, 12, 10); #first arg is function, second arg is derivative
+(_, _, plt2, pol2) = checkDerivative(c, b, 0.5, nothing, 4, 12, 10); #first arg is function, second arg is derivative
 
-plt(b, .01, 1; label = "pdf")
-plt!(c, .01, 1; label = "cdf")
+#plt(b, .01, 1; label = "pdf")
+#plt!(c, .01, 1; label = "cdf")
+#plt(target[pind])
+
+function validate(btg1::btg, i)
+    (pdf1, cdf1, dpdf1) = solve(btg1; validate = i)  
+    a1 = y0 -> dpdf1(x0, Fx0, y0) 
+    b1 = y0 -> pdf1(x0, Fx0, y0)
+    c1 = y0 -> cdf1(x0, Fx0, y0)
+    return (a1, b1, c1)
+end
 #(pdf, cdf, dpdf) = solve(btg1)  
 #a1 = y0 -> dpdf(x0, Fx0, y0) 
 #b1 = y0 -> pdf(x0, Fx0, y0)
 #c1 = y0 -> cdf(x0, Fx0, y0)
 
+i=4
+(a2, b2, c2) = validate(btg1, i);
+
+#plt!(b2, .01, 1)
+#plt!(c2, .01, 1)
+#plt!(target[ind[i]])

@@ -33,6 +33,10 @@ function plt!(f, a, b, numpts=100; label = "y", title = "")
     return(x, y)
 end
 
+function plt!(point::Float64; label = "", title = "")
+    display(Plots.plot!([point], seriestype = :vline))
+end
+
 function plot_multiple(a, b, c, r1=.001, r2=1, npts = 100)
     plt(a, r1, r2, npts, label = "pdf")
     plt!(b, r1, r2, npts, label = "cdf")

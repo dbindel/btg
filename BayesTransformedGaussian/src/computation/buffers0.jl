@@ -62,16 +62,17 @@ mutable struct test_buffer
     Dθ::Array{Float64, 2}
     Hθ::Array{Float64, 2}
     Cθ::Array{Float64, 2}
+    θ::Union{Array{T, 1}, T} where T<:Real
     test_buffer() = new()
-    function test_buffer(θ::Array{Real, 1}, trainingData::AbstractTrainingData, testingData::AbstractTestingData, corr::AbstractCorrelation)::test_buffer 
-        Eθ = correlation(corr, θ, testingData.x0)    
-        Bθ = cross_correlation(corr, θ, testingData.x0, trainingData.x)  
-        ΣθinvBθ = trainingData.choleskyΣθ\Bθ'
-        Dθ = Eθ - Bθ*ΣθinvBθ
-        Hθ = testingData.Fx0 - Bθ*(trainingData.Σθ_inv_X) 
-        Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
-        new(Eθ, Bθ, ΣθinvBθ, Dθ, Hθ , Cθ)
-    end
+    #function test_buffer(θ::Array{Real, 1}, trainingData::AbstractTrainingData, testingData::AbstractTestingData, corr::AbstractCorrelation)::test_buffer 
+    #    Eθ = correlation(corr, θ, testingData.x0)    
+    #    Bθ = cross_correlation(corr, θ, testingData.x0, trainingData.x)  
+    #    ΣθinvBθ = trainingData.choleskyΣθ\Bθ'
+    #    Dθ = Eθ - Bθ*ΣθinvBθ
+    #    Hθ = testingData.Fx0 - Bθ*(trainingData.Σθ_inv_X) 
+    #    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
+    #    new(Eθ, Bθ, ΣθinvBθ, Dθ, Hθ , Cθ)
+    #end
 end
 """
 Store results like Σθ_inv_y, so we have a fast way to do hat(Σθ)_inv_y, where hat(Σθ) is a submatrix
@@ -101,8 +102,9 @@ mutable struct λbuffer
     λ::Real
     gλz::Array{T, 1} where T<:Float64
     logjacval::Real where T<:Float64
-    function λbuffer(λ, gλz, logjacval)
-        return new(λ, gλz, logjacval)
+    dgλz::Array{T, 1} where T<:Float64
+    function λbuffer(λ, gλz, logjacval, dgλz)
+        return new(λ, gλz, logjacval, dgλz)
     end
 end
 
@@ -115,11 +117,11 @@ mutable struct validation_train_buffer
     Σθ_inv_X_minus_i::Array{T} where T<:Real 
     logdetΣθ_minus_i::Float64
     logdetXΣX_minus_i::Float64
-    function validation_train_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, i::Int64, train_buf::train_buffer)
+    function validation_train_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, i::Int64, train_buf::train_buffer, trainingData::AbstractTrainingData)
         (_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, _, logdetΣθ, _)= unpack(train_buf) #will need QR factorization and other vals to perform fast LOOCV for least squares
         Σθ_inv_X_minus_i = lin_sys_loocv_IC(Σθ_inv_X, choleskyΣθ, i) #IC stands for incremental_cholesky 
-        sublogdetΣθ = logdet_loocv(choleskyΣθ, logdetΣθ, i)
-        sublogdetXΣX = logdet_XΣX_loocv(getCovariates(btg.trainingData), choleskyΣθ, logdetΣθ, i)
+        sublogdetΣθ = logdet_loocv_IC(choleskyΣθ, logdetΣθ, i)
+        sublogdetXΣX = logdet_XΣX_loocv_IC(getCovariates(trainingData), choleskyΣθ, logdetΣθ, i)
         return new(θ, i, Σθ_inv_X_minus_i, sublogdetΣθ, sublogdetXΣX)
     end
 end
@@ -130,40 +132,53 @@ Stores ΣθinvBθ
 mutable struct validation_test_buffer
     θ::Union{Array{T, 1}, T} where T<:Real
     ΣθinvBθ::Array{T} where T<:Real
-    function validation_test_buffer(θ::Union{Array{T, 1}, T} where T<:Real, train_buf::train_buffer, test_buf::test_buffer)
-        (_, _, ΣθinvBθ, _, _, _) = unpack(test_buf) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
-        (_, _, _, choleskyΣθ, _, _, _) = unpack(train_buf)
-        ΣθinvBθ = lin_sys_loocv(ΣθinvBθ, U, validate) #new ΣθinvBθ of dimension n-1 x 1
-        return new(θ, ΣθinvBθ)
-    end
+    validation_test_buffer() = new()
+    #function validation_test_buffer(θ::Union{Array{T, 1}, T} where T<:Real, train_buf::train_buffer, test_buf::test_buffer)
+    #    #ΣθinvBθ = test_buf.ΣθinvBθ
+    #    #choleskyΣθ = train_buf.choleskyΣθ 
+    #    # now these are giving me issues vvv
+    #    (_, _, ΣθinvBθ, _, _, _) = unpack(test_buf) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
+    #    (_, _, _, choleskyΣθ, _, _, _) = unpack(train_buf)
+    #    ΣθinvBθ = lin_sys_loocv_IC(ΣθinvBθ, choleskyΣθ, validate) #new ΣθinvBθ of dimension n-1 x 1
+    #    return new(θ, ΣθinvBθ)
+    #end
 end
+
+
 
 """
 Stores qtilde_minus_i, βhat_minus_i
 """
 mutable struct validation_θλ_buffer
     θ::Union{Array{T, 1}, T} where T<:Real
-    λ::Array{T, 1} where T<:Real
+    λ::Real
     i::Int64 
     βhat_minus_i  #depends on theta and lambda
     qtilde_minus_i #depends on theta and lambda
+    Σθ_inv_y_minus_i::Array{T} where T<:Real
     function validation_θλ_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, λ::Float64, i::Int64, train_buf::train_buffer, θλbuf::θλbuffer)
+        # why can't this line below use/find unpack?
+        #println(" type of unpacked train_buf in buffers.jl 157:", typeof(unpack(train_buf)))
         (_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, _) = unpack(train_buf) #will need QR factorization to perform fast LOOCV for least squares
-        (_, _, βhat, _, _, Σθ_inv_X, remainder) = unpack(θλbuf) =  #the key here is that βhat, qtilde, etc will already have been computed if we are now doing LOOCV on model
+        #Σθ_inv_X = train_buf.Σθ_inv_X; qr_Σθ_inv_X = train_buf.qr_Σθ_inv_X; choleskyΣθ = train_buf.choleskyΣθ
+        #println(" type of unpacked theta_lambda buf in buffers.jl 157:", typeof(unpack(θλbuf)))
+        (_, _, βhat, _, Σθ_inv_y, remainder) = unpack(θλbuf)  #the key here is that βhat, qtilde, etc will already have been computed if we are now doing LOOCV on model
         remainder_minus_i, βhat_minus_i = lsq_loocv(Σθ_inv_X, qr_Σθ_inv_X, remainder, βhat, i) 
         qtilde_minus_i = norm(remainder_minus_i)^2
-        return new(θ, λ, i, βhat_minus_i, qtilde_minus_i)        
+        Σθ_inv_y_minus_i = lin_sys_loocv_IC(Σθ_inv_y, choleskyΣθ, i)
+        return new(θ, λ, i, βhat_minus_i, qtilde_minus_i, Σθ_inv_y_minus_i)        
     end
 end
 
 """
-Stores qtilde_minus_i, βhat_minus_i
+Stores log jacobian of gλz with ith point deleted. i is not stored because the i is specific
+to the call to solve. Rather it's used to construct a validation_λ_buffer.
 """
 mutable struct validation_λ_buffer
     logjacval::Real
     function validation_λ_buffer(λbuffer::λbuffer, i::Int64)
-        (_, gλz, logjacval) = unpack(λbuffer)
-        logjacval = logjacval - log(gλz[i])
+        (_, _, logjacval, dgλz) = unpack(λbuffer)
+        logjacval = logjacval - log(abs(dgλz[i]))
         return new(logjacval)
     end
 end
@@ -187,17 +202,18 @@ function anotherone(b::θλbuffer)
     return (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
 end
 
-unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.qr_Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX, b.logdetΣθ, b.logdetXΣX)
 function unpack(b::test_buffer) 
     #println("in unpack")
-    return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
+    return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ, b.θ)
 end
-unpack(b::θλbuffer) = (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
-unpack(b::λbuffer) = (b.λ, b.gλz, b.logjacval)
+unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.qr_Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX, b.logdetΣθ, b.logdetXΣX, b.θ)
 
-unpack(b::validation_train_buffer) = (b.θ, b.i, b.Σθ_inv_X_minus_i, logdetΣθ_minus_i, logdetXΣX_minus_i)
+unpack(b::θλbuffer) = (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
+unpack(b::λbuffer) = (b.λ, b.gλz, b.logjacval, b.dgλz)
+
+unpack(b::validation_train_buffer) = (b.θ, b.i, b.Σθ_inv_X_minus_i, b.logdetΣθ_minus_i, b.logdetXΣX_minus_i)
 unpack(b::validation_test_buffer) = (b.θ, b.ΣθinvBθ)
-unpack(b::validation_θλ_buffer) = (b.θ, b.λ, b.i, b.βhat_minus_i, b.qtilde_minus_i) #depends on theta and lambda
+unpack(b::validation_θλ_buffer) = (b.θ, b.λ, b.i, b.βhat_minus_i, b.qtilde_minus_i, b.Σθ_inv_y_minus_i) #depends on theta and lambda
 unpack(b::validation_λ_buffer) = (b.logjacval)
 
 #mutable struct validation_buffer_block
@@ -210,31 +226,7 @@ unpack(b::validation_λ_buffer) = (b.logjacval)
 #         Dict{Tuple{Union{Array{T}, T}, T} where T<:Float64, validation_θλ_buffer}())
 #    end
 #end
-"""
-Initialize validation buffers all at once
-"""
-function init_validation_buffers(train_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, train_buffer}, θλbuffer_dict::Dict{Tuple{Union{Array{T, 1}, T}, T} where T<:Real, θλbuffer},
-    test_buffer_dict::Dict{Union{Array{T, 1}, T} where T<: Real, test_buffer}, λbuffer_dict::Dict{T where T<:Real, λbuffer}, i::Int64)  
-    println("Initializing validation buffers...")  
-    for key in keys(train_buffer_dict)
-        cur_train_buf = btg.train_buffer_dict[key]
-        push!(btg.validation_train_buffer_dict, key => validation_train_buffer(key::Union{Array{T, 1}, T}, i, cur_train_buf))
-    end
-    for key in keys(θλbuffer_dict) #key is tuple of the form (t1, t2), where t1 is theta-nodes (Float64 if single else Array{Float64}) and t2 is lambda node (Float64)
-        cur_train_buf = btg.train_buffer_dict[key]
-        cur_θλbuf = btg.θλ_buffer_dict[key]
-        push!(btg.validation_θλ_buffer_dict, key => validation_θλ_buffer(key[1]::Union{Array{T, 1}, T} where T<:Float64, key[2]::Float64, i, cur_train_buf::train_buffer, cur_θλbuf::θλbuffer))
-    end
-    for key in keys(test_buffer_dict)
-        cur_train_buf = btg.train_buffer_dict[key]
-        cur_test_buf = btg.test_buffer_dict[key]
-        push!(btg.validation_test_buffer_dict, key => validation_test_buffer(key::Union{Array{T, 1}, T} where T<:Float64, cur_train_buf::train_buffer, cur_test_buf::test_buffer))
-    end
-    for key in keys(λbuffer_dict)
-        cur_λbuf = btg.λbuffer_dict[key]
-        push!(btg.validation_λbuffer_dict, key=> validation_λ_buffer(cur_λbuf, i::Int64))
-    end
-end
+
 
 
 """
@@ -273,23 +265,25 @@ function init_λbuffer_dict(nw::nodesWeights, train::AbstractTrainingData, nt:: 
         nl2 = nw.num #number of lambda quadrature in each dimension
         Fx = getCovariates(train)
         z = getLabel(train)
-        g = (x, λ) -> nt(x, λ); dg = (x, λ) -> partialx(nt, x, λ); lmbda = λ -> g(z, λ)
+        g = (x, λ) -> nt(x, λ); dg = (x, λ) -> partialx(nt, x, λ); lmbda = λ -> g(z, λ); prime =  λ -> dg(z, λ) 
         gλvals = Array{Float64, 2}(undef, length(z), nl2) #preallocate space to store gλz arrays
+        dgλvals = Array{Float64, 2}(undef, length(z), nl2)
         for i = 1:nl2
             gλvals[:, i] = lmbda(nw.nodes[i])
+            dgλvals[:, i] = prime(nw.nodes[i])
         end
         logjacvals = zeros(1, nl2)  #compute exponents of Jac(z)^(1-p/n)
         for i = 1:nl2
             logjacvals[i] = sum(log.(abs.(map( x-> dg(x, nw.nodes[i]), z))))
         end
-        return gλvals, logjacvals
+        return gλvals, logjacvals, dgλvals
     end
-    gλvals, logjacvals = jac_comp(btg)
+    gλvals, logjacvals, dgλvals = jac_comp(btg)
     λbuffer_dict = Dict{Real, λbuffer}()
     for i = 1:size(gλvals, 2)
         cur_node = nw.nodes[i]
         @assert typeof(cur_node) <: Real #lambda is always real
-        push!(λbuffer_dict, cur_node => λbuffer(cur_node, gλvals[:, i], logjacvals[i]))
+        push!(λbuffer_dict, cur_node => λbuffer(cur_node, gλvals[:, i], logjacvals[i], dgλvals[:, i]))
     end
     return λbuffer_dict
 end
@@ -362,12 +356,21 @@ function init_validation_θλ_buffer_dict(nw::nodesWeights)
     end
 end
 
-function init_validation_test_buffer_dict(nw::nodesWeights)
+"""
+Notice that this function is initialized differently from the other validation buffers. It is initialized the same way as 
+test_buffer. This is because we can't tell what the contents of the buffers will be when the btg object is created, or rather
+when we see that we want to do LOOCV. While other buffers are only initialized once, this buffer will be continually updated
+with each new data point. Hence we preallocate all the space and then use update! to change the contents of this buffer. 
+Essentially we are initializing the keys here so we don't have to worry about it in update! If we didn't initialize the keys, 
+we would have to detect whether they have been initialized or not with each call to update!, or add a field which flags whether
+the keys have been initialized. 
+"""
+function init_validation_test_buffer_dict(nw::nodesWeights, test_buffer_dict::Union{Dict{Array{T, 1} where T<: Real, test_buffer}, Dict{T where T<: Real, test_buffer}})
     d = getDimension(nw)
     if d==1
-        return Dict{T where T<: Real, validation_test_buffer}() 
+        return Dict{T where T<: Real, validation_test_buffer}(key => validation_test_buffer() for key in keys(test_buffer_dict)) 
     else
-        return Dict{Array{T, 1} where T<: Real, validation_test_buffer}() 
+        return Dict{Array{T, 1} where T<: Real, validation_test_buffer}(key => validation_test_buffer() for key in keys(test_buffer_dict)) 
     end
 end
 
@@ -407,14 +410,11 @@ Update test_buffer, which depends on testing data, training data, and train_buff
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
     @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
-    if length(train_buffer.θ)==1 #check if θ is an array of length 1
-        θ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 
-    else 
-        θ = train_buffer.θ
-    end
-    #println("updating test buffer for $θ")
-    test_buffer.Eθ = correlation(train_buffer.k, θ, testingData.x0)    
-    test_buffer.Bθ = cross_correlation(train_buffer.k, θ, testingData.x0, trainingData.x)  
+        #println("updating test buffer for $θ")
+    test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0)    
+    Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
+    @assert size(Bθ, 2)>= size(Bθ, 1) #row vector, as in the paper
+    test_buffer.Bθ = Bθ
     test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
     test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
     #println("shape of Dtheta: ", size(test_buffer.Dθ ))
@@ -423,8 +423,24 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     #println("shape of train_buffer.Σθ_inv_X", size(train_buffer.Σθ_inv_X))
     test_buffer.Hθ = testingData.Fx0 - test_buffer.Bθ*(train_buffer.Σθ_inv_X) 
     test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
+    test_buffer.θ = train_buffer.θ
     return nothing
 end
 
+"""
+update validation_test_buffer
+"""
+function update!(validation_test_buffer::validation_test_buffer, train_buf::train_buffer, test_buf::test_buffer, validate)
+    ΣθinvBθ = test_buf.ΣθinvBθ
+    choleskyΣθ = train_buf.choleskyΣθ 
+    θ = train_buf.θ
+    #    # now these are giving me issues vvv
+    #(_, _, ΣθinvBθ, _, _, _) = unpack(test_buf) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
+    #    (_, _, _, choleskyΣθ, _, _, _, θ) = unpack(train_buf)
+    ΣθinvBθ = lin_sys_loocv_IC(ΣθinvBθ, choleskyΣθ, validate) #new ΣθinvBθ of dimension n-1 x 1
+    validation_test_buffer.θ = θ
+    validation_test_buffer.ΣθinvBθ = ΣθinvBθ
+    return nothing
+end
 
 

@@ -11,56 +11,68 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     g = btg.g #nonlinear transform, e.g. BoxCox
     invg = (x, λ) -> inverse(btg.g, x, λ)
     (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
+    @assert validate >= 0 && n >= validate
+    n = validate == 0 ? n : n-1 #downsize by 1, if we will be deleting 1 data point
     θλpair = (θ, λ)
     if validate == 0 
         #retrieve qtilde, gλy, βhat, Σθ_inv_y
         (_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair])
         (_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
-        (_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
+        #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
     else 
-        asd = 5#retrieve qtilde_minus_i, etc.
+        (_, _, _, βhat, qtilde, Σθ_inv_y)  = unpack(btg.validation_θλ_buffer_dict[θλpair])  #depends on theta and lambda
+        #retrieve qtilde_minus_i, etc.
     end 
     dg = (y, λ) -> partialx(g, y, λ) #derivative w.r.t z
     dg2 = (y, λ) -> partialxx(g, y, λ) #second derivative w.r.t z
     jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
-
     #println("unpack in tdist: ", unpack)
     function compute_qmC(x0, Fx0) #assume q and C are 1x1
         x0 = reshape(x0, 1, length(x0)) #reshape into 1 x d vector
         x1, y1 = getDimension(btg.trainingData), getDimension(btg.testingData)
         x2, y2 = getCovDimension(btg.trainingData), getCovDimension(btg.testingData)
+        update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0
         if validate == 0
-            update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0
-            
-            
             update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
-            
             #print((btg.test_buffer_dict[θ]))
-            #WHY CANT I USE THE SECOND LINE??##############################
+            #######       unpack throws an odd error here, still need to figure out why      ##############################
             (_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
             #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
             ###############################################################
             #println("past the breakpoint")
-            m = Bθ*(choleskyΣθ\gλy) + Hθ*βhat #recompute mean
+            m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
             qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
             #retrieve 
         else # want to do validation instead
-            if length(train_buffer.θ)==1 #check if θ is an array of length 1
-                θ = train_buffer.θ[1] #unbox θ, so correlation knows to use a single length scale 
-            else 
-                θ = train_buffer.θ
+            try
+                #println("in try, tdist.jl line 50")
+                update!(btg.validation_test_buffer_dict[θ], btg.train_buffer_dict[θ]::train_buffer, btg.test_buffer_dict[θ]::test_buffer, validate) #this call possibly initializes the buf for first time, otherwise does update
+            catch UndefRefError #test_buffer_dict itself hasn't been initialized yet
+                #println("in catch, tdist.jl line 50")
+                #typically we don't updated the test_buffer in LOOCV, but it must be initialized at least once
+                update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with computed Bθ, Hθ, Cθ,...
+                update!(btg.validation_test_buffer_dict[θ], btg.train_buffer_dict[θ]::train_buffer, btg.test_buffer_dict[θ]::test_buffer, validate) 
             end
-            (b.θ, b.ΣθinvBθ) = unpack(b::validation_test_buffer) =
-            (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
-            (_, _, _, choleskyΣθ, b.choleskyXΣX) =  unpack(btg.train_buffer_dict[θ])
-            U = get_chol(choleskyΣθ) #upper triangular cholesky factor
-            ΣθinvBθ = lin_sys_loocv(ΣθinvBθ, U, validate) #new ΣθinvBθ of dimension n-1 x 1
-            Bθ = @view Bθ[[1:validate-1; validate+1:end]] #discard ith entry 
-            Dθ = Eθ - Bθ * ΣθinvBθ
-            Hθ = testingData.Fx0 - Bθ * train_buffer.Σθ_inv_X
-            Cθ = Dθ + Hθ*(train_buffer.choleskyXΣX\Hθ') 
-        #####
+            #note that we ignore user input Fx0 and x0 when doing cross validation.
+            #Note that we updated testingData anyways, but we will not use it. Essentially for LOOCV, we don't look at btg.testingData,
+            #because what's in there is predicated on arbitrary user input. We will be looking at ith entry of training data instead, which is essentially 
+            #fixed throughout the btg object lifespan unless we extend the kernel system, as in Bayesopt. 
+            (_, _, Σθ_inv_X_minus_i, _, _) = unpack(btg.validation_train_buffer_dict[θ]) 
+            (_, ΣθinvBθ_minus_i) = unpack(btg.validation_test_buffer_dict[θ]) 
+            #println("btg test buffer dict theta:")
+            #println(btg.test_buffer_dict[θ])
+            (Eθ, Bθ, _, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
+            #(_, _, _, choleskyΣθ, b.choleskyXΣX) =  unpack(btg.train_buffer_dict[θ])
+            Bθ_minus_i = @view Bθ[:, [1:validate-1; validate+1:end]] #discard ith entry 
+            Fx_i = btg.trainingData.Fx[validate:validate, :] #ith row of trainingData
+            Fx_minus_i = btg.trainingData.Fx[[1:validate-1; validate+1:end], :] #all but ith row of trainingData
+            Dθ_minus_i = Eθ - Bθ_minus_i * ΣθinvBθ_minus_i
+            Hθ_minus_i = Fx_i - Bθ_minus_i * Σθ_inv_X_minus_i
+            Cθ = Dθ_minus_i + Hθ_minus_i*((Fx_minus_i'*Σθ_inv_X_minus_i)\Hθ_minus_i') #O(p^3) operation, not bad if p is small/ How to update choleskyXΣX to get choleskyXΣX_minus_i?
+             #we refrain from calling the last expression Cθ_minus_i so it can be returned by this func as usual
+            m = Bθ_minus_i * Σθ_inv_y + Hθ_minus_i * βhat
+            #####
             #don't update test_buffer!
         end
         return m[1], qtilde[1], Cθ[1], βhat  #sigma_m

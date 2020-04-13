@@ -62,14 +62,38 @@ mutable struct btg
         θλbuffer_dict = init_θλbuffer_dict(nodesWeightsθ, nodesWeightsλ, trainingData, λbuffer_dict, train_buffer_dict, quadtype) #Stores qtilde, βhat, Σθ_inv_y
         validation_train_buffer_dict = init_validation_train_buffer_dict(nodesWeightsθ) #empty dict, input is used to determine dictionary type
         validation_θλ_buffer_dict = init_validation_θλ_buffer_dict(nodesWeightsθ) #empty dict
-        validation_test_buffer_dict =  init_validation_test_buffer_dict(nodesWeightsθ) #empty dict
+        validation_test_buffer_dict =  init_validation_test_buffer_dict(nodesWeightsθ, test_buffer_dict) #empty dict
         validation_λ_buffer_dict = init_validation_λ_buffer_dict() #empty dict
         cap = getCapacity(trainingData)
-        return new(trainingData, testingData(), 0, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict, θλbuffer_dict, 
+        return new(trainingData, testingData(), trainingData.n, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict, θλbuffer_dict, 
                     validation_λ_buffer_dict, validation_train_buffer_dict, validation_test_buffer_dict, validation_θλ_buffer_dict, cap)
     end
 end
-
+"""
+Initialize validation buffers all at once
+"""
+function init_validation_buffers(btg::btg, train_buffer_dict::Union{Dict{Array{T, 1}, train_buffer}, Dict{T, train_buffer}} where T<: Real, θλbuffer_dict::Union{Dict{Tuple{Array{T, 1}, T} where T<:Real , θλbuffer}, Dict{Tuple{T, T} where T<:Real , θλbuffer}},
+    test_buffer_dict::Union{Dict{Array{T, 1} where T<: Real, test_buffer}, Dict{T where T<: Real, test_buffer}}, λbuffer_dict::Dict{T where T<:Real, λbuffer}, i::Int64)  
+    println("Initializing validation buffers...")  
+    for key in keys(train_buffer_dict)
+        cur_train_buf = train_buffer_dict[key]
+        push!(btg.validation_train_buffer_dict, key => validation_train_buffer(key::Union{Array{T, 1}, T} where T<:Real, i, cur_train_buf, btg.trainingData))
+    end
+    for key in keys(θλbuffer_dict) #key is tuple of the form (t1, t2), where t1 is theta-nodes (Float64 if single else Array{Float64}) and t2 is lambda node (Float64)
+        cur_train_buf = train_buffer_dict[key[1]]
+        cur_θλbuf = θλbuffer_dict[key]
+        push!(btg.validation_θλ_buffer_dict, key => validation_θλ_buffer(key[1]::Union{Array{T, 1}, T} where T<:Float64, key[2]::Float64, i, cur_train_buf::train_buffer, cur_θλbuf::θλbuffer))
+    end
+    #for key in keys(test_buffer_dict)
+    #    cur_train_buf = train_buffer_dict[key]
+    #    cur_test_buf = test_buffer_dict[key]
+    #    push!(btg.validation_test_buffer_dict, key => validation_test_buffer(key::Union{Array{T, 1}, T} where T<:Float64, cur_train_buf::train_buffer, cur_test_buf::test_buffer))
+    #end
+    for key in keys(λbuffer_dict)
+        cur_λbuf = λbuffer_dict[key]
+        push!(btg.validation_λ_buffer_dict, key=> validation_λ_buffer(cur_λbuf, i::Int64))
+    end
+end
 #workflow is:
 #1) set_test_data
 #2) solve, i.e. get pdf and cdf 
@@ -91,8 +115,9 @@ end
 
 function solve(btg::btg; validate = 0)
     if validate != 0
+        println("btg.n: ", btg.n)
         @assert validate > 0 && btg.n>=validate
-        init_validation_buffers(btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, i::Int64)
+        init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
     end
     weightTensorGrid = weight_comp(btg; validate = validate)
     (pdf, cdf, dpdf, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate)
@@ -121,7 +146,7 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
             (_, _, logjacval) = unpack(btg.λbuffer_dict[t2]) 
         else 
             (_, _, _, logdetΣθ, logdetXΣX) = unpack(btg.validation_train_buffer_dict[t1]) 
-            (_, _, _, βhat, qtilde) = unpack(btg.validation_θλ_buffer[θλpair]) 
+            (_, _, _, βhat, qtilde) = unpack(btg.validation_θλ_buffer_dict[θλpair]) 
             logjacval = unpack(btg.validation_λ_buffer_dict[t2])
         end 
         n = validate == 0 ? n : n-1 #for cross-validation, one point is deleted

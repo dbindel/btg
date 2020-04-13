@@ -1,3 +1,5 @@
+using Test
+
 include("loocv.jl")
 #test problem
 A = rand(5, 3) 
@@ -17,9 +19,48 @@ for i = 1:size(A, 1)
     minimizers_actual[:, i] = x1
     remainders_actual[:, i] = b-A*x1
 end
-println("remainder error: ", norm(remainders_actual - remainders))
-println("minimizer error: ", norm(minimizers_actual - minimizers))
+@testset "vanilla loocv, compute all rem and min" begin
+    @test norm(remainders_actual - remainders)<1e-10
+    @test norm(minimizers_actual - minimizers)<1e-10
+end
 
+#println("remainder error: ", norm(remainders_actual - remainders))
+#println("minimizer error: ", norm(minimizers_actual - minimizers))
+
+###
+### test lsq_loocv for Delete-one-point cross validation
+###
+xstar = A\b
+r = b-A*xstar
+aqr = qr(A)
+remainders1 = zeros(5, 5)
+minimizers1 = zeros(3, 5)
+
+for i = 1:size(A, 1)
+    rr, mm = lsq_loocv(A, aqr, r, xstar, i)
+    remainders1[:, i] = rr
+    minimizers1[:, i] = mm
+end
+
+remainders_actual = similar(remainders1)
+minimizers_actual = similar(minimizers1)
+for i = 1:size(A, 1)
+    A1 = A[[1:i-1;i+1:end], :]
+    b1 = b[[1:i-1;i+1:end]]
+    x1 = A1\b1
+    minimizers_actual[:, i] = x1
+    remainders_actual[:, i] = b-A*x1
+end
+#println("remainder error: ", norm(remainders_actual - remainders1))
+#println("minimizer error: ", norm(minimizers_actual - minimizers1))
+
+@testset "loocv single deletion" begin
+    @test norm(remainders_actual - remainders1)<1e-10
+    @test norm(minimizers_actual - minimizers1)<1e-10
+end
+
+
+if false
 ###
 ### lin_sys_loocv test
 ###
@@ -84,5 +125,7 @@ if true
         indirectCs2[:, i] = lin_sys_loocv_IC(c, cholK, i)
     end
     println("error of indirect error computation for size $n problem using Incremental Cholesky: ", norm(Cs - indirectCs2))
+
+end
 
 end

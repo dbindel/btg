@@ -32,6 +32,7 @@ mutable struct train_buffer
     n::Int64 #number data points incorporated
     k::AbstractCorrelation
     θ::Union{Array{T, 1}, T} where T<:Real
+    L_inv_X::Array{Float64, 2}
     function train_buffer(θ::Union{Array{T, 1}, T} where T<:Real, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
         x = train.x
         Fx = train.Fx
@@ -44,10 +45,14 @@ mutable struct train_buffer
             Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
         end
         choleskyΣθ = incremental_cholesky!(Σθ, n)
-        Σθ_inv_X = (choleskyΣθ\Fx)
-        qr_Σθ_inv_X = qr(Σθ_inv_X)
+        L = get_chol(choleskyΣθ).L
+        U = get_chol(choleskyΣθ).U
+        L_inv_X = L\Fx
+        qr_Σθ_inv_X = qr(L_inv_X)
+        Σθ_inv_X = (U\L_inv_X)
+        #Σθ_inv_X = (choleskyΣθ\Fx)
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
-        new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, logdet(choleskyΣθ), logdet(choleskyXΣX), capacity, n, corr, θ)
+        new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, logdet(choleskyΣθ), logdet(choleskyXΣX), capacity, n, corr, θ, L_inv_X)
     end
 end
 
@@ -82,16 +87,18 @@ mutable struct θλbuffer
     λ::T where T<:Real
     βhat::Array{T} where T<:Real
     qtilde::Real
-    Σθ_inv_y::Array{T} where T<:Real
+    L_inv_y::Array{T} where T<:Real
+    Σθ_inv_y::Array{T} where T<:Real 
     remainder::Array{T} where T<:Real 
+    Σθ_inv_remainder::Array{T} where T<:Real
     θλbuffer() = new()
-    function θλbuffer(θ, λ, βhat, qtilde, Σθ_inv_y, Σθ_inv_X)
+    function θλbuffer(θ, λ, βhat, qtilde, L_inv_y, Σθ_inv_y, remainder, Σθ_inv_remainder)
         @assert typeof(λ)<:Real
         @assert typeof(θ)<:Union{Array{T}, T} where T<: Real
         if typeof(θ)<:Array{T} where T 
             @assert length(θ) > 1 
         end
-        return new(θ, λ, βhat, qtilde, Σθ_inv_y, Σθ_inv_y - Σθ_inv_X*βhat)
+        return new(θ, λ, βhat, qtilde, L_inv_y, Σθ_inv_y, remainder, Σθ_inv_remainder) #Σθ_inv_y - Σθ_inv_X*βhat)
     end 
 end
 
@@ -153,19 +160,37 @@ mutable struct validation_θλ_buffer
     θ::Union{Array{T, 1}, T} where T<:Real
     λ::Real
     i::Int64 
-    βhat_minus_i  #depends on theta and lambda
-    qtilde_minus_i #depends on theta and lambda
+    βhat_minus_i::Array{T} where T<:Real  #depends on theta and lambda
+    qtilde_minus_i::Real #depends on theta and lambda
     Σθ_inv_y_minus_i::Array{T} where T<:Real
     function validation_θλ_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, λ::Float64, i::Int64, train_buf::train_buffer, θλbuf::θλbuffer)
         # why can't this line below use/find unpack?
         #println(" type of unpacked train_buf in buffers.jl 157:", typeof(unpack(train_buf)))
-        (_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, _) = unpack(train_buf) #will need QR factorization to perform fast LOOCV for least squares
+        #(_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, _) = unpack(train_buf) #will need QR factorization to perform fast LOOCV for least squares
+        Σθ_inv_X =  train_buf.Σθ_inv_X
+        qr_Σθ_inv_X = train_buf.qr_Σθ_inv_X 
+        choleskyΣθ = train_buf.choleskyΣθ
+        
+        L_inv_X = train_buf.L_inv_X
         #Σθ_inv_X = train_buf.Σθ_inv_X; qr_Σθ_inv_X = train_buf.qr_Σθ_inv_X; choleskyΣθ = train_buf.choleskyΣθ
         #println(" type of unpacked theta_lambda buf in buffers.jl 157:", typeof(unpack(θλbuf)))
-        (_, _, βhat, _, Σθ_inv_y, remainder) = unpack(θλbuf)  #the key here is that βhat, qtilde, etc will already have been computed if we are now doing LOOCV on model
-        remainder_minus_i, βhat_minus_i = lsq_loocv(Σθ_inv_X, qr_Σθ_inv_X, remainder, βhat, i) 
-        qtilde_minus_i = norm(remainder_minus_i)^2
+        #(_, _, βhat, _, Σθ_inv_y, remainder, Σθ_inv_remainder) = unpack(θλbuf)  #the key here is that βhat, qtilde, etc will already have been computed if we are now doing LOOCV on model
+        βhat = θλbuf.βhat
+        Σθ_inv_y = θλbuf.Σθ_inv_y
+        remainder = θλbuf.remainder
+        Σθ_inv_remainder = θλbuf.Σθ_inv_remainder
+
+        remainder_minus_i, βhat_minus_i = lsq_loocv(L_inv_X, qr_Σθ_inv_X, remainder, βhat, i) 
+        qtilde_minus_i = norm(remainder_minus_i[[1:i-1;i+1:end]])^2
+        #qtilde_minus_i = norm(remainder_minus_i)^2 very blatantly wrong
+        #Σθ_inv_remainder_minus_i = lin_sys_loocv_IC(Σθ_inv_remainder, choleskyΣθ, i) 
         Σθ_inv_y_minus_i = lin_sys_loocv_IC(Σθ_inv_y, choleskyΣθ, i)
+        #qtilde_minus_i = remainder_minus_i[[1:i-1;i+1:end]]'*Σθ_inv_remainder_minus_i
+        #@info "Σθ_inv_remainder_minus_i" Σθ_inv_remainder_minus_i
+        #@info "remainder_minus_i[[1:i-1;i+1:end]]" remainder_minus_i[[1:i-1;i+1:end]]
+        #@info "alternate comp of Σθ_inv_remainder_minus_i" choleskyΣθ\remainder_minus_i
+        @info "qtilde_minus_i" qtilde_minus_i
+        @assert typeof(qtilde_minus_i)<:Real
         return new(θ, λ, i, βhat_minus_i, qtilde_minus_i, Σθ_inv_y_minus_i)        
     end
 end
@@ -198,8 +223,13 @@ function anotherone(b::test_buffer)
     return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
 end
 
+
+##################### I now deem the unpack functions to be unsafe...it's hard to count underscores...
+##################### to get a field, just use dot notation
+
+unpack(b::θλbuffer) = (b.θ, b.λ, b.βhat, b.qtilde, b.L_inv_y, b.Σθ_inv_y, b.remainder, b.Σθ_inv_remainder)
 function anotherone(b::θλbuffer)
-    return (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
+    return (b.θ, b.λ, b.βhat, b.qtilde, b.L_inv_y, b.Σθ_inv_y, b.remainder, b.Σθ_inv_remainder)
 end
 
 function unpack(b::test_buffer) 
@@ -208,7 +238,6 @@ function unpack(b::test_buffer)
 end
 unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.qr_Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX, b.logdetΣθ, b.logdetXΣX, b.θ)
 
-unpack(b::θλbuffer) = (b.θ, b.λ, b.βhat, b.qtilde, b.Σθ_inv_y, b.remainder)
 unpack(b::λbuffer) = (b.λ, b.gλz, b.logjacval, b.dgλz)
 
 unpack(b::validation_train_buffer) = (b.θ, b.i, b.Σθ_inv_X_minus_i, b.logdetΣθ_minus_i, b.logdetXΣX_minus_i)
@@ -311,16 +340,26 @@ function init_θλbuffer_dict(nwθ::nodesWeights, nwλ::nodesWeights, train::Abs
         cur_train_buf = train_buffer_dict[t1] #get train_buffer
         cur_λ_buf = λbuffer_dict[t2] #get lambda buffer
         θλpair = (t1, t2)::Union{Tuple{Array{T, 1}, T}, Tuple{T, T}} where T<:Real #key used for this buffer
+    
         (_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX) = unpack(cur_train_buf)
+        
+        L_inv_X = cur_train_buf.L_inv_X
         (λ, gλz, logjacval) = unpack(cur_λ_buf)
         choleskyXΣX = cur_train_buf.choleskyXΣX
         choleskyΣθ = cur_train_buf.choleskyΣθ
         Fx = getCovariates(train)
-        Σθ_inv_y = (choleskyΣθ \ gλz) #O(n^2)
+        L = get_chol(choleskyΣθ).L
+        U = get_chol(choleskyΣθ).U
+        L_inv_y = L\gλz
+        Σθ_inv_y = U\L_inv_y
+        #Σθ_inv_y = (choleskyΣθ \ gλz) #O(n^2)
         βhat = choleskyXΣX\(Fx'*Σθ_inv_y)  #O
         #qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
         qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np)
-        cur_θλbuffer = θλbuffer(t1, t2, βhat, qtilde, Σθ_inv_y, Σθ_inv_X)
+
+        remainder = L_inv_y - L_inv_X*βhat
+        Σθ_inv_remainder = Σθ_inv_y - Σθ_inv_X*βhat
+        cur_θλbuffer = θλbuffer(t1, t2, βhat, qtilde, L_inv_y, Σθ_inv_y, remainder, Σθ_inv_remainder)
         push!(θλbuffer_dict, θλpair => cur_θλbuffer)
     end
         return θλbuffer_dict

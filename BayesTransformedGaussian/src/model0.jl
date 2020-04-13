@@ -141,7 +141,7 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
         (r1, r2, t1, t2) = get_index_slices(nwθ,nwλ, quadType, I)
         θλpair = (t1, t2)::Tuple{Union{Array{T, 1}, T}, T} where T<:Real #key composed of t1 and t2
         if validate == 0 #bring appropriate quantities into local scope
-            (_, _, βhat, qtilde, _, _) = unpack(btg.θλbuffer_dict[θλpair])
+            (_, _, βhat, qtilde) = unpack(btg.θλbuffer_dict[θλpair])
             (_, _, _, _, _, logdetΣθ, logdetXΣX) = unpack(btg.train_buffer_dict[t1])
             (_, _, logjacval) = unpack(btg.λbuffer_dict[t2]) 
         else #validation values
@@ -151,7 +151,7 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
         end 
         n = validate == 0 ? n : n-1 #for cross-validation, one point is deleted
         p = length(βhat)
-        qTensorGrid_I = -(n-p)/2 * log(qtilde)  #compute exponents of qtilde^(-(n-p)/2) 
+        qTensorGrid_I = -(n-p)/2 * log(qtilde[1])  #compute exponents of qtilde^(-(n-p)/2) 
         detTensorGridΣθ_I = -0.5 * logdetΣθ #compute exponents of |Σθ|^(-1/2) and |X'ΣθX|^(-1/2) 
         detTensorGridXΣX_I = -0.5 * logdetXΣX
         jacTensorGrid_I = (1-p/n) * logjacval

@@ -16,7 +16,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     θλpair = (θ, λ)
     if validate == 0 
         #retrieve qtilde, gλy, βhat, Σθ_inv_y
-        (_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair])
+        
+        (_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair]) #unpack can be dangerous, because if the order of elements change and you don't know, you're screwed. safer tp access directly.
         (_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
         #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
     else 

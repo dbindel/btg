@@ -31,9 +31,13 @@ Returns (θ, λ) index slices (r1 and r2) and (θ, λ) nodes (t1 and t2)
 function get_index_slices(nwθ::nodesWeights, nwλ::nodesWeights, quadType::Array{String,1}, I)
     r1 = (endswith(quadType[1], "MonteCarlo") && endswith(quadType[2], "MonteCarlo")) ? I : Tuple(I)[1:end-1] #first n-1 coords or everything
     r2 = Tuple(I)[end] #last coord
-    t1 = quadType[1] == "Gaussian" ? getNodeSequence(getNodes(nwθ), r1) : getNodes(nwθ)[:, r1[1]] #theta node combo
+    t1 = quadType[1] == "Gaussian" ? getNodeSequence(getNodes(nwθ), r1) : (temp = getNodes(nwθ)[:, r1[1]]; length(temp)==1 ? temp[1] : temp ) #theta node combo
     t2 = getNodeSequence(getNodes(nwλ), r2)
     #t2 = getNodes(nwλ)[:, r2] #lambda node
+    if length(t1)==1
+        @assert typeof(t1)<:Real
+    end
+    @assert typeof(t2)<:Real
     return (r1, r2, t1, t2) #The pair (t1, t2) is used a key for various dictionaries
 end
 

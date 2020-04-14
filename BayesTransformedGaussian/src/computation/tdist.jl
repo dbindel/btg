@@ -16,9 +16,14 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     θλpair = (θ, λ)
     if validate == 0 
         #retrieve qtilde, gλy, βhat, Σθ_inv_y
-        
-        (_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair]) #unpack can be dangerous, because if the order of elements change and you don't know, you're screwed. safer tp access directly.
-        (_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
+        βhat = btg.θλbuffer_dict[θλpair].βhat
+        qtilde = btg.θλbuffer_dict[θλpair].qtilde
+        @assert qtilde > 0 
+        Σθ_inv_y = btg.θλbuffer_dict[θλpair].Σθ_inv_y
+
+        choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
+        #(_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair]) #unpack can be dangerous, because if the order of elements change and you don't know, you're screwed. safer tp access directly.
+        #(_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
         #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
     else 
         (_, _, _, βhat, qtilde, Σθ_inv_y)  = unpack(btg.validation_θλ_buffer_dict[θλpair])  #depends on theta and lambda
@@ -37,10 +42,14 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
             #print((btg.test_buffer_dict[θ]))
             #######       unpack throws an odd error here, still need to figure out why      ##############################
-            (_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
+            Bθ = btg.test_buffer_dict[θ].Bθ
+            Hθ = btg.test_buffer_dict[θ].Hθ
+            Cθ = btg.test_buffer_dict[θ].Cθ
+            #(_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
             #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
             ###############################################################
             #println("past the breakpoint")
+            
             m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
             qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
@@ -82,6 +91,10 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
         m, q, C = compute_qmC(x0, Fx0)
         qC = q*C
+        @assert n-p > 0
+        #@info "m" m
+        #@info "q" q
+        #@info "C" C
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
     end

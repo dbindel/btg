@@ -13,3 +13,4 @@ BayesTransformedGaussian/src/test/test_quantile.jl
 BayesTransformedGaussian/src/test/Untitled.ipynb
 BayesTransformedGaussian/src/test/Test_MC.ipynb
 BayesTransformedGaussian/src/test/Test_validation.ipynb
+BayesTransformedGaussian/src/test/Test_sparsegrid.ipynb

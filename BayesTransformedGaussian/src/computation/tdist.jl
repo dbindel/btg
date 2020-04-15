@@ -20,11 +20,10 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         qtilde = btg.θλbuffer_dict[θλpair].qtilde
         @assert qtilde > 0 
         Σθ_inv_y = btg.θλbuffer_dict[θλpair].Σθ_inv_y
-
         choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
         #(_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair]) #unpack can be dangerous, because if the order of elements change and you don't know, you're screwed. safer tp access directly.
         #(_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
-        #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])      
+        #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])  
     else 
         (_, _, _, βhat, qtilde, Σθ_inv_y)  = unpack(btg.validation_θλ_buffer_dict[θλpair])  #depends on theta and lambda
         #retrieve qtilde_minus_i, etc.
@@ -85,16 +84,13 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             #####
             #don't update test_buffer!
         end
-        return m[1], qtilde[1], Cθ[1], βhat  #sigma_m
+        return m[1], qtilde[1], Cθ[1]  #sigma_m
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
         m, q, C = compute_qmC(x0, Fx0)
         qC = q*C
         @assert n-p > 0
-        #@info "m" m
-        #@info "q" q
-        #@info "C" C
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
     end
@@ -152,7 +148,6 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return Distributions.quantile(t, quant)
     end
     # q_fun = (x0, Fx0, q) -> (m, q, C = compute_qmC(x0, Fx0); invg(sqrt(q*C/(n-p))*tdistinvcdf(n-p, q)+m, λ))
-    
     return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
 end
 

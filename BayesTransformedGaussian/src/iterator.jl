@@ -38,6 +38,10 @@ function get_index_slices(nwθ::nodesWeights, nwλ::nodesWeights, quadType::Arra
     t1 = length(t1) == 1 ? t1[1] : t1
     t2 = getNodeSequence(getNodes(nwλ), r2)
     #t2 = getNodes(nwλ)[:, r2] #lambda node
+    if length(t1)==1
+        @assert typeof(t1)<:Real
+    end
+    @assert typeof(t2)<:Real
     return (r1, r2, t1, t2) #The pair (t1, t2) is used a key for various dictionaries
 end
 

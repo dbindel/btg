@@ -163,6 +163,7 @@ mutable struct validation_θλ_buffer
     βhat_minus_i::Array{T} where T<:Real  #depends on theta and lambda
     qtilde_minus_i::Real #depends on theta and lambda
     Σθ_inv_y_minus_i::Array{T} where T<:Real
+    remainder_minus_i
     function validation_θλ_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, λ::Float64, i::Int64, train_buf::train_buffer, θλbuf::θλbuffer)
         # why can't this line below use/find unpack?
         #println(" type of unpacked train_buf in buffers.jl 157:", typeof(unpack(train_buf)))
@@ -191,7 +192,7 @@ mutable struct validation_θλ_buffer
         #@info "alternate comp of Σθ_inv_remainder_minus_i" choleskyΣθ\remainder_minus_i
         @info "qtilde_minus_i" qtilde_minus_i
         @assert typeof(qtilde_minus_i)<:Real
-        return new(θ, λ, i, βhat_minus_i, qtilde_minus_i, Σθ_inv_y_minus_i)        
+        return new(θ, λ, i, βhat_minus_i, qtilde_minus_i, Σθ_inv_y_minus_i, remainder_minus_i)        
     end
 end
 
@@ -341,6 +342,10 @@ function init_θλbuffer_dict(nwθ::nodesWeights, nwλ::nodesWeights, train::Abs
         (r1, r2, t1, t2) = get_index_slices(nwθ::nodesWeights, nwλ::nodesWeights, quadtype::Array{String,1}, I) #t1, t2 are keys for theta and lambda, respectively
         @assert typeof(t1)<:Union{T, Array{T, 1}} where T<:Real
         @assert typeof(t2)<:Real
+        #@info "t1" t1
+        if length(t1)==1
+            t1 = t1[1]
+        end
         cur_train_buf = train_buffer_dict[t1] #get train_buffer
         cur_λ_buf = λbuffer_dict[t2] #get lambda buffer
         θλpair = (t1, t2)::Union{Tuple{Array{T, 1}, T}, Tuple{T, T}} where T<:Real #key used for this buffer
@@ -359,8 +364,7 @@ function init_θλbuffer_dict(nwθ::nodesWeights, nwλ::nodesWeights, train::Abs
         #Σθ_inv_y = (choleskyΣθ \ gλz) #O(n^2)
         βhat = choleskyXΣX\(Fx'*Σθ_inv_y)  #O
         #qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
-        qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np)
-
+        qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np) checks out b/c qtilde = norm(remainder)^2
         remainder = L_inv_y - L_inv_X*βhat
         Σθ_inv_remainder = Σθ_inv_y - Σθ_inv_X*βhat
         cur_θλbuffer = θλbuffer(t1, t2, βhat, qtilde, L_inv_y, Σθ_inv_y, remainder, Σθ_inv_remainder)
@@ -436,7 +440,8 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
     @assert typeof(y0)<:Array{T, 1} where T<:Real 
     @assert train_buffer.n < trainingData.n #train_train_buffer must be "older" than trainingData
-    k = trainingData.n - train_buffer.n 
+    k = trainingData.n - train_buffer.n  #typically going to be 1
+    @assert k == 1 #we only work with single-point updates for now 
     A12, A2 = extend(train_buffer.choleskyΣθ, k) #two view objects 
     #A12 = cross_correlation(train_buffer.k(), train_buffer.θ, trainingData.x[1:end-k], trainingData.x[end-k+1:end])
     #A2 = correlation(train_buffer.k(), train_buffer.θ, trainingData.x[end-k+1:end]) #Σθ should get updated automatically, but only upper triangular portion
@@ -444,9 +449,13 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     A2 = test_buffer.Eθ
     update!(train_buffer.choleskyΣθ, k) #extends Cholesky decomposition
     train_buffer.Σθ_inv_X = train_buffer.choleskyΣθ\trainingData.Fx
-    train_buffer.n += k
-    return nothing
+    train_buffer.choleskyXΣX = cholesky(trainingData.Fx' * (train_buffer.choleskyΣθ\trainingData.Fx))
+    train_buffer.n += k #number of incorporated points
+    return nothing 
 end
+
+
+
 
 """
 Update test_buffer, which depends on testing data, training data, and train_buffer. 
@@ -467,8 +476,15 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     test_buffer.Hθ = testingData.Fx0 - test_buffer.Bθ*(train_buffer.Σθ_inv_X) 
     test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
     test_buffer.θ = train_buffer.θ
+    #@info "D" test_buffer.Dθ
+    #@info "H" test_buffer.Hθ
+
     return nothing
 end
+
+
+
+
 
 """
 update validation_test_buffer

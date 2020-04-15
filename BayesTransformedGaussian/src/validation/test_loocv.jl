@@ -19,7 +19,7 @@ for i = 1:size(A, 1)
     minimizers_actual[:, i] = x1
     remainders_actual[:, i] = b-A*x1
 end
-@testset "vanilla loocv, compute all rem and min" begin
+@testset "lsq_loocv, compute all rem and min" begin
     @test norm(remainders_actual - remainders)<1e-10
     @test norm(minimizers_actual - minimizers)<1e-10
 end
@@ -54,13 +54,12 @@ end
 #println("remainder error: ", norm(remainders_actual - remainders1))
 #println("minimizer error: ", norm(minimizers_actual - minimizers1))
 
-@testset "loocv single deletion" begin
+@testset "lsq_loocv single deletion" begin
     @test norm(remainders_actual - remainders1)<1e-10
     @test norm(minimizers_actual - minimizers1)<1e-10
 end
 
 
-if false
 ###
 ### lin_sys_loocv test
 ###
@@ -83,14 +82,16 @@ for i = 1:3
     Ki = K[[1:i-1;i+1:end], [1:i-1;i+1:end]]
     Cs[2*i-1:2*i, :] = Ki\y[[1:i-1;i+1:end], :]
 end
-println("error of indirect error computation: ", norm(Cs - vcat(vcat(c1, c2), c3)))
+#println("error of indirect error computation: ", norm(Cs - vcat(vcat(c1, c2), c3)))
 
 cholK = incremental_cholesky!(K, 3)
 c1IC = lin_sys_loocv_IC(c, cholK, 1)
 c2IC = lin_sys_loocv_IC(c, cholK, 2)
 c3IC = lin_sys_loocv_IC(c, cholK, 3)
-println("error of indirect error computation using Incremental_Cholesky (IC): ", norm(Cs - vcat(vcat(c1IC, c2IC), c3IC)))
-
+#println("error of indirect error computation using Incremental_Cholesky (IC): ", norm(Cs - vcat(vcat(c1IC, c2IC), c3IC)))
+@testset "lin_sys_loocv_IC" begin
+    @test norm(Cs - vcat(vcat(c1IC, c2IC), c3IC))<1e-10    
+end
 
 ###
 ### Larger test problem. Not activated for now.
@@ -116,7 +117,10 @@ if true
         Cs[:, i] = Ki\y[[1:i-1;i+1:end]]
     end
     end
-    println("error of indirect error computation for size $n problem: ", norm(Cs - indirectCs))
+    #println("error of indirect error computation for size $n problem: ", norm(Cs - indirectCs))
+    @testset "lin_sys_loocv_IC" begin
+    @test norm(Cs - indirectCs) <1e-10 
+end   
 
 
     cholK = incremental_cholesky!(K, n)
@@ -124,8 +128,11 @@ if true
     for i = 1:n
         indirectCs2[:, i] = lin_sys_loocv_IC(c, cholK, i)
     end
-    println("error of indirect error computation for size $n problem using Incremental Cholesky: ", norm(Cs - indirectCs2))
+    #println("error of indirect error computation for size $n problem using Incremental Cholesky: ", norm(Cs - indirectCs2))
+    
+    @testset "lin_sys_loocv_IC" begin
+    @test norm(Cs - indirectCs2)<1e-10 
+end   
 
-end
 
 end

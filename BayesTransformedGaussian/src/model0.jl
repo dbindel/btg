@@ -139,6 +139,9 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
     powerGrid = similar(weightsTensorGrid) #used to store exponents of qtilde, determinants, jacobians, etc.
     for I in R
         (r1, r2, t1, t2) = get_index_slices(nwθ,nwλ, quadType, I)
+        if length(t1)==1
+            t1 = t1[1]
+        end
         θλpair = (t1, t2)::Tuple{Union{Array{T, 1}, T}, T} where T<:Real #key composed of t1 and t2
         if validate == 0 #bring appropriate quantities into local scope
             (_, _, βhat, qtilde) = unpack(btg.θλbuffer_dict[θλpair])
@@ -168,8 +171,9 @@ end
 Compute pdf and cdf functions
 """
 function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate = 0) #depends on both train_data and test_data
-    nt1 = getNumLengthScales(btg.nodesWeightsθ) # number of dimensions of theta
-    nt2 = getNum(btg.nodesWeightsθ) #number of theta quadrature in each dimension
+    nwθ = btg.nodesWeightsθ
+    nt1 = getNumLengthScales(nwθ) # number of dimensions of theta
+    nt2 = getNum(nwθ) #number of theta quadrature in each dimension
     nl2 = getNum(btg.nodesWeightsλ) #number of lambda quadrature in each dimension
     quadType = btg.quadType
     (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile) = tgrids(nt1, nt2, nl2, quadType, weightsTensorGrid)

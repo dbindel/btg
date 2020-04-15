@@ -175,13 +175,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile) = tgrids(nt1, nt2, nl2, quadType, weightsTensorGrid)
     R = CartesianIndices(weightsTensorGrid)
     for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
-        r1 = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? I : Tuple(I)[1:end-1] 
-        r2 = Tuple(I)[end]
-        θ = btg.quadType[1] == "Gaussian" ? getNodeSequence(getNodes(btg.nodesWeightsθ), r1) : getNodes(btg.nodesWeightsθ)[:, r1[1]]
-        #λ = getNodes(btg.nodesWeightsλ)[:, r2] 
-        λ = getNodeSequence(getNodes(btg.nodesWeightsλ), r2)
-        #println("r2: ", r2)
-        #println("pred comp lambda: ", λ)
+        (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
         (dpdf, pdf, cdf, _, m, sigma_m, quantile_fun) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf

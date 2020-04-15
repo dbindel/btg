@@ -264,23 +264,27 @@ Initialize θ to train_buffer dictionary
 function init_train_buffer_dict(nw::nodesWeights, trainingData::AbstractTrainingData, corr::AbstractCorrelation = Gaussian(), quadtype::String = "Gaussian")
     if getDimension(nw) == 1 #single theta length scale
         train_buffer_dict = Dict{Float64, train_buffer}()
-    else
-        train_buffer_dict = Dict{Array{Float64, 1}, train_buffer}()
-    end
-    if endswith(quadtype, "MonteCarlo")
         for i in 1:size(nw)[2]
-            node = nw.nodes[:, i]
+            node = nw.nodes[:, i][1]
             push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
         end
     else
-        #println("size nw nodes: ", size(nw.nodes))
-        CI = CartesianIndices(Tuple([size(nw)[2] for i = 1:size(nw)[1]]))
-        nodeSet = Set(getNodeSequence(nw.nodes, I) for I in CI)
-        #println("Iterating over nodeset to build train_buffer_dict...")
-        counter = 1
-        for node in nodeSet #this loop is pretty expensive
-            #println("Iteration: ", counter); counter += 1
-            push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
+        train_buffer_dict = Dict{Array{Float64, 1}, train_buffer}()
+        if quadtype != "Gaussian" # for MC, QMC, SparseGrid
+            for i in 1:size(nw)[2]
+                node = nw.nodes[:, i]
+                push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
+            end
+        else
+            #println("size nw nodes: ", size(nw.nodes))
+            CI = CartesianIndices(Tuple([size(nw)[2] for i = 1:size(nw)[1]]))
+            nodeSet = Set(getNodeSequence(nw.nodes, I) for I in CI)
+            #println("Iterating over nodeset to build train_buffer_dict...")
+            # counter = 1
+            for node in nodeSet #this loop is pretty expensive
+                #println("Iteration: ", counter); counter += 1
+                push!(train_buffer_dict, node => train_buffer(node, trainingData, corr))
+            end
         end
     end
     return train_buffer_dict 

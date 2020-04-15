@@ -4,6 +4,7 @@ using CSV
 using Sobol
 using FastGaussQuadrature
 using Distributions
+using DelimitedFiles
 import Base: size
 
 
@@ -33,7 +34,7 @@ struct nodesWeights
             elseif quadtype == "MonteCarlo"
                 num_pts = num_MC 
                 N = Array{Float64, 2}(undef, d, num_pts)
-                W = ones(num_pts, 1)
+                W = ones(1, num_pts)
                 for i = 1:size(ranges, 1)
                     N[i, :] = rand(Distributions.Uniform(ranges[i, 1], ranges[i, 2]), num_pts)
                 end
@@ -41,9 +42,19 @@ struct nodesWeights
                 num_pts = num_MC
                 s = SobolSeq(ranges[:,1], ranges[:,2])
                 N = hcat([next!(s) for i = 1:num_pts]...)
-                W = ones(num_pts, 1)
-            else
-                throw(ArgumentError("Quadrature type not supported. Please enter \"Gaussian\" or \"MonteCarlo\""))
+                W = ones(1, num_pts)
+            elseif quadtype == "SparseGrid"
+                level = d < 8 ? 9 : 5
+                grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d)_l$(level).asc", ',', Float64)
+                num_pts = size(grids, 1)
+                W = reshape(grids[:, end], 1, num_pts)
+                # affine trans
+                start = @view ranges[:, 1]; length = @views ranges[:, 2] .- start
+                N = Diagonal(length) * (@view grids[:, 1:end-1])'  
+                N = broadcast(+, N, start) 
+                # W .*= reduce(*, length) -- for high dimen case, this reduce(*, length) could be large, so ignore the constant factor
+            else 
+                throw(ArgumentError("Quadrature type not supported. Choices are \"Gaussian\", \"MonteCarlo\", \"QuasiMonteCarlo\" and \"SparseGrid\""))
             end
             return new(N, W, d, num_pts)
     end    

@@ -124,12 +124,15 @@ mutable struct validation_train_buffer
     Σθ_inv_X_minus_i::Array{T} where T<:Real 
     logdetΣθ_minus_i::Float64
     logdetXΣX_minus_i::Float64
+    choleskyXΣX_X_minus_i::Array{Float64, 2}
     function validation_train_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, i::Int64, train_buf::train_buffer, trainingData::AbstractTrainingData)
         (_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, _, logdetΣθ, _)= unpack(train_buf) #will need QR factorization and other vals to perform fast LOOCV for least squares
         Σθ_inv_X_minus_i = lin_sys_loocv_IC(Σθ_inv_X, choleskyΣθ, i) #IC stands for incremental_cholesky 
+        Fx_minus_i = getCovariates(trainingData)[[1:i-1;i+1:end], :]
         sublogdetΣθ = logdet_loocv_IC(choleskyΣθ, logdetΣθ, i)
         sublogdetXΣX = logdet_XΣX_loocv_IC(getCovariates(trainingData), choleskyΣθ, logdetΣθ, i)
-        return new(θ, i, Σθ_inv_X_minus_i, sublogdetΣθ, sublogdetXΣX)
+        choleskyXΣX_X_minus_i = cholesky(Hermitian(Fx_minus_i'*(Σθ_inv_X_minus_i))) \ (Fx_minus_i')  # for computing beta(-i)
+        return new(θ, i, Σθ_inv_X_minus_i, sublogdetΣθ, sublogdetXΣX, choleskyXΣX_X_minus_i)
     end
 end
 
@@ -163,36 +166,41 @@ mutable struct validation_θλ_buffer
     βhat_minus_i::Array{T} where T<:Real  #depends on theta and lambda
     qtilde_minus_i::Real #depends on theta and lambda
     Σθ_inv_y_minus_i::Array{T} where T<:Real
-    remainder_minus_i
-    function validation_θλ_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, λ::Float64, i::Int64, train_buf::train_buffer, θλbuf::θλbuffer)
+    # remainder_minus_i
+    function validation_θλ_buffer(θ::Union{Array{T, 1}, T} where T<:Float64, λ::Float64, i::Int64, train_buf::train_buffer, λbuf::λbuffer, θλbuf::θλbuffer, val_train_buf::validation_train_buffer, trainingData::AbstractTrainingData)
         # why can't this line below use/find unpack?
         #println(" type of unpacked train_buf in buffers.jl 157:", typeof(unpack(train_buf)))
         #(_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, _) = unpack(train_buf) #will need QR factorization to perform fast LOOCV for least squares
         Σθ_inv_X =  train_buf.Σθ_inv_X
-        qr_Σθ_inv_X = train_buf.qr_Σθ_inv_X 
+        # qr_Σθ_inv_X = train_buf.qr_Σθ_inv_X 
         choleskyΣθ = train_buf.choleskyΣθ
-        
-        L_inv_X = train_buf.L_inv_X
+        # L_inv_X = train_buf.L_inv_X
         #Σθ_inv_X = train_buf.Σθ_inv_X; qr_Σθ_inv_X = train_buf.qr_Σθ_inv_X; choleskyΣθ = train_buf.choleskyΣθ
         #println(" type of unpacked theta_lambda buf in buffers.jl 157:", typeof(unpack(θλbuf)))
         #(_, _, βhat, _, Σθ_inv_y, remainder, Σθ_inv_remainder) = unpack(θλbuf)  #the key here is that βhat, qtilde, etc will already have been computed if we are now doing LOOCV on model
-        βhat = θλbuf.βhat
+        # βhat = θλbuf.βhat
         Σθ_inv_y = θλbuf.Σθ_inv_y
-        remainder = θλbuf.remainder
-        Σθ_inv_remainder = θλbuf.Σθ_inv_remainder
-
-        remainder_minus_i, βhat_minus_i = lsq_loocv(L_inv_X, qr_Σθ_inv_X, remainder, βhat, i) 
-        qtilde_minus_i = norm(remainder_minus_i[[1:i-1;i+1:end]])^2
+        # remainder = θλbuf.remainder
+        # Σθ_inv_remainder = θλbuf.Σθ_inv_remainder
+        Σθ_inv_y_minus_i = lin_sys_loocv_IC(Σθ_inv_y, choleskyΣθ, i)
+        Σθ_inv_X_minus_i = lin_sys_loocv_IC(Σθ_inv_X, choleskyΣθ, i)
+        gλz_minus_i = λbuf.gλz[[1:i-1;i+1:end]]
+        Fx_minus_i = trainingData.Fx[[1:i-1;i+1:end], :]
+        # remainder_minus_i, βhat_minus_i = lsq_loocv(L_inv_X, qr_Σθ_inv_X, remainder, βhat, i) 
+        # qtilde_minus_i = norm(remainder_minus_i[[1:i-1;i+1:end]])^2
+        choleskyXΣX_X_minus_i = val_train_buf.choleskyXΣX_X_minus_i
+        βhat_minus_i = choleskyXΣX_X_minus_i * Σθ_inv_y_minus_i  
+        temp = Σθ_inv_y_minus_i - Σθ_inv_X_minus_i*βhat_minus_i
+        qtilde_minus_i = ((gλz_minus_i - Fx_minus_i*βhat_minus_i)' * temp)[1]
         #qtilde_minus_i = norm(remainder_minus_i)^2 very blatantly wrong
         #Σθ_inv_remainder_minus_i = lin_sys_loocv_IC(Σθ_inv_remainder, choleskyΣθ, i) 
-        Σθ_inv_y_minus_i = lin_sys_loocv_IC(Σθ_inv_y, choleskyΣθ, i)
         #qtilde_minus_i = remainder_minus_i[[1:i-1;i+1:end]]'*Σθ_inv_remainder_minus_i
         #@info "Σθ_inv_remainder_minus_i" Σθ_inv_remainder_minus_i
         #@info "remainder_minus_i[[1:i-1;i+1:end]]" remainder_minus_i[[1:i-1;i+1:end]]
         #@info "alternate comp of Σθ_inv_remainder_minus_i" choleskyΣθ\remainder_minus_i
-        @info "qtilde_minus_i" qtilde_minus_i
+        # @info "qtilde_minus_i" qtilde_minus_i
         @assert typeof(qtilde_minus_i)<:Real
-        return new(θ, λ, i, βhat_minus_i, qtilde_minus_i, Σθ_inv_y_minus_i, remainder_minus_i)        
+        return new(θ, λ, i, βhat_minus_i, qtilde_minus_i, Σθ_inv_y_minus_i)        
     end
 end
 

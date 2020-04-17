@@ -81,8 +81,11 @@ function init_validation_buffers(btg::btg, train_buffer_dict::Union{Dict{Array{T
     end
     for key in keys(θλbuffer_dict) #key is tuple of the form (t1, t2), where t1 is theta-nodes (Float64 if single else Array{Float64}) and t2 is lambda node (Float64)
         cur_train_buf = train_buffer_dict[key[1]]
+        cur_λbuf = λbuffer_dict[key[2]]
         cur_θλbuf = θλbuffer_dict[key]
-        push!(btg.validation_θλ_buffer_dict, key => validation_θλ_buffer(key[1]::Union{Array{T, 1}, T} where T<:Float64, key[2]::Float64, i, cur_train_buf::train_buffer, cur_θλbuf::θλbuffer))
+        cur_validation_train_buf = btg.validation_train_buffer_dict[key[1]]
+        push!(btg.validation_θλ_buffer_dict, key => validation_θλ_buffer(key[1]::Union{Array{T, 1}, T} where T<:Float64, key[2]::Float64, i, cur_train_buf::train_buffer, 
+                                                                        cur_λbuf::λbuffer, cur_θλbuf::θλbuffer, cur_validation_train_buf::validation_train_buffer, btg.trainingData))
     end
     #for key in keys(test_buffer_dict)
     #    cur_train_buf = train_buffer_dict[key]
@@ -121,6 +124,7 @@ function solve(btg::btg; validate = 0)
     end
     weightTensorGrid = weight_comp(btg; validate = validate)
     (pdf, cdf, dpdf, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate)
+    return pdf, cdf, dpdf, quantInfo, weightTensorGrid
 end
 
 """
@@ -134,25 +138,23 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
     nl1 = nwλ.d   #number of dimensions of lambda 
     nl2 = nwλ.num #number of lambda quadrature in each dimension
     n =  btg.trainingData.n; p = btg.trainingData.p #number of training points and dimension of covariates
+    n = validate == 0 ? n : n-1 #for cross-validation, one point is deleted
     #all the logic from create_btg_iterator used to be here
     R, weightsTensorGrid = get_btg_iterator(nwθ, nwλ, quadType)
     powerGrid = similar(weightsTensorGrid) #used to store exponents of qtilde, determinants, jacobians, etc.
     for I in R
         (r1, r2, t1, t2) = get_index_slices(nwθ,nwλ, quadType, I)
-        if length(t1)==1
-            t1 = t1[1]
-        end
+        t1 = length(t1)==1 ? t1[1] : t1
         θλpair = (t1, t2)::Tuple{Union{Array{T, 1}, T}, T} where T<:Real #key composed of t1 and t2
         if validate == 0 #bring appropriate quantities into local scope
             (_, _, βhat, qtilde) = unpack(btg.θλbuffer_dict[θλpair])
             (_, _, _, _, _, logdetΣθ, logdetXΣX) = unpack(btg.train_buffer_dict[t1])
             (_, _, logjacval) = unpack(btg.λbuffer_dict[t2]) 
         else #validation values
-            (_, _, _, logdetΣθ, logdetXΣX) = unpack(btg.validation_train_buffer_dict[t1]) 
             (_, _, _, βhat, qtilde) = unpack(btg.validation_θλ_buffer_dict[θλpair]) 
+            (_, _, _, logdetΣθ, logdetXΣX) = unpack(btg.validation_train_buffer_dict[t1]) 
             logjacval = unpack(btg.validation_λ_buffer_dict[t2])
         end 
-        n = validate == 0 ? n : n-1 #for cross-validation, one point is deleted
         p = length(βhat)
         qTensorGrid_I = -(n-p)/2 * log(qtilde[1])  #compute exponents of qtilde^(-(n-p)/2) 
         detTensorGridΣθ_I = -0.5 * logdetΣθ #compute exponents of |Σθ|^(-1/2) and |X'ΣθX|^(-1/2) 

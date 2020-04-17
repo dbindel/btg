@@ -113,10 +113,10 @@ end
 if true
 
 println("testing fast LOOCV cross validation")
-
-m = 5
-n = 8
-plt, axs = PyPlot.subplots(5, 8)
+qtildes_fast = zeros(1, 12)
+m = 3
+n = 4
+plt, axs = PyPlot.subplots(m, n)
 #figure(1)
 for j = 1:m*n
     (pdf, cdf, dpdf) = solve(btg1, validate = j);  
@@ -126,12 +126,13 @@ for j = 1:m*n
     
     (x, y) = plt_data(b, .01, 1.2, 100)
     (x1, y1) = plt_data(c, .01, 1.2, 100)
-    ind1 = Int64(ceil(j/8))
-    ind2 = Int64(j - 8*(floor((j-.1)/8)))
+    ind1 = Int64(ceil(j/n))
+    ind2 = Int64(j - n*(floor((j-.1)/n)))
 
     axs[ind1, ind2].plot(x, y)
     axs[ind1, ind2].plot(x1, y1)
     axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
+    qtildes_fast[j] = btg1.validation_θλ_buffer_dict[(1589.3813645151845, 0.5873179542866175)].qtilde_minus_i
     #PyPlot.plot(x, y)
     #PyPlot.plot(x1, y1)
     #PyPlot.axvline(x =  getLabel(btg1.trainingData)[j])
@@ -146,10 +147,10 @@ end
 end
 
 println("naive LOOCV")
-m = 5
-n = 8
-plt, axs = PyPlot.subplots(5, 8)
+
+plt, axs = PyPlot.subplots(m, n)
 #figure(1)
+qtildes_naive = similar(qtildes_fast)
 for j = 1:m*n
     x = getPosition(trainingData1)
     Fx = getCovariates(trainingData1)
@@ -167,6 +168,7 @@ for j = 1:m*n
     cur_td = trainingData(cur_x, cur_Fx, cur_z)
 
     btg1 = btg(cur_td, rangeθ, rangeλ) #quadtype = ["SparseGrid", "MonteCarlo"])
+    qtildes_naive[j] = btg1.θλbuffer_dict[(1589.3813645151845, 0.5873179542866175)].qtilde
 
     (pdf, cdf, dpdf) = solve(btg1);  
     #a = y0 -> dpdf(x0, Fx0, y0); 
@@ -175,8 +177,8 @@ for j = 1:m*n
     
     (h1, h2) = plt_data(b, .01, 1.2, 100)
     (h3, h4) = plt_data(c, .01, 1.2, 100)
-    ind1 = Int64(ceil(j/8))
-    ind2 = Int64(j - 8*(floor((j-.1)/8)))
+    ind1 = Int64(ceil(j/n))
+    ind2 = Int64(j - n*(floor((j-.1)/n)))
 
     axs[ind1, ind2].plot(h1, h2)
     axs[ind1, ind2].plot(h3, h4)

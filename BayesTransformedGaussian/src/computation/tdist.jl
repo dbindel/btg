@@ -25,6 +25,9 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #(_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
         #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])  
     else 
+        #cur_val_θλ_buf = btg.validation_θλ_buffer_dict[θλpair]
+        #qtilde = cur_val_θλ_buf.
+        
         (_, _, _, βhat, qtilde, Σθ_inv_y)  = unpack(btg.validation_θλ_buffer_dict[θλpair])  #depends on theta and lambda
         #retrieve qtilde_minus_i, etc.
     end 

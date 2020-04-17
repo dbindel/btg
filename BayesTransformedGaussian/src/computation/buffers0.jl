@@ -23,7 +23,7 @@ include("../transforms/transforms.jl")
 mutable struct train_buffer
     Σθ::Array{Float64, 2}  #only top n by n block is filled
     Σθ_inv_X::Array{Float64, 2}
-    qr_Σθ_inv_X::LinearAlgebra.QRCompactWY{Float64,Array{Float64,2}}
+    qr_Σθ_inv_X::Union{LinearAlgebra.QRCompactWY{Float64,Array{Float64,2}}, Nothing}
     choleskyΣθ::IncrementalCholesky
     choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}
     logdetΣθ::Float64
@@ -32,7 +32,7 @@ mutable struct train_buffer
     n::Int64 #number data points incorporated
     k::AbstractCorrelation
     θ::Union{Array{T, 1}, T} where T<:Real
-    L_inv_X::Array{Float64, 2}
+    L_inv_X::Union{Array{Float64, 2}, Nothing}
     function train_buffer(θ::Union{Array{T, 1}, T} where T<:Real, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
         x = train.x
         Fx = train.Fx
@@ -47,10 +47,11 @@ mutable struct train_buffer
         choleskyΣθ = incremental_cholesky!(Σθ, n)
         L = get_chol(choleskyΣθ).L
         U = get_chol(choleskyΣθ).U
-        L_inv_X = L\Fx
-        qr_Σθ_inv_X = qr(L_inv_X)
-        Σθ_inv_X = (U\L_inv_X)
-        #Σθ_inv_X = (choleskyΣθ\Fx)
+        #L_inv_X = L\Fx
+        L_inv_X = nothing #not used for now
+        #qr_Σθ_inv_X = qr(L_inv_X)
+        qr_Σθ_inv_X = nothing #we don't use the qr factorization right now
+        Σθ_inv_X = choleskyΣθ\Fx
         choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
         new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, logdet(choleskyΣθ), logdet(choleskyXΣX), capacity, n, corr, θ, L_inv_X)
     end
@@ -87,9 +88,9 @@ mutable struct θλbuffer
     λ::T where T<:Real
     βhat::Array{T} where T<:Real
     qtilde::Real
-    L_inv_y::Array{T} where T<:Real
+    L_inv_y::Union{Array{T} where T<:Real, Nothing}
     Σθ_inv_y::Array{T} where T<:Real 
-    remainder::Array{T} where T<:Real 
+    remainder::Union{Array{T} where T<:Real, Nothing}
     Σθ_inv_remainder::Array{T} where T<:Real
     θλbuffer() = new()
     function θλbuffer(θ, λ, βhat, qtilde, L_inv_y, Σθ_inv_y, remainder, Σθ_inv_remainder)
@@ -357,25 +358,20 @@ function init_θλbuffer_dict(nwθ::nodesWeights, nwλ::nodesWeights, train::Abs
         cur_train_buf = train_buffer_dict[t1] #get train_buffer
         cur_λ_buf = λbuffer_dict[t2] #get lambda buffer
         θλpair = (t1, t2)::Union{Tuple{Array{T, 1}, T}, Tuple{T, T}} where T<:Real #key used for this buffer
-    
         (_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX) = unpack(cur_train_buf)
-        
         L_inv_X = cur_train_buf.L_inv_X
         (λ, gλz, logjacval) = unpack(cur_λ_buf)
         choleskyXΣX = cur_train_buf.choleskyXΣX
         choleskyΣθ = cur_train_buf.choleskyΣθ
         Fx = getCovariates(train)
-        L = get_chol(choleskyΣθ).L
-        U = get_chol(choleskyΣθ).U
-        L_inv_y = L\gλz
-        Σθ_inv_y = U\L_inv_y
+        Σθ_inv_y = choleskyΣθ\gλz
         #Σθ_inv_y = (choleskyΣθ \ gλz) #O(n^2)
         βhat = choleskyXΣX\(Fx'*Σθ_inv_y)  #O
         #qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
         qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np) checks out b/c qtilde = norm(remainder)^2
-        remainder = L_inv_y - L_inv_X*βhat
+        #remainder = L_inv_y - L_inv_X*βhat
         Σθ_inv_remainder = Σθ_inv_y - Σθ_inv_X*βhat
-        cur_θλbuffer = θλbuffer(t1, t2, βhat, qtilde, L_inv_y, Σθ_inv_y, remainder, Σθ_inv_remainder)
+        cur_θλbuffer = θλbuffer(t1, t2, βhat, qtilde, nothing, Σθ_inv_y, nothing, Σθ_inv_remainder)
         push!(θλbuffer_dict, θλpair => cur_θλbuffer)
     end
         return θλbuffer_dict
@@ -439,9 +435,28 @@ end
 ######
 
 
+
+    #Σθ::Array{Float64, 2}  #only top n by n block is filled
+    #Σθ_inv_X::Array{Float64, 2}
+    #qr_Σθ_inv_X::LinearAlgebra.QRCompactWY{Float64,Array{Float64,2}}
+    #choleskyΣθ::IncrementalCholesky
+    #choleskyXΣX::Cholesky{Float64,Array{Float64, 2}}
+    #logdetΣθ::Float64
+    #logdetXΣX::Float64
+    #capacity::Int64 #size of Σθ, maximum value of n
+    #n::Int64 #number data points incorporated
+    #k::AbstractCorrelation
+    #θ::Union{Array{T, 1}, T} where T<:Real
+    #L_inv_X::Array{Float64, 2}
+
 """
 Updates training buffer with testing buffer
 NOTE: trainingData field of btg must be updated before train_buffer is updated
+For now 
+- Σθ is not updated, because we never actually use it...
+ - qr_Σθ_inv_X not never updated
+- 
+
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData)  #use incremental cholesky to update training train_buffer
     @assert typeof(x0)<:Array{T, 2} where T<:Real
@@ -453,15 +468,16 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     A12, A2 = extend(train_buffer.choleskyΣθ, k) #two view objects 
     #A12 = cross_correlation(train_buffer.k(), train_buffer.θ, trainingData.x[1:end-k], trainingData.x[end-k+1:end])
     #A2 = correlation(train_buffer.k(), train_buffer.θ, trainingData.x[end-k+1:end]) #Σθ should get updated automatically, but only upper triangular portion
-    A12 = test_buffer.Bθ'
-    A2 = test_buffer.Eθ
-    update!(train_buffer.choleskyΣθ, k) #extends Cholesky decomposition
+    A12 .= test_buffer.Bθ' #mutates choleskyΣθ
+    A2 .= test_buffer.Eθ #mutates choleskyΣθ
+    update!(train_buffer.choleskyΣθ, k) #extends Cholesky decomposition -- this is where the action happens
     train_buffer.Σθ_inv_X = train_buffer.choleskyΣθ\trainingData.Fx
-    train_buffer.choleskyXΣX = cholesky(trainingData.Fx' * (train_buffer.choleskyΣθ\trainingData.Fx))
-    train_buffer.n += k #number of incorporated points
+    train_buffer.choleskyXΣX = cholesky(trainingData.Fx' * train_buffer.Σθ_inv_X)
+    train_buffer.logdetΣθ = logdet(train_buffer.choleskyΣθ)
+    train_buffer.logdetXΣX = logdet(train_buffer.choleskyXΣX)
+    train_buffer.n .+= k #number of incorporated points
     return nothing 
 end
-
 
 
 
@@ -489,8 +505,6 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
 
     return nothing
 end
-
-
 
 
 

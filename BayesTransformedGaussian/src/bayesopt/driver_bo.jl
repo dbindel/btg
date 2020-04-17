@@ -1,16 +1,16 @@
-
-
-
 for i = 1:10 #take 10 BO steps
     #(pdf, cdf, dpdf, cdf_gradient, cdf_hessian) = solve(btg)
     #(u_star, s_star) = optimize_acquisition(cdf, cdf_gradient, cd_hessian)
     #update BTG trainingData and trainingBuffers with new point (xstar, Fxstar, ystar)  #location, covariates, label
     # update
-    # - Σθ_inv_X, check
-    # - choleskyΣθ, check
-    # - choleskyXΣX, check
-    # - logdetΣθ    
-    # - logdetXΣX
+    update!(btg, s_star, cov_fun(s_star), u_star)
+
+
+    # - Σθ_inv_X, check  compute directly in O(n^2p)
+    # - choleskyΣθ, check compute directly, have cholesky factorization anyways 
+    # - choleskyXΣX, check compute directly
+    # - logdetΣθ    compute directly
+    # - logdetXΣX compute directly
     # 
     #
 end

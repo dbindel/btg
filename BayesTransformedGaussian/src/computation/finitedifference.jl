@@ -90,6 +90,6 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     end
     r1 = log.(h)
     r2 = log.(A)
-    plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error")#, fontfamily = font(48, "Courier") , reuse = false)
-    return (r1, r2, plt, polyfit(r1, r2, 1))
+    #plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error")#, fontfamily = font(48, "Courier") , reuse = false)
+    return (r1, r2, nothing, polyfit(r1, r2, 1))
 end

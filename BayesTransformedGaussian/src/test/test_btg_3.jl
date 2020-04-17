@@ -38,10 +38,10 @@ target = target/normalizing_constant #normalization
 #ind = 120:125
 #ind = [1:9;11:25]
 #ind = 1:30
-ind = 100:200
+ind = 100:155
 #ind = 45:65
 posx = 1:4 #
-posc = 1:1
+posc = 1:4
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
 
@@ -92,7 +92,7 @@ c = y0 -> cdf(x0, Fx0, y0);
 
 #for i = 151:160
 #for i = 220:230
-for i = 2010:2020
+for i = 2010:2013
     pind = i:i
     #prediction data
     Fx0 = reshape(data[pind, posc], 1, length(posc))

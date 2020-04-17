@@ -67,8 +67,10 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             #Note that we updated testingData anyways, but we will not use it. Essentially for LOOCV, we don't look at btg.testingData,
             #because what's in there is predicated on arbitrary user input. We will be looking at ith entry of training data instead, which is essentially 
             #fixed throughout the btg object lifespan unless we extend the kernel system, as in Bayesopt. 
-            (_, _, Σθ_inv_X_minus_i, _, _) = unpack(btg.validation_train_buffer_dict[θ]) 
-            (_, ΣθinvBθ_minus_i) = unpack(btg.validation_test_buffer_dict[θ]) 
+            #(_, _, Σθ_inv_X_minus_i, _, _) = unpack(btg.validation_train_buffer_dict[θ]) 
+            Σθ_inv_X_minus_i = btg.validation_train_buffer_dict[θ].Σθ_inv_X_minus_i
+            #(_, ΣθinvBθ_minus_i) = unpack(btg.validation_test_buffer_dict[θ]) 
+            ΣθinvBθ_minus_i = btg.validation_test_buffer_dict[θ].ΣθinvBθ
             #println("btg test buffer dict theta:")
             #println(btg.test_buffer_dict[θ])
             (Eθ, Bθ, _, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
@@ -76,6 +78,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             Bθ_minus_i = @view Bθ[:, [1:validate-1; validate+1:end]] #discard ith entry 
             Fx_i = btg.trainingData.Fx[validate:validate, :] #ith row of trainingData
             Fx_minus_i = btg.trainingData.Fx[[1:validate-1; validate+1:end], :] #all but ith row of trainingData
+            
             Dθ_minus_i = Eθ - Bθ_minus_i * ΣθinvBθ_minus_i
             Hθ_minus_i = Fx_i - Bθ_minus_i * Σθ_inv_X_minus_i
             Cθ = Dθ_minus_i + Hθ_minus_i*((Fx_minus_i'*Σθ_inv_X_minus_i)\Hθ_minus_i') #O(p^3) operation, not bad if p is small/ How to update choleskyXΣX to get choleskyXΣX_minus_i?

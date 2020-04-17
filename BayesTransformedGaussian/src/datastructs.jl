@@ -11,7 +11,11 @@ struct trainingData <: AbstractTrainingData
     d::Int64 #dimension of location vectors in x
     p::Int64 #dimension of covariate vectors in Fx
     n:: Int64 # number of incorporated points
-    trainingData(x, Fx, y) = new(x, Fx, y, Base.size(x, 2), Base.size(Fx, 2), Base.size(x, 1))
+    function trainingData(x, Fx, y) 
+        @assert Base.size(x, 1) == Base.size(Fx, 1)
+        @assert Base.size(Fx, 1) == length(y)
+        return new(x, Fx, y, Base.size(x, 2), Base.size(Fx, 2), Base.size(x, 1))
+    end
 end
 getLabel(td::trainingData) = td.y
 getPosition(td::trainingData) = td.x
@@ -43,6 +47,8 @@ mutable struct extensible_trainingData<:AbstractTrainingData
         new(x, Fx, y, d, p, n, capacity)
     end
     function extensible_trainingData(x, Fx, y, capacity=100)
+        @assert Base.size(x, 1) == Base.size(Fx, 1)
+        @assert Base.size(Fx, 1) == length(y)
         new(x, Fx, y, size(x, 2), size(Fx, 2), size(x, 1), capacity)
     end
 end

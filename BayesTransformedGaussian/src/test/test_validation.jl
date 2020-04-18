@@ -118,7 +118,7 @@ println("testing fast LOOCV cross validation")
 plt, axs = PyPlot.subplots(m, n)
 #figure(1)
 for j = 1:m*n
-    (pdf, cdf, dpdf) = solve(btg1, validate = 2);  
+    (pdf, cdf, dpdf) = solve(btg1, validate = j);  
     #a = y0 -> dpdf(x0, Fx0, y0); 
     b = y0 -> pdf(x0, Fx0, y0);
     c = y0 -> cdf(x0, Fx0, y0);
@@ -128,28 +128,13 @@ for j = 1:m*n
     ind1 = Int64(ceil(j/n))
     ind2 = Int64(j - n*(floor((j-.1)/n)))
 
-    axs[ind1, ind2].plot(x, y)
-    axs[ind1, ind2].plot(x1, y1)
+    axs[ind1, ind2].plot(x, y, color = "green", linewidth = 4.0, linestyle = "--" )
+    axs[ind1, ind2].plot(x1, y1, color = "purple", linewidth = 4.0, linestyle = "--")
     axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
     #PyPlot.plot(x, y)
     #PyPlot.plot(x1, y1)
     #PyPlot.axvline(x =  getLabel(btg1.trainingData)[j])
-end
-for ax in axs
-    ax.set(xlabel="x-label", ylabel="y-label")
-end
-# Hide x labels and tick labels for top plots and y ticks for right plots.
-for ax in axs
-    ax.label_outer()
-end
-end
 
-println("naive LOOCV")
-
-plt, axs = PyPlot.subplots(m, n)
-#figure(1)
-
-for j = 1:m*n
     x = getPosition(trainingData1)
     Fx = getCovariates(trainingData1)
     z = getLabel(trainingData1)
@@ -176,12 +161,10 @@ for j = 1:m*n
     ind1 = Int64(ceil(j/n))
     ind2 = Int64(j - n*(floor((j-.1)/n)))
 
-    axs[ind1, ind2].plot(h1, h2, color = "red", width = 4.0, linestyle = ":")
-    axs[ind1, ind2].plot(h3, h4, color = "orange", width = 4.0, linestyle = ":")
+    axs[ind1, ind2].plot(h1, h2, color = "red", linewidth = 3.0, linestyle = ":")
+    axs[ind1, ind2].plot(h3, h4, color = "orange", linewidth = 3.0, linestyle = ":")
     axs[ind1, ind2].axvline(x =  z_j)
-    #PyPlot.plot(x, y)
-    #PyPlot.plot(x1, y1)
-    #PyPlot.axvline(x =  getLabel(btg1.trainingData)[j])
+
 end
 for ax in axs
     ax.set(xlabel="x-label", ylabel="y-label")
@@ -189,4 +172,5 @@ end
 # Hide x labels and tick labels for top plots and y ticks for right plots.
 for ax in axs
     ax.label_outer()
+end
 end

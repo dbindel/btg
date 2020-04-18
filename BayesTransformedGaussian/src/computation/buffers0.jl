@@ -103,6 +103,7 @@ mutable struct θλbuffer
     end 
 end
 
+
 """
 Stores transformed data
 """
@@ -225,6 +226,37 @@ function print(b::test_buffer)
     println("Dθ: ", b.Dθ)
     println("Hθ: ", b.Hθ)
     println("Cθ: ", b.Cθ)
+end
+
+
+"""
+Checks whether a θλbuffer buffer corresponds to a validation_θλ_buffer
+"""
+function equals(buf::θλbuffer, val_buf::validation_θλ_buffer)
+    try 
+        @assert buf.θ == val_buf.θ 
+        @assert buf.λ == val_buf.λ
+        @assert isapprox(buf.βhat, val_buf.βhat_minus_i)
+        @assert isapprox(buf.qtilde, val_buf.qtilde_minus_i)
+    catch e
+        return false
+    end
+    return true
+end
+"""
+Checks if a θλbuffer_dict is equal to a validation_θ_λ_buffer_dict
+"""
+function equals(θλbuffer_dict::Union{Dict{Tuple{Array{T, 1}, T} where T<:Real , θλbuffer}, Dict{Tuple{T, T} where T<:Real , θλbuffer}}, val_θλbuffer_dict::Union{Dict{Tuple{Array{T, 1}, T} where T<:Real, validation_θλ_buffer}, Dict{Tuple{T, T} where T<:Real, validation_θλ_buffer}})
+        @assert keys(θλbuffer_dict) == keys(val_θλbuffer_dict)
+        for key in keys(θλbuffer_dict)
+            try
+                @assert equals(θλbuffer_dict[key], val_θλbuffer_dict[key])
+            catch e
+                @warn "bad key", key 
+                return false
+            end
+        end
+    return true
 end
 
 ###########   what's going on here???? ##############################
@@ -508,20 +540,20 @@ end
 
 
 
-"""
-update validation_test_buffer
-"""
-function update!(validation_test_buffer::validation_test_buffer, train_buf::train_buffer, test_buf::test_buffer, validate)
-    ΣθinvBθ = test_buf.ΣθinvBθ
-    choleskyΣθ = train_buf.choleskyΣθ 
-    θ = train_buf.θ
-    #    # now these are giving me issues vvv
-    #(_, _, ΣθinvBθ, _, _, _) = unpack(test_buf) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
-    #    (_, _, _, choleskyΣθ, _, _, _, θ) = unpack(train_buf)
-    ΣθinvBθ = lin_sys_loocv_IC(ΣθinvBθ, choleskyΣθ, validate) #new ΣθinvBθ of dimension n-1 x 1
-    validation_test_buffer.θ = θ
-    validation_test_buffer.ΣθinvBθ = ΣθinvBθ
-    return nothing
-end
+# """
+# update validation_test_buffer
+# """
+# function update!(validation_test_buffer::validation_test_buffer, train_buf::train_buffer, test_buf::test_buffer, validate)
+#     ΣθinvBθ = test_buf.ΣθinvBθ
+#     choleskyΣθ = train_buf.choleskyΣθ 
+#     θ = train_buf.θ
+#        # now these are giving me issues vvv
+#     (_, _, ΣθinvBθ, _, _, _) = unpack(test_buf) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
+#        (_, _, _, choleskyΣθ, _, _, _, θ) = unpack(train_buf)
+#     ΣθinvBθ = lin_sys_loocv_IC(ΣθinvBθ, choleskyΣθ, validate) #new ΣθinvBθ of dimension n-1 x 1
+#     validation_test_buffer.θ = θ
+#     validation_test_buffer.ΣθinvBθ = ΣθinvBθ
+#     return nothing
+# end
 
 

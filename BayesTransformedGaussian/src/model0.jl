@@ -47,6 +47,8 @@ mutable struct btg
     validation_test_buffer_dict::Union{Dict{Array{T, 1} where T<: Real, validation_test_buffer}, Dict{Real, validation_test_buffer}}
     validation_θλ_buffer_dict::Union{Dict{Tuple{Array{T, 1}, T} where T<:Real, validation_θλ_buffer}, Dict{Tuple{T, T} where T<:Real, validation_θλ_buffer}} 
     capacity::Int64 
+    debug_log::Any
+    debug_log2::Any
     function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
         @assert typeof(corr)<:AbstractCorrelation
         @assert typeof(priorθ)<:priorType
@@ -66,7 +68,7 @@ mutable struct btg
         validation_λ_buffer_dict = init_validation_λ_buffer_dict() #empty dict
         cap = getCapacity(trainingData)
         return new(trainingData, testingData(), trainingData.n, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict, θλbuffer_dict, 
-                    validation_λ_buffer_dict, validation_train_buffer_dict, validation_test_buffer_dict, validation_θλ_buffer_dict, cap)
+                    validation_λ_buffer_dict, validation_train_buffer_dict, validation_test_buffer_dict, validation_θλ_buffer_dict, cap, [], [])
     end
 end
 """
@@ -118,7 +120,7 @@ end
 
 function solve(btg::btg; validate = 0)
     if validate != 0
-        println("btg.n: ", btg.n)
+        #println("btg.n: ", btg.n)
         @assert validate > 0 && btg.n>=validate
         init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
     end
@@ -220,9 +222,9 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
         return nothing
     end
     #below we write y0[1] instead of y0, because sometimes the output will have a box around it, due to matrix-operations in the internal implementation
-    dpdf = (x0, Fx0, y0) -> (checkInput(x0, Fx0, y0); evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
-    pdf = (x0, Fx0, y0) -> (checkInput(x0, Fx0, y0); evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
-    cdf = (x0, Fx0, y0) -> (checkInput(x0, Fx0, y0); evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
+    dpdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
+    pdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
+    cdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
     
     # compute estimated quantile
     EY = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))

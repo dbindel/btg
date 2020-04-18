@@ -14,20 +14,19 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     @assert validate >= 0 && n >= validate
     n = validate == 0 ? n : n-1 #downsize by 1, if we will be deleting 1 data point
     θλpair = (θ, λ)
+    choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
     if validate == 0 
         #retrieve qtilde, gλy, βhat, Σθ_inv_y
         βhat = btg.θλbuffer_dict[θλpair].βhat
         qtilde = btg.θλbuffer_dict[θλpair].qtilde
         @assert qtilde > 0 
         Σθ_inv_y = btg.θλbuffer_dict[θλpair].Σθ_inv_y
-        choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
         #(_, _, βhat, qtilde, _, Σθ_inv_y) = unpack(btg.θλbuffer_dict[θλpair]) #unpack can be dangerous, because if the order of elements change and you don't know, you're screwed. safer tp access directly.
         #(_, _, _, choleskyΣθ, _, _, _) = unpack(btg.train_buffer_dict[θ])
         #(_, gλy, _) = unpack(btg.λbuffer_dict[λ])  
     else 
         #cur_val_θλ_buf = btg.validation_θλ_buffer_dict[θλpair]
         #qtilde = cur_val_θλ_buf.
-        
         (_, _, _, βhat, qtilde, Σθ_inv_y)  = unpack(btg.validation_θλ_buffer_dict[θλpair])  #depends on theta and lambda
         #retrieve qtilde_minus_i, etc.
     end 
@@ -39,9 +38,10 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         x0 = reshape(x0, 1, length(x0)) #reshape into 1 x d vector
         x1, y1 = getDimension(btg.trainingData), getDimension(btg.testingData)
         x2, y2 = getCovDimension(btg.trainingData), getCovDimension(btg.testingData)
-        update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0
+        #@info "validate" validate
         if validate == 0
-            update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with recomputed Bθ, Hθ, Cθ,...
+            update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0 with USER INPUT
+            update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer (which holds Dθ, Hθ, Cθ,...) with testingData
             #print((btg.test_buffer_dict[θ]))
             #######       unpack throws an odd error here, still need to figure out why      ##############################
             Bθ = btg.test_buffer_dict[θ].Bθ
@@ -57,44 +57,40 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
             #retrieve 
         else # want to do validation instead
-            try
-                #println("in try, tdist.jl line 50")
-                update!(btg.validation_test_buffer_dict[θ], btg.train_buffer_dict[θ]::train_buffer, btg.test_buffer_dict[θ]::test_buffer, validate) #this call possibly initializes the buf for first time, otherwise does update
-            catch UndefRefError #test_buffer_dict itself hasn't been initialized yet
-                #println("in catch, tdist.jl line 50")
-                #typically we don't updated the test_buffer in LOOCV, but it must be initialized at least once
-                update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer with computed Bθ, Hθ, Cθ,...
-                update!(btg.validation_test_buffer_dict[θ], btg.train_buffer_dict[θ]::train_buffer, btg.test_buffer_dict[θ]::test_buffer, validate) 
-            end
-            #note that we ignore user input Fx0 and x0 when doing cross validation.
-            #Note that we updated testingData anyways, but we will not use it. Essentially for LOOCV, we don't look at btg.testingData,
-            #because what's in there is predicated on arbitrary user input. We will be looking at ith entry of training data instead, which is essentially 
-            #fixed throughout the btg object lifespan unless we extend the kernel system, as in Bayesopt. 
-            #(_, _, Σθ_inv_X_minus_i, _, _) = unpack(btg.validation_train_buffer_dict[θ]) 
-            Σθ_inv_X_minus_i = btg.validation_train_buffer_dict[θ].Σθ_inv_X_minus_i
-            #(_, ΣθinvBθ_minus_i) = unpack(btg.validation_test_buffer_dict[θ]) 
-            ΣθinvBθ_minus_i = btg.validation_test_buffer_dict[θ].ΣθinvBθ
-            #println("btg test buffer dict theta:")
-            #println(btg.test_buffer_dict[θ])
-            (Eθ, Bθ, _, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
-            #(_, _, _, choleskyΣθ, b.choleskyXΣX) =  unpack(btg.train_buffer_dict[θ])
-            Bθ_minus_i = @view Bθ[:, [1:validate-1; validate+1:end]] #discard ith entry 
             Fx_i = btg.trainingData.Fx[validate:validate, :] #ith row of trainingData
             Fx_minus_i = btg.trainingData.Fx[[1:validate-1; validate+1:end], :] #all but ith row of trainingData
+            x_i = btg.trainingData.x[validate:validate, :]
+            x_minus_i = btg.trainingData.x[[1:validate-1; validate+1:end], :]
+            update!(btg.testingData, x_i, Fx_i) #testingData is subset of trainingData. N.B: USER INPUT FOR x0, Fx0 are IGNORED
+            update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer (which holds Dθ, Hθ, Cθ,...) with testingData
+            #update!(btg.validation_test_buffer_dict[θ], btg.train_buffer_dict[θ]::train_buffer, btg.test_buffer_dict[θ]::test_buffer, validate) 
+            Σθ_inv_X_minus_i = btg.validation_train_buffer_dict[θ].Σθ_inv_X_minus_i
+            ΣθinvBθ = btg.test_buffer_dict[θ].ΣθinvBθ
+            ΣθinvBθ_minus_i = lin_sys_loocv_IC(ΣθinvBθ, choleskyΣθ, validate) 
+
+            (Eθ, Bθ, _, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
             
-            Dθ_minus_i = Eθ - Bθ_minus_i * ΣθinvBθ_minus_i
-            Hθ_minus_i = Fx_i - Bθ_minus_i * Σθ_inv_X_minus_i
-            Cθ = Dθ_minus_i + Hθ_minus_i*((Fx_minus_i'*Σθ_inv_X_minus_i)\Hθ_minus_i') #O(p^3) operation, not bad if p is small/ How to update choleskyXΣX to get choleskyXΣX_minus_i?
-             #we refrain from calling the last expression Cθ_minus_i so it can be returned by this func as usual
-            m = Bθ_minus_i * Σθ_inv_y + Hθ_minus_i * βhat
-            #####
-            #don't update test_buffer!
+             Bθ_minus_i = @view Bθ[:, [1:validate-1; validate+1:end]] #discard ith entry 
+             Dθ_minus_i = Eθ - Bθ_minus_i * ΣθinvBθ_minus_i #Eθ is going to be 1 for 
+             Hθ_minus_i = Fx_i - Bθ_minus_i * Σθ_inv_X_minus_i
+             Cθ = Dθ_minus_i + Hθ_minus_i*((Fx_minus_i'*Σθ_inv_X_minus_i)\Hθ_minus_i') #O(p^3) operation, not bad if p is small/ How to update choleskyXΣX to get choleskyXΣX_minus_i?
+              #we refrain from calling the last expression Cθ_minus_i so it can be returned by this func as usual
+             m = Bθ_minus_i * Σθ_inv_y + Hθ_minus_i * βhat
+
+            #@info "ΣθinvBθ_minus_i", ΣθinvBθ_minus_i
+            #@info "Eθ", Eθ
+            #@info Bθ 
+            #@info Σθ_inv_y
+            #@info Hθ
+            #@info βhat
         end
-        return m[1], qtilde[1], Cθ[1]  #sigma_m
+        return m[1], qtilde[1], Cθ[1] #sigma_m
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
-        m, q, C = compute_qmC(x0, Fx0)
+        m, q, C  = compute_qmC(x0, Fx0)
+        #@warn "pushing to debug log"
+        #push!(btg.debug_log, (m, C, q))
         qC = q*C
         @assert n-p > 0
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
@@ -107,9 +103,16 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is a stable computation of the derivative of the tdist
     main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ);  
                     Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
-    pdf_deriv = (x0, Fx0, y0) -> compute(main_pdf_deriv, x0, Fx0, y0)
-    pdf = (x0, Fx0, y0) -> compute(main_pdf, x0, Fx0, y0) 
-    cdf = (x0, Fx0, y0) -> compute(main_cdf, x0, Fx0, y0)
+    
+    function pdf_deriv(x0, Fx0, y0) 
+        return compute(main_pdf_deriv, x0, Fx0, y0)
+    end
+    function pdf(x0, Fx0, y0)
+        return compute(main_pdf, x0, Fx0, y0) 
+    end
+    function cdf(x0, Fx0, y0)
+        return compute(main_cdf, x0, Fx0, y0)
+    end
 
     # parallel to compute, except used to compute derivatives w.r.t location
     # also calls compute_qmC and hence updates test buffers

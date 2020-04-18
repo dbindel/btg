@@ -111,15 +111,14 @@ end
 end
 
 if true
-
+    m = 3
+    n = 4
 println("testing fast LOOCV cross validation")
-qtildes_fast = zeros(1, 12)
-m = 3
-n = 4
+
 plt, axs = PyPlot.subplots(m, n)
 #figure(1)
 for j = 1:m*n
-    (pdf, cdf, dpdf) = solve(btg1, validate = j);  
+    (pdf, cdf, dpdf) = solve(btg1, validate = 2);  
     #a = y0 -> dpdf(x0, Fx0, y0); 
     b = y0 -> pdf(x0, Fx0, y0);
     c = y0 -> cdf(x0, Fx0, y0);
@@ -132,7 +131,6 @@ for j = 1:m*n
     axs[ind1, ind2].plot(x, y)
     axs[ind1, ind2].plot(x1, y1)
     axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
-    qtildes_fast[j] = btg1.validation_θλ_buffer_dict[(1589.3813645151845, 0.5873179542866175)].qtilde_minus_i
     #PyPlot.plot(x, y)
     #PyPlot.plot(x1, y1)
     #PyPlot.axvline(x =  getLabel(btg1.trainingData)[j])
@@ -150,13 +148,12 @@ println("naive LOOCV")
 
 plt, axs = PyPlot.subplots(m, n)
 #figure(1)
-qtildes_naive = similar(qtildes_fast)
+
 for j = 1:m*n
     x = getPosition(trainingData1)
     Fx = getCovariates(trainingData1)
     z = getLabel(trainingData1)
     
-
     cur_x = x[[1:j-1;j+1:end], :]
     cur_Fx = Fx[[1:j-1;j+1:end], :]
     cur_z = z[[1:j-1;j+1:end]]
@@ -167,10 +164,9 @@ for j = 1:m*n
 
     cur_td = trainingData(cur_x, cur_Fx, cur_z)
 
-    btg1 = btg(cur_td, rangeθ, rangeλ) #quadtype = ["SparseGrid", "MonteCarlo"])
-    qtildes_naive[j] = btg1.θλbuffer_dict[(1589.3813645151845, 0.5873179542866175)].qtilde
+    btg_cur = btg(cur_td, rangeθ, rangeλ) #quadtype = ["SparseGrid", "MonteCarlo"])
 
-    (pdf, cdf, dpdf) = solve(btg1);  
+    (pdf, cdf, dpdf) = solve(btg_cur);  
     #a = y0 -> dpdf(x0, Fx0, y0); 
     b = y0 -> pdf(x_j, Fx_j, y0);
     c = y0 -> cdf(x_j, Fx_j, y0);
@@ -180,8 +176,8 @@ for j = 1:m*n
     ind1 = Int64(ceil(j/n))
     ind2 = Int64(j - n*(floor((j-.1)/n)))
 
-    axs[ind1, ind2].plot(h1, h2)
-    axs[ind1, ind2].plot(h3, h4)
+    axs[ind1, ind2].plot(h1, h2, color = "red", width = 4.0, linestyle = ":")
+    axs[ind1, ind2].plot(h3, h4, color = "orange", width = 4.0, linestyle = ":")
     axs[ind1, ind2].axvline(x =  z_j)
     #PyPlot.plot(x, y)
     #PyPlot.plot(x1, y1)

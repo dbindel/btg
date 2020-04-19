@@ -76,7 +76,7 @@ Initialize validation buffers all at once
 """
 function init_validation_buffers(btg::btg, train_buffer_dict::Union{Dict{Array{T, 1}, train_buffer}, Dict{T, train_buffer}} where T<: Real, θλbuffer_dict::Union{Dict{Tuple{Array{T, 1}, T} where T<:Real , θλbuffer}, Dict{Tuple{T, T} where T<:Real , θλbuffer}},
     test_buffer_dict::Union{Dict{Array{T, 1} where T<: Real, test_buffer}, Dict{T where T<: Real, test_buffer}}, λbuffer_dict::Dict{T where T<:Real, λbuffer}, i::Int64)  
-    println("Initializing validation buffers...")  
+    #println("Initializing validation buffers...")  
     for key in keys(train_buffer_dict)
         cur_train_buf = train_buffer_dict[key]
         push!(btg.validation_train_buffer_dict, key => validation_train_buffer(key::Union{Array{T, 1}, T} where T<:Real, i, cur_train_buf, btg.trainingData))

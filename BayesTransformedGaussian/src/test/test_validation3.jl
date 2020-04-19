@@ -4,8 +4,10 @@ include("../btg.jl")
 include("../datasets/load_abalone.jl")
 i = 3 #LOOCV at this point
 
-ind = 350:370
-posx = 1:3 #
+#ind = 350:370
+ind = 1050:1097
+#posx = 1:3 #
+posx = 1:7
 posc = 1:1
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
@@ -21,7 +23,7 @@ x0 = reshape(data[pind, posx], 1, length(posx))
 #rangeθ = [100.0 200]
 rangeθ = [10.0 2000]
 rangeλ = [-1.0 1] #we will always used 1 range scale for lambda
-btg1 = btg(trainingData1, rangeθ, rangeλ) #quadtype = ["SparseGrid", "MonteCarlo"])
+btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
 #θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
 #λ1 = btg1.nodesWeightsλ.nodes[3]
 ##################################################################################################
@@ -63,7 +65,7 @@ btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ)
 (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
 a2 = y -> pdf_minus_i(x_i, Fx_i, y) 
 
-@assert equals(btg2.θλbuffer_dict, btg1.validation_θλ_buffer_dict) #do the computed buffers match up?
+#@assert equals(btg2.θλbuffer_dict, btg1.validation_θλ_buffer_dict) #do the computed buffers match up, only match if quadtype is Gaussian, regular grid, not monte carlo
 
 if false #plot
 figure(5)
@@ -123,7 +125,7 @@ end
 ###
 ###
 
-m = 4; n = 5
+m = 6; n = 8
 plt, axs = PyPlot.subplots(m, n)
 #figure(1)
 for j = 1:m*n
@@ -134,7 +136,7 @@ for j = 1:m*n
     (x, y) = plt_data(b1, .01, 1.2, 100)
 
     (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j)
-    btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ)
+    btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
     (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
     b2 = y -> pdf_minus_i(x_i, Fx_i, y) 
     (x1, y1) = plt_data(b2, .01, 1.2, 100)
@@ -142,7 +144,7 @@ for j = 1:m*n
     ind1 = Int64(ceil(j/n))
     ind2 = Int64(j - n*(floor((j-.1)/n)))
 
-    axs[ind1, ind2].plot(x, y, color = "red", linewidth = 4.0, linestyle = ":")
+    axs[ind1, ind2].plot(x, y, color = "red", linewidth = 2.0, linestyle = ":")
     axs[ind1, ind2].plot(x1, y1, color = "blue", linewidth = 1.0, linestyle = "--")
     axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
     #PyPlot.plot(x, y)

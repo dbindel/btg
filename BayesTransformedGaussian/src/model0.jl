@@ -126,7 +126,6 @@ function solve(btg::btg; validate = 0)
     end
     weightTensorGrid = weight_comp(btg; validate = validate)
     (pdf, cdf, dpdf, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate)
-    return pdf, cdf, dpdf, quantInfo, weightTensorGrid
 end
 
 """

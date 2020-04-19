@@ -1,14 +1,14 @@
-
+using Dates
 
 include("../btg.jl")
 include("../datasets/load_abalone.jl")
 i = 3 #LOOCV at this point
 
 #ind = 350:370
-ind = 2000:2199
+ind = 3000:3119
 #posx = 1:3 #
 posx = 1:7
-posc = 1:1
+posc = 1:7
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
 Fx = data[ind, posc] 
@@ -59,36 +59,47 @@ end
 m = 10; n=12
 plt, axs = PyPlot.subplots(m, n)
 #figure(1)
+before = Dates.now()
 for j = 1:m*n
     ind1 = Int64(ceil(j/n))
     ind2 = Int64(j - n*(floor((j-.1)/n)))
     println("iteration $j")
     if j <m*n
-        (pdf, cdf, dpdf) = solve(btg1, validate = j);  
+        #(pdf, cdf, dpdf) = solve(btg1, validate = j);  
         #a = y0 -> dpdf(x0, Fx0, y0); 
-        b1 = y0 -> pdf(x0, Fx0, y0);
-        c1 = y0 -> cdf(x0, Fx0, y0);
-        (x, y) = plt_data(b1, .01, 1.2, 100)
-        (xc, yc) = plt_data(c1, .01, 1.2, 100)
+        #b1 = y0 -> pdf(x0, Fx0, y0);
+        #c1 = y0 -> cdf(x0, Fx0, y0);
+        if false
+            (x, y) = plt_data(b1, .01, 1.2, 100)
+            (xc, yc) = plt_data(c1, .01, 1.2, 100)
+        end
         # (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j)
         # btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
         # (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
         # b2 = y -> pdf_minus_i(x_i, Fx_i, y) 
         # (x1, y1) = plt_data(b2, .01, 1.2, 100)
-        axs[ind1, ind2].plot(x, y, color = "red", linewidth = 2.0, linestyle = ":")
-        axs[ind1, ind2].plot(xc, yc, color = "orange", linewidth = 2.0, linestyle = ":")
+        if false
+                axs[ind1, ind2].plot(x, y, color = "red", linewidth = 2.0, linestyle = ":")
+                axs[ind1, ind2].plot(xc, yc, color = "orange", linewidth = 2.0, linestyle = ":")
+        end
         #axs[ind1, ind2].plot(x1, y1, color = "blue", linewidth = 1.0, linestyle = "--")
-        axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
+        
+        #axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
     else
-        println("annotating...")
+        #println("annotating...")
+        after = Dates.now()
+        elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
+
         qtype =  btg1.quadType
         axs[ind1, ind2].annotate(
         L"$\theta: $" * "$rangeθ" * "\n" *
         L"$\lambda: $" * "$rangeλ" * "\n" *
-        "quad: " * "$qtype \n" * 
-        "ind: " * "$ind", 
-        xy=[.1;.2],
-        fontsize=6.0)
+        "$qtype \n" * 
+        "ind: " * "$ind \n" * 
+        "x: " * "$posx " *", cov: " * "$posc\n" * 
+        "time: " * "$elapsedmin", 
+        xy=[.03;.03],
+        fontsize = 5.0)
         # *
         #L"$\lambda: $" * "$rangeλ" * ".\n" *
         #"quad: " * "$btg1.quadType",

@@ -2,10 +2,9 @@ using Dates
 
 include("../btg.jl")
 include("../datasets/load_abalone.jl")
-i = 3 #LOOCV at this point
 
 #ind = 350:370
-ind = 3000:3119
+ind = 3200:3247
 #posx = 1:3 #
 posx = 1:7
 posc = 1:7
@@ -55,37 +54,40 @@ end
 ### plotting 
 ###
 ###
+fast = false
+m = 6; n=8
 
-m = 10; n=12
+#plt, axs = PyPlot.subplots(m, n,figsize=[20,11])
 plt, axs = PyPlot.subplots(m, n)
+
 #figure(1)
 before = Dates.now()
+println("LOOCV type is fast?: $fast")
 for j = 1:m*n
     ind1 = Int64(ceil(j/n))
     ind2 = Int64(j - n*(floor((j-.1)/n)))
     println("iteration $j")
     if j <m*n
-        #(pdf, cdf, dpdf) = solve(btg1, validate = j);  
-        #a = y0 -> dpdf(x0, Fx0, y0); 
-        #b1 = y0 -> pdf(x0, Fx0, y0);
-        #c1 = y0 -> cdf(x0, Fx0, y0);
-        if false
+        if fast
+            (pdf, cdf, dpdf) = solve(btg1, validate = j);   
+            b1 = y0 -> pdf(x0, Fx0, y0);
+            c1 = y0 -> cdf(x0, Fx0, y0);
+            (x, y) = plt_data(b1, .01, 1.2, 100)
+            (xc, yc) = plt_data(c1, .01, 1.2, 100)
+        else
+            (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j)
+            btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
+            (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
+            b1 = y -> pdf_minus_i(x_i, Fx_i, y) 
+            c1 = y -> cdf_minus_i(x_i, Fx_i, y) 
             (x, y) = plt_data(b1, .01, 1.2, 100)
             (xc, yc) = plt_data(c1, .01, 1.2, 100)
         end
-        # (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j)
-        # btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
-        # (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
-        # b2 = y -> pdf_minus_i(x_i, Fx_i, y) 
-        # (x1, y1) = plt_data(b2, .01, 1.2, 100)
-        if false
-                axs[ind1, ind2].plot(x, y, color = "red", linewidth = 2.0, linestyle = ":")
-                axs[ind1, ind2].plot(xc, yc, color = "orange", linewidth = 2.0, linestyle = ":")
-        end
+        axs[ind1, ind2].plot(x, y, color = "red", linewidth = 2.0, linestyle = ":")
+        axs[ind1, ind2].plot(xc, yc, color = "orange", linewidth = 2.0, linestyle = ":")
         #axs[ind1, ind2].plot(x1, y1, color = "blue", linewidth = 1.0, linestyle = "--")
-        
-        #axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
-    else
+        axs[ind1, ind2].axvline(x =  getLabel(btg1.trainingData)[j])
+    else #do annotation in last box
         #println("annotating...")
         after = Dates.now()
         elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
@@ -105,9 +107,9 @@ for j = 1:m*n
         #"quad: " * "$btg1.quadType",
     end
 end
-for ax in axs
-    ax.set(xlabel="x-label", ylabel="y-label")
-end
+#for ax in axs
+#    ax.set(xlabel="x-label", ylabel="y-label")
+#end
 # Hide x labels and tick labels for top plots and y ticks for right plots.
 for ax in axs
     ax.label_outer()

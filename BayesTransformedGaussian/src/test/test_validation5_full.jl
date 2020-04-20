@@ -20,7 +20,7 @@ if filesize("test_validation5_full.txt") == 0
     close(io)
 end
 
-ind = 1:50
+ind = 1:200
 posx = 1:7
 posc = 1:3
 x = data[ind, posx] 
@@ -43,7 +43,6 @@ btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["SparseGrid", "Gaussian"
 (pdf, cdf, dpdf) = solve(btg1); #initialize training_buffer_dicts, solve once so can use fast techiques to extrapolate submatrix determinants, etc.
 
 
-
 """
 leave-one-out-training-data
 """
@@ -60,12 +59,15 @@ function lootd(td::AbstractTrainingData, i::Int64)
     return trainingData(x_minus_i, Fx_minus_i, z_minus_i), x_i, Fx_i, z_i
 end
 
+nrow = 6; ncol = 8
 y1_temp = Array{Float64, 1}(undef, 100)
 y2_temp = Array{Float64, 1}(undef, 100)
+y1_set = Array{Float64, 2}(undef, 100, ncol*nrow)
+y2_set = Array{Float64, 2}(undef, 100, ncol*nrow)
 xgrid = range(.01, stop=1.2, length=100)
 before = Dates.now()
 for j = 1:n
-    @info j
+    mod(j, 10) == 0 ? (@info j) : nothing
     if parsed_args["fast"]
         (pdf, cdf, dpdf) = solve(btg1, validate = j);   
         b1 = y0 -> pdf(x0, Fx0, y0);
@@ -79,6 +81,10 @@ for j = 1:n
     end
     y1_temp = b1.(xgrid)
     y2_temp = c1.(xgrid)
+    if j <= ncol*nrow
+        y1_set[:, j] = y1_temp
+        y2_set[:, j] = y2_temp
+    end
 end
 after = Dates.now()
 elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
@@ -86,3 +92,20 @@ elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 io = open("test_validation5_full.txt", "a") 
 write(io, "$(Dates.now())  ;    $ind      ;       $rangeθ    ;    $rangeλ   ;    $posx   ;   $posc  ;  $(parsed_args["fast"])  ;   $elapsedmin \n")
 close(io)
+
+## Plot
+PyPlot.close("all") #close existing windows
+plt, axs = PyPlot.subplots(nrow, ncol)
+PyPlot.suptitle("Cross Validation $(parsed_args["fast"])", fontsize=10)
+for j = 1:nrow*ncol
+    ind1 = Int64(ceil(j/ncol))
+    ind2 = Int64(j - ncol*(floor((j-.1)/ncol)))
+    axs[ind1, ind2].plot(xgrid, y1_set[:, j], color = "red", linewidth = 1.0, linestyle = "-")
+    axs[ind1, ind2].plot(xgrid, y2_set[:, j], color = "orange", linewidth = 1.0, linestyle = "-")
+    axs[ind1, ind2].axvline(x = getLabel(btg1.trainingData)[j])
+end
+# Hide x labels and tick labels for top plots and y ticks for right plots.
+for ax in axs
+    ax.label_outer()
+end
+PyPlot.savefig("figure/test_v5_ind_$(ind[1])_$(ind[end])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")

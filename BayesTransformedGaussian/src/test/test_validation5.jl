@@ -58,7 +58,7 @@ end
 nrow=6; ncol=8
 PyPlot.close("all") #close existing windows
 plt, axs = PyPlot.subplots(nrow, ncol)
-PyPlot.suptitle("Cross Validation $fast", fontsize=10)
+PyPlot.suptitle("Cross Validation $(parsed_args["fast"])", fontsize=10)
 #figure(1)
 before = Dates.now()
 for j = 1:nrow*ncol
@@ -66,7 +66,7 @@ for j = 1:nrow*ncol
     ind2 = Int64(j - ncol*(floor((j-.1)/ncol)))
     println("iteration $j")
     if j <nrow*ncol
-        if parsed_args.fast
+        if parsed_args["fast"]
             (pdf, cdf, dpdf) = solve(btg1, validate = j);   
             b1 = y0 -> pdf(x0, Fx0, y0);
             c1 = y0 -> cdf(x0, Fx0, y0);
@@ -110,4 +110,4 @@ for ax in axs
     ax.label_outer()
 end
 
-PyPlot.savefig("figure/test_validation5_$(parsed_args.fast).pdf")
+PyPlot.savefig("figure/test_validation5_$(parsed_args["fast"]).pdf")

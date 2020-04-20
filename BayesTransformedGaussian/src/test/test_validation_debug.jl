@@ -62,7 +62,7 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     #figure(1)
     before = Dates.now()
     println("LOOCV type is fast?: $fast")
-    for j = 1:m*n
+    for j = 8:8
         ind1 = Int64(ceil(j/n))
         ind2 = Int64(j - n*(floor((j-.1)/n)))
         println("iteration $j")
@@ -114,5 +114,5 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     end
 end
 
-test_LOOCV(btg1, 6, 10; fast = false)
+test_LOOCV(btg1, 6, 10; fast = true)
 

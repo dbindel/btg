@@ -120,6 +120,7 @@ end
 
 function solve(btg::btg; validate = 0)
     if validate != 0
+        #@info "num keys theta lambda buffer", length(keys(btg.θλbuffer_dict))
         #println("btg.n: ", btg.n)
         @assert validate > 0 && btg.n>=validate
         init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)

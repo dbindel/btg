@@ -10,11 +10,11 @@ function g!(storage, x)
     storage[2] = 200.0 * (x[2] - x[1]^2)
 end
 
-optimize(f, g!, [0.0, 0.0], LBFGS())
+res = optimize(f, g!, [0.0, 0.0], LBFGS())
  
 figure(1)
 x = collect(Float16, range(-1,length=100,stop=1));
 y = collect(Float16, range(-1,length=100, stop=1));
 z = hcat(x, y); z = mapslices(f, z, dims = 2)
 surf(x,y,z);
-scatter(.5, .5, 100)
+

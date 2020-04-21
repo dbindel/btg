@@ -219,7 +219,7 @@ mutable struct validation_λ_buffer
     end
 end
 
-function print(b::test_buffer)
+function print_test_buffer(b::test_buffer)
     println("Eθ: ", b.Eθ)
     println("Bθ: ", b.Bθ)
     println("ΣθinvBθ: ", b.ΣθinvBθ)
@@ -510,8 +510,6 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     train_buffer.n .+= k #number of incorporated points
     return nothing 
 end
-
-
 
 """
 Update test_buffer, which depends on testing data, training data, and train_buffer. 

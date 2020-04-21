@@ -40,6 +40,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         x2, y2 = getCovDimension(btg.trainingData), getCovDimension(btg.testingData)
         #@info "validate" validate
         if validate == 0
+            #@warn "not in validation mode"
             update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0 with USER INPUT
             update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer (which holds Dθ, Hθ, Cθ,...) with testingData
             #print((btg.test_buffer_dict[θ]))
@@ -47,6 +48,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             Bθ = btg.test_buffer_dict[θ].Bθ
             Hθ = btg.test_buffer_dict[θ].Hθ
             Cθ = btg.test_buffer_dict[θ].Cθ
+            Dθ = btg.test_buffer_dict[θ].Dθ
+
             #(_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
             #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
             ###############################################################
@@ -55,7 +58,10 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
             qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
-            #retrieve 
+            #
+            # temporary definition for testing
+            expr2 = [1]
+
         else # want to do validation instead
             Fx_i = btg.trainingData.Fx[validate:validate, :] #ith row of trainingData
             Fx_minus_i = btg.trainingData.Fx[[1:validate-1; validate+1:end], :] #all but ith row of trainingData
@@ -72,10 +78,16 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             
              Bθ_minus_i = @view Bθ[:, [1:validate-1; validate+1:end]] #discard ith entry 
              Dθ_minus_i = Eθ - Bθ_minus_i * ΣθinvBθ_minus_i #Eθ is going to be 1 for 
+            
              Hθ_minus_i = Fx_i - Bθ_minus_i * Σθ_inv_X_minus_i
-             Cθ = Dθ_minus_i + Hθ_minus_i*((Fx_minus_i'*Σθ_inv_X_minus_i)\Hθ_minus_i') #O(p^3) operation, not bad if p is small/ How to update choleskyXΣX to get choleskyXΣX_minus_i?
-              #we refrain from calling the last expression Cθ_minus_i so it can be returned by this func as usual
+             expr2 = Hθ_minus_i*((Fx_minus_i'*Σθ_inv_X_minus_i)\Hθ_minus_i')
+             Cθ = Dθ_minus_i + expr2 #O(p^3) operation, not bad if p is small/ How to update choleskyXΣX to get choleskyXΣX_minus_i?
+            
+             #we refrain from calling the last expression Cθ_minus_i so it can be returned by this func as usual
              m = Bθ_minus_i * Σθ_inv_y + Hθ_minus_i * βhat
+
+            #temporary definition for testing
+            Dθ = Dθ_minus_i
 
             #@info "ΣθinvBθ_minus_i", ΣθinvBθ_minus_i
             #@info "Eθ", Eθ
@@ -84,15 +96,29 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             #@info Hθ
             #@info βhat
         end
-        return m[1], qtilde[1], Cθ[1] #sigma_m
+        return m[1], qtilde[1], Cθ[1], βhat, Dθ, expr2, validate   #sigma_m
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
-        m, q, C  = compute_qmC(x0, Fx0)
+        m, q, C, βhat, Dθ, expr2  = compute_qmC(x0, Fx0)
         #@warn "pushing to debug log"
         #push!(btg.debug_log, (m, C, q))
         qC = q*C
-        @assert n-p > 0
+        try 
+            @assert Dθ[1]>0
+            @assert expr2[1]>0
+            @assert q[1] > 0
+            @assert C[1] > 0
+            @assert n-p > 0
+        catch e
+            @info "D_theta", Dθ[1]
+            @info "H(XsigmaX)'H", expr2[1]
+            @info "q", q
+            @info "C", C
+            @info "validate", validate
+            @info "θ", θ
+            @info "logdet choleskyΣθ", logdet(choleskyΣθ)
+        end
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
     end
@@ -103,7 +129,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is a stable computation of the derivative of the tdist
     main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ);  
                     Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
-    
+
+
     function pdf_deriv(x0, Fx0, y0) 
         return compute(main_pdf_deriv, x0, Fx0, y0)
     end
@@ -114,6 +141,45 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return compute(main_cdf, x0, Fx0, y0)
     end
 
+    """
+    Gradient of CDF w.r.t augmented (u, s) vector (u is for value, and y is for location)
+    """
+    function cdf_grad_us(x0, Fx0, y0)
+        m, q, C, βhat = compute_qmC(x0, Fx0)
+        qC = q*C
+        k = size(qC, 1)
+        gλy0 = btg.g(y0, λ)
+        dgλy0 = partialx(btg, y0, λ) 
+        arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
+        vanillat = LocationScale(0, 1, TDist(n-p))
+        cdf_eval =  Distributions.cdf.(vanillat, arg)
+        cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
+        #standard unpacking
+        x0 = reshape(x0, 1, length(x0))
+        #unpack pertinent quantities
+        Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
+        choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
+        choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
+        (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
+        (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+        (jacC, jacm) = intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Σθ_inv_y)
+        gλy0 = btg.g(y0, λ[1])
+        #we need to define covariance (sigma here ...)
+        #sigma is covariance sqrt(qC/(n-p))
+        qC = (q .* Cθ[1])
+        sigma = sqrt(qC/(n-p)) #covariance
+        dsigma = sqrt(q/(n-p)) .* 0.5 * Cθ[1]^(-1/2) .* jacC 
+        function Y(i, sigma, dsigma) 
+            return - jacm[i]/sigma + (gλy0 - m)/sigma^2 * dsigma[i]    
+        end
+        jacG = zeros(1, d) #1 x d
+        for i = 1:d 
+            jacG[i] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
+        end
+        return hcat(dgλy0,jacG)
+    end
+
+
     # parallel to compute, except used to compute derivatives w.r.t location
     # also calls compute_qmC and hence updates test buffers
     # Comes after pdf, cdf, pdf_deriv computations, because those are needed for current computation 
@@ -122,6 +188,9 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         qC = q*C
         k = size(qC, 1)
         gλy0 = btg.g(y0, λ)
+        dgλy0 = partialx(btg, y0, λ) 
+        d2gλy0 = partialxx(btg, y0, λ)
+
         arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
         vanillat = LocationScale(0, 1, TDist(n-p))
         cdf_eval =  Distributions.cdf.(vanillat, arg)
@@ -157,7 +226,31 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return Distributions.quantile(t, quant)
     end
     # q_fun = (x0, Fx0, q) -> (m, q, C = compute_qmC(x0, Fx0); invg(sqrt(q*C/(n-p))*tdistinvcdf(n-p, q)+m, λ))
-    return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
+    #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
+    return (pdf_deriv, pdf, cdf, cdf_grad_us)
+end
+
+function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Σθ_inv_y)::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
+    @assert typeof(θ)<:Array{T, 1} where T 
+    @assert length(θ) ==d
+    S = repeat(x0, n, 1) .- x # n x d 
+    #println("size of S: ", size(S))
+    jacB =   diagm(Bθ[:]) * S * diagm(- θ[:]) #n x d
+    #println("size of jacB: ", size(jacB))
+    #println("size of Bθ: ", size(Bθ))
+    #println("size of choleskyΣθ: ", size(choleskyΣθ))
+    #println("choleskyΣθ inv Bθ': ", size(choleskyΣθ \ Bθ'))
+    jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
+    #println("size of jacD: ", size(jacD))
+    #assuming linear polynomial basis
+    jacFx0 = vcat(zeros(1, d), diagm(ones(d))) #p x d
+    #println("size of Fx0: ", size(Fx0))
+    jacH = jacFx0' - jacB' * Σθ_inv_X #d x p
+    #println("size of jacH: ", size(jacH))
+    jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
+    jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
+    #return (jacB, jacD, jacFx0, jacC, jacm)
+    return jacC, jacm
 end
 
 
@@ -168,7 +261,9 @@ end
 function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_y, cdf_deriv, cdf_second_deriv, cdf_eval)
     x0 = reshape(x0, 1, length(x0))
     #unpack pertinent quantities
-    (_, Σθ_inv_X, _,  choleskyΣθ, choleskyXΣX) = unpack(btg.train_buffer_dict[θ])
+    Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
+    choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
+    choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
     (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
     (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
     #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(compute gradients)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -234,8 +329,11 @@ function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_
     hessC = hessD + 2*jacH*(choleskyXΣX\jacH') + 2*V #d x d
 
     #~~~~~~~~~~~~~~~~~~~~~~~~~(compute derivative and hessian of m)~~~~~~~~~~~~~~~~~~~~~~~~~~
+    @info "size(jacB')", size(jacB')
+    @info "size(Σθ_inv_y)",  size(Σθ_inv_y)
+    @info "size(jacH)", size(jacH)
+    @info " size(βhat)", size(βhat)
     jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
-
     hess_m = zeros(d, d)
     for i = 1:d
         for j = 1:d
@@ -283,6 +381,7 @@ function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_
         return e1 + e2 + e3 + e4 + e5
     end
     G = cdf_eval 
+
     jacG = zeros(1, d) #1 x d
     for i = 1:d 
         jacG[i] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
@@ -305,11 +404,9 @@ function compute_BO_derivs(btg::btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_
     # println("cdf_second_deriv: ", cdf_second_deriv)
     # return (cdf_eval, cdf_deriv, cdf_second_deriv)
 
-
     return (G, jacG, hess_G)
     #return (m, jacm', hess_m)
     #return (Bθ*(choleskyΣθ\Bθ'), 2*Bθ*(choleskyΣθ\jacB), 2 * jacB' * (choleskyΣθ\ jacB))
     #return (Dθ, jacD', hessD)
     #return (Cθ, jacC', hessC) #dimensions of jacobian needs to be correct with respect to input and output dimensinos
-    
 end

@@ -5,35 +5,6 @@ using Distances
 ### Box Constrained Minimization
 ###
 
-const charges = [[0, 0]] #fixed charges
-
-function lennardJones(x, y)
-    r = SqEuclidean()(x, y)
-    return (1-2*(r+1)^6)/(r+1)^12
-end
-
-function potential(charges::Array{Array{T, 1}, 1} where T<:Real)
-    function f(x)
-        s = 0
-        for c in charges
-            s = s + lennardJones(x, c) 
-        end
-        return s
-    end
-    return f
-end
-
-pfun = potential(charges)
-boundedpfun = x -> (val = pfun(x); val > 5.0 ? 5.0 : val)  
-
-figure(2)
-x = collect(Float64, range(-5, length = 500, stop = 5))
-y = collect(Float64, range(-5, length = 500, stop = 5))
-z = hcat(x, y); z = mapslices(boundedpfun, z, dims = 1)
-surf(x, y, z)
-
-
-if false 
 func(x) =  (1.0 - x[1])^2 + 100.0 * (x[2] - x[1]^2)^2
 
 figure(1)
@@ -63,4 +34,3 @@ dfc = TwiceDifferentiableConstraints(lx, ux)
 
 res = optimize(df, dfc, x0, IPNewton())
 
-end

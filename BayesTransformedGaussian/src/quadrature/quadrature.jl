@@ -44,7 +44,7 @@ struct nodesWeights
                 N = hcat([next!(s) for i = 1:num_pts]...)
                 W = ones(1, num_pts)
             elseif quadtype == "SparseGrid"
-                level = d < 7 ? 9 : 5
+                level = d < 7 ? 8 : 4
                 grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d)_l$(level).asc", ',', Float64)
                 num_pts = size(grids, 1)
                 W = reshape(grids[:, end], 1, num_pts)

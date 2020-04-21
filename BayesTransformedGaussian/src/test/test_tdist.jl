@@ -20,6 +20,7 @@ include("../model0.jl") #buffers, datastructs, several auxiliary
 include("../computation/finitedifference.jl")                                                                
 include("../computation/tdist.jl") #model0 and buffer0                             
 #################################################################################
+using Plots
 
 df = DataFrame(CSV.File("../datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
@@ -28,10 +29,10 @@ normalizing_constant = maximum(target)
 target = target/normalizing_constant #normalization
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~(to test or not to test)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-test_btg1 = true
+test_btg1 = false
 test_btg2 = true
-test_btg3 = true
-test_btg4 = true #weird finite difference behavior when n >1000
+test_btg3 = false
+test_btg4 = false #weird finite difference behavior when n >1000
 
 
 
@@ -161,7 +162,7 @@ btg2 = btg(trainingData1, rangeθ, rangeλ)
 λ2 = btg1.nodesWeightsλ.nodes[3]
 ##################################################################################################
 
-if true  #test comp_tdist for btg2
+if false  #test comp_tdist for btg2
     (dpdf, pdf, cdf) = comp_tdist(btg2, θ2, λ2) 
     dpdf_fixed = y0 -> dpdf(x0, Fx0, y0) 
     pdf_fixed = y0 -> pdf(x0, Fx0, y0)
@@ -169,7 +170,7 @@ if true  #test comp_tdist for btg2
     a = pdf_fixed
     b = cdf_fixed
     c = dpdf_fixed
-    plot_multiple(a, b, c) #plot pdf, cdf, dpdf
+    #plot_multiple(a, b, c) #plot pdf, cdf, dpdf
     (_, _, plt1, pol1) = checkDerivative(a, c, 0.5, nothing, 3, 9, 10) #function first, then derivative
     (_, _, plt2, pol2) = checkDerivative(b, a, 0.5, nothing, 3, 9, 10) #function first, then derivative
     @testset "comp_tdist2" begin
@@ -178,7 +179,7 @@ if true  #test comp_tdist for btg2
     end
 end
 
-if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
+if false #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
     #rangeθ = [2.0 5; 4 7; 5 10]  #number of length scales is height of rangeθ
     (pdf, cdf, dpdf) = solve(btg2)  
     a = y0 -> dpdf(x0, Fx0, y0) 
@@ -202,9 +203,9 @@ if true #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
 end
 
 
-if true #test derivatives of location, and derivatives of auxiliary functions w.r.t location
+if false #test derivatives of location, and derivatives of auxiliary functions w.r.t location
     ### test jacobian and Hessian of C, D, m, etc.
-    @testset "location derivs in btg2" begin  
+    #@testset "location derivs in btg2" begin  
         Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
         y0 = .5
         (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, λ2)      
@@ -214,14 +215,44 @@ if true #test derivatives of location, and derivatives of auxiliary functions w.
         init_x = x[1:1, :] + rand(1, length(posx)) .* 1e-3
         #println(size(init_x))
         (_, _, plt1, pol1) = checkDerivative(A, B, init_x, nothing, 2, 5, 10) #first arg is function, second arg is derivative
-        @test coeffs(pol1)[end] > 2 - 3e-1
+        #@test coeffs(pol1)[end] > 2 - 3e-1
+        @assert coeffs(pol1)[end] > 2 - 3e-1
+        
         println("loc deriv pol1: ", pol1)
         display(plt1)
         (_, _, plt2, pol2) = checkDerivative(A, B, init_x, C, 2, 6, 10) #first arg is function, second arg is derivative
-        @test coeffs(pol2)[end] > 3 - 3e-1
+        #@test coeffs(pol2)[end] > 3 - 3e-1
+        @assert coeffs(pol2)[end] > 3 - 3e-1
+        
         println("loc deriv pol2: ", pol2)
         display(plt2)
-    end
+    #end
+end
+
+if true #test derivatives of new function 
+    println("test derivative of cdf w.r.t augmented value-location vector")
+    #v is augmented vector 
+        Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
+        
+        (_, cdf, _, cdf_grad_us) = comp_tdist(btg2, θ2, λ2)    
+        A = v -> cdf(v[2:end], Fx0(x0), v[1])
+        B = v -> cdf_grad_us(v[2:end], Fx0(x0), v[1])
+    
+        init_v = hcat(0.5, x[1:1, :] + rand(1, length(posx)) .* 1e-2)
+
+        #println(size(init_x))
+        (_, _, plt1, pol1) = checkDerivative(A, B, init_v, nothing, 2, 5, 10) #first arg is function, second arg is derivative
+        #@test coeffs(pol1)[end] > 2 - 3e-1
+        @assert coeffs(pol1)[end] > 2 - 3e-1
+        println("loc deriv pol1: ", pol1)
+        display(plt1)
+        (_, _, plt2, pol2) = checkDerivative(A, B, init_x, C, 2, 6, 10) #first arg is function, second arg is derivative
+        #@test coeffs(pol2)[end] > 3 - 3e-1
+        @assert coeffs(pol2)[end] > 3 - 3e-1
+        
+        println("loc deriv pol2: ", pol2)
+        display(plt2)
+    #end
 end
 
 

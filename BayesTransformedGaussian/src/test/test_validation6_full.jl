@@ -15,17 +15,19 @@ parsed_args = parse_args(ARGS, s)
 
 if filesize("test_validation5_full.txt") == 0
     # write the setting headers
-    io = open("test_validation5_full.txt", "w") 
+    io = open("test_validation6_full.txt", "w") 
     write(io, "Time         ;    ind      ;       θ    ;    λ   ;    x   ;   cov  ;  fast  ;   elapsedmin \n")
     close(io)
 end
 
-ind = 1:400
+ind = 1:100
 posx = 1:7
 posc = 1:3
 x = data[ind, posx] 
 Fx = data[ind, posc] 
 y = float(target[ind])
+trainingData1 = trainingData(x, Fx, y) #training data used for testing various functions
+d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
 
 #prediction data
 pind = 1:1
@@ -34,14 +36,11 @@ x0 = reshape(data[pind, posx], 1, length(posx))
 
 #parameter setting
 rangeθ = [10.0 1000]
+rangeθm = repeat(rangeθ, d, 1)
 rangeλ = [0. 3.] #we will always used 1 range scale for lambda
 
-
-trainingData1 = trainingData(x, Fx, y) #training data used for testing various functions
-d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
-btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["SparseGrid", "Gaussian"])
+btg1 = btg(trainingData1, rangeθm, rangeλ; quadtype = ["SparseGrid", "Gaussian"])
 (pdf, cdf, dpdf) = solve(btg1); #initialize training_buffer_dicts, solve once so can use fast techiques to extrapolate submatrix determinants, etc.
-
 
 """
 leave-one-out-training-data
@@ -74,7 +73,7 @@ for j = 1:n
         c1 = y0 -> cdf(x0, Fx0, y0);
     else
         (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j)
-        btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["SparseGrid", "Gaussian"])
+        btg2 = btg(trainingdata_minus_i, rangeθm, rangeλ; quadtype = ["SparseGrid", "Gaussian"])
         (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
         b1 = y -> pdf_minus_i(x_i, Fx_i, y) 
         c1 = y -> cdf_minus_i(x_i, Fx_i, y) 
@@ -82,6 +81,7 @@ for j = 1:n
     y1_temp = b1.(xgrid)
     y2_temp = c1.(xgrid)
     if j <= ncol*nrow
+        # save for plot
         y1_set[:, j] = y1_temp
         y2_set[:, j] = y2_temp
     end
@@ -89,7 +89,7 @@ end
 after = Dates.now()
 elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 
-io = open("test_validation5_full.txt", "a") 
+io = open("test_validation6_full.txt", "a") 
 write(io, "$(Dates.now())  ;    $ind      ;       $rangeθ    ;    $rangeλ   ;    $posx   ;   $posc  ;  $(parsed_args["fast"])  ;   $elapsedmin \n")
 close(io)
 
@@ -108,4 +108,4 @@ end
 for ax in axs
     ax.label_outer()
 end
-PyPlot.savefig("figure/test_v5_ind_$(ind[1])_$(ind[end])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
+PyPlot.savefig("figure/test_v6_ind_$(ind[1])_$(ind[end])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")

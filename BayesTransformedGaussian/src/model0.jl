@@ -184,19 +184,19 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     R = CartesianIndices(weightsTensorGrid)
     for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
         (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
-        (dpdf, pdf, cdf, _, m, sigma_m, quantile_fun) = comp_tdist(btg, θ, λ; validate = validate)
+        (dpdf, pdf, cdf, _, q_fun) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf
-        tgridm[I] = m
-        tgridsigma_m[I] = sigma_m
-        tgridquantile[I] = quantile_fun # function of (x0, Fx0, q)
+        # tgridm[I] = m
+        # tgridsigma_m[I] = sigma_m
+        tgridquantile[I] = q_fun # function of (x0, Fx0, q)
     end
     grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = generate_view(grid_pdf_deriv, nt1, nt2, nl2, quadType)
     grid_pdf = similar(weightsTensorGrid); view_pdf = generate_view(grid_pdf, nt1, nt2, nl2, quadType)
     grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf, nt1, nt2, nl2, quadType)
-    grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m, nt1, nt2, nl2, quadType)
-    grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m, nt1, nt2, nl2, quadType)
+    # grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m, nt1, nt2, nl2, quadType)
+    # grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m, nt1, nt2, nl2, quadType)
     grid_quantile = similar(weightsTensorGrid); view_quantile = generate_view(grid_quantile, nt1, nt2, nl2, quadType)
 
     function evalgrid!(f, view, x0, Fx0...)
@@ -209,8 +209,8 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     evalgrid_dpdf!(x0, Fx0, y0) = evalgrid!(tgridpdfderiv, view_pdf_deriv, x0, Fx0, y0)
     evalgrid_pdf!(x0, Fx0, y0) = evalgrid!(tgridpdf, view_pdf, x0, Fx0, y0)
     evalgrid_cdf!(x0, Fx0, y0) = evalgrid!(tgridcdf, view_cdf, x0, Fx0, y0)
-    evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
-    evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
+    # evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
+    # evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
     evalgrid_quantile!(x0, Fx0, q) = evalgrid!(tgridquantile, view_quantile, x0, Fx0, q)
 
     function checkInput(x0, Fx0, y0)
@@ -227,15 +227,15 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     cdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
     
     # compute estimated quantile
-    EY = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))
-    EY2 = (x0, Fx0) -> (evalgrid_sigma_m!(x0, Fx0); dot(grid_sigma_m, weightsTensorGrid))
-    quantile_range = (x0, Fx0, q) -> (evalgrid_quantile!(x0, Fx0, q); grid_quantile)
-
-    VarY =  (x0, Fx0) -> EY2(x0, Fx0) - (EY(x0, Fx0))^2
-    v = btg.trainingData.n - btg.trainingData.p
-    sigma_Y = (x0, Fx0) -> sqrt(VarY(x0, Fx0) * (v-2)/v)
-    quant_estimt = (x0, Fx0, q) -> sigma_Y(x0, Fx0) * tdistinvcdf(v, q) + EY(x0, Fx0)
-    quantInfo = (quant_estimt, EY, EY2, sigma_Y, quantile_range)
+    # EY = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))
+    # EY2 = (x0, Fx0) -> (evalgrid_sigma_m!(x0, Fx0); dot(grid_sigma_m, weightsTensorGrid))
+    # VarY =  (x0, Fx0) -> EY2(x0, Fx0) - (EY(x0, Fx0))^2
+    # v = btg.trainingData.n - btg.trainingData.p
+    # sigma_Y = (x0, Fx0) -> sqrt(VarY(x0, Fx0) * (v-2)/v)
+    # quant_estimt = (x0, Fx0, q) -> sigma_Y(x0, Fx0) * tdistinvcdf(v, q) + EY(x0, Fx0)
+    quantile_range = (x0, Fx0, q) -> (evalgrid_quantile!(x0, Fx0, q); (minimum(grid_quantile), maximum(grid_quantile)))
+    quantInfo = quantile_range
+    # quantInfo = (quant_estimt, EY, EY2, sigma_Y, quantile_range)
     
     return (pdf, cdf, dpdf, quantInfo) 
 end

@@ -92,10 +92,19 @@ function credible_interval(cdf::Function, quantbound::Function, support::Array{T
                             pdf=nothing, pdf_deriv=nothing, wp::T=.95) where T<:Float64
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
-    lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1]
+    lower_quant = lower_qp # random initialization
+    try 
+        lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1] 
+    catch err
+        wp = .9
+        lower_qp = (1 - wp) / 2
+        upper_qp = 1 - lower_qp
+        lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1] 
+        @warn "Can't compute 95% credible intervel, do $(Int(wp*100))% instead."
+    end
     upper_quant = quantile(cdf, quantbound, support; p=upper_qp)[1]
     err = abs(cdf(upper_quant) -  cdf(lower_quant) - wp)/wp
-    return [lower_quant, upper_quant], err
+    return [lower_quant, upper_quant], wp, err
 end
 
 function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}, ::Val{:narrow}; 

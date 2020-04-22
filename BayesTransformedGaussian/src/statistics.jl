@@ -4,7 +4,7 @@ using Roots
 using StatsFuns
 
 # import Statistics: median, pdf, cdf
-"pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support"
+"pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support and check if pdf is proper"
 function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quantbound::Function) where T<:Float64
     quantbound_fixed(p) = quantbound(x0, Fx0, p) 
     pdf_fixed(y) = pdf(x0, Fx0, y)
@@ -60,20 +60,20 @@ compute median, quantile, mode, symmetric/narrowest credible interval.
 Warning: only for normalized values
 """
 function median(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing) where T<:Float64
-    (med, err) = quantile(cdf, quantbound, support)
-    return (med, err)
+    med, err = quantile(cdf, quantbound, support)
+    return med, err, bound
 end
 
 function quantile(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing, p::T=.5) where T<:Float64
+    bound = support
     try 
       bound = quantbound(p)
     catch err
-      bound = support
     end
     quant = fzero(y0 -> cdf(y0) - p, bound[1], bound[2]) 
     err = abs(p-cdf(quant))/p
     # status = err < 1e-5 ? 1 : 0
-    return (quant, err)
+    return quant, err, bound
 end
 
 function mode(pdf::Function, support::Array{T,1}; cdf = nothing, pdf_deriv=nothing) where T<:Float64
@@ -95,7 +95,7 @@ function credible_interval(cdf::Function, quantbound::Function, support::Array{T
     lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1]
     upper_quant = quantile(cdf, quantbound, support; p=upper_qp)[1]
     err = abs(cdf(upper_quant) -  cdf(lower_quant) - wp)/wp
-    return ([lower_quant, upper_quant], err)
+    return [lower_quant, upper_quant], err
 end
 
 function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}, ::Val{:narrow}; 

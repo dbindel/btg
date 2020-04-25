@@ -24,3 +24,8 @@ BayesTransformedGaussian/src/test/figure/test_validation5_false.pdf
 BayesTransformedGaussian/src/test/figure/test_validation4.pdf
 BayesTransformedGaussian/src/test/test_validation5_full.txt
 BayesTransformedGaussian/src/test/Test_quantile.ipynb
+BayesTransformedGaussian/src/experiment/test_writelog.jl
+BayesTransformedGaussian/src/experiment/Test_writelog.txt
+BayesTransformedGaussian/src/experiment/Test_gp.ipynb
+BayesTransformedGaussian/src/experiment/Test_exp_abalone.ipynb
+BayesTransformedGaussian/src/experiment/Test_exp_abalone.ipynb

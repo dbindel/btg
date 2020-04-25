@@ -10,13 +10,13 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
     pdf_fixed(y) = pdf(x0, Fx0, y)
     cdf_fixed(y) = cdf(x0, Fx0, y)
     dpdf_fixed(y) = dpdf(x0, Fx0, y)
-    support = [.01, 5.]
+    support = [.1, 5.]
     function support_comp!(pdf, support)
       current = pdf(support[1])
       for i in 1:5
         next = pdf(support[1]/5)
         if next < current
-          support[1] /= 5
+          support[1] /= 10
         else
           break
         end

@@ -4,7 +4,7 @@ Creates view object for grid
 function generate_view(grid, nt1::Int64, nt2::Int64, nl2::Int64, quadType::Array{String})
     if quadType == ["Gaussian", "Gaussian"] # 3d grid
         view_grid = @view grid[[1:nt2 for i = 1:nt1]..., 1:nl2]
-    elseif (endswith(quadType[1], "MonteCarlo") && endswith(quadType[2], "MonteCarlo")) # 1d grid
+    elseif (endswith(quadType[1], "Carlo") && endswith(quadType[2], "Carlo")) # 1d grid
         view_grid = @view grid[:]
     else # 2d grid
         view_grid = @view grid[:,:]
@@ -31,7 +31,7 @@ function tgrids(nt1::Int64, nt2::Int64, nl2::Int64, quadType::Array{String}, wei
         tgridsigma_m = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridquantile = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid)) # store quantile of each T component
 
-    elseif endswith(quadType[1], "MonteCarlo") && endswith(quadType[2], "MonteCarlo")
+    elseif endswith(quadType[1], "Carlo") && endswith(quadType[2], "Carlo")
         tgridpdfderiv = Array{Function, 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
         tgridpdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridcdf = Array{Function, 1}(undef, Base.size(weightsTensorGrid))

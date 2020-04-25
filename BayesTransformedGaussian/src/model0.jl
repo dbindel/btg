@@ -56,10 +56,10 @@ mutable struct btg
         @assert typeof(quadtype)<:Array{String,1}
         @assert typeof(transform)<: NonlinearTransform
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
-        nodesWeightsθ = nodesWeights(rangeθ, quadtype[1]; num_pts = 12, num_MC = 400)
-        nodesWeightsλ = nodesWeights(rangeλ, quadtype[2]; num_pts = 12, num_MC = 400)
+        nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 400)
+        nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 400)
         λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
-        train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
+        train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
         test_buffer_dict =  init_test_buffer_dict(nodesWeightsθ, train_buffer_dict) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances
         θλbuffer_dict = init_θλbuffer_dict(nodesWeightsθ, nodesWeightsλ, trainingData, λbuffer_dict, train_buffer_dict, quadtype) #Stores qtilde, βhat, Σθ_inv_y
         validation_train_buffer_dict = init_validation_train_buffer_dict(nodesWeightsθ) #empty dict, input is used to determine dictionary type

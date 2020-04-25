@@ -49,15 +49,16 @@ function plot_distribution(pdf, median, y0_true; CI=nothing, mytitle="Posterior 
         b += 0.5 
     end
     xgrid = range(1e-2, stop=b, length=100)
-    pgrid = pdf.(xgrid);
-    PyPlot.plot(xgrid, pgrid, label = "pdf(y)")
+    ygrid = pdf.(xgrid);
+    PyPlot.plot(xgrid, ygrid, label = "pdf(y)")
     PyPlot.vlines(median, 0, pdf(median), label = "median",  colors = "b")
     PyPlot.vlines(y0_true, 0, pdf(y0_true), label = "true value",  colors = "r")
     # plot CI
     if CI != nothing
-        CI_x_range = range(CI[1], stop = CI[2], step = 0.01)
-        CI_y_range = pdf.(CI_x_range)
-        PyPlot.fill_between(CI_x_range, 0, CI_y_range, alpha = 0.3, label = "95% confidence interval")
+        CI_id = (xgrid .> CI[1]) .* (xgrid .< CI[2])
+        CI_xrange = vcat(CI1[1], xgrid[CI_id], CI1[2])
+        CI_yrange = vcat(pdf(CI[1]), ygrid[CI_id], pdf(CI[2]))
+        PyPlot.fill_between(CI_xrange, 0, CI_yrange, alpha = 0.3, label = "95% confidence interval")
     end
     PyPlot.legend(fontsize=8)
     PyPlot.grid()

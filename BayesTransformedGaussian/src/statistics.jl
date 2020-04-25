@@ -10,13 +10,13 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
     pdf_fixed(y) = pdf(x0, Fx0, y)
     cdf_fixed(y) = cdf(x0, Fx0, y)
     dpdf_fixed(y) = dpdf(x0, Fx0, y)
-    support = [.1, 5.]
+    support = [.01, 5.]
     function support_comp!(pdf, support)
       current = pdf(support[1])
-      for i in 1:14
-        next = pdf(support[1]/10)
+      while i in 1:5
+        next = pdf(support[1]/5)
         if next < current
-          support[1] /= 10
+          support[1] /= 5
         else
           break
         end
@@ -25,9 +25,9 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
       while pdf(support[2]) > 1e-6 
         support[2] *= 1.2
       end
-      # should make sure CDF(support[2]) - CDF(support[1]) > .96 to make 95% CI possible
+      # should make sure CDF(support[2]) - CDF(support[1]) > .97 to make 95% CI possible
       INT = cdf_fixed(support[2]) - cdf_fixed(support[1])
-      @assert INT > .95 "pdf integral $INT"
+      @assert INT > .97 "pdf integral $INT"
       return nothing
     end
     support_comp!(pdf_fixed, support)
@@ -66,10 +66,10 @@ end
 
 function quantile(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing, p::T=.5) where T<:Float64
     bound = support
-    try 
-      bound = quantbound(p)
-    catch err
-    end
+    # try 
+    #   bound = quantbound(p)
+    # catch err
+    # end
     quant = fzero(y0 -> cdf(y0) - p, bound[1], bound[2]) 
     err = abs(p-cdf(quant))/p
     # status = err < 1e-5 ? 1 : 0

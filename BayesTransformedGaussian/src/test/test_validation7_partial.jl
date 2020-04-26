@@ -1,9 +1,14 @@
 # full test of fast and naive validation 
 using Dates
 using ArgParse
+using Random
 
 include("../btg.jl")
 include("../datasets/load_abalone.jl")
+# shuffle data
+ind_shuffle = randperm(MersenneTwister(1234), size(data, 1)) 
+data = data[ind_shuffle, :]
+target = target[ind_shuffle]
 
 s = ArgParseSettings()
 @add_arg_table! s begin
@@ -13,9 +18,9 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 
-if filesize("test_validation5_full.txt") == 0
+if filesize("test_validation7_partial.txt") == 0
     # write the setting headers
-    io = open("test_validation6_full.txt", "w") 
+    io = open("test_validation7_partial.txt", "w") 
     write(io, "Time         ;    ind      ;       θ    ;    λ   ;    x   ;   cov  ;  fast  ;   elapsedmin \n")
     close(io)
 end
@@ -65,7 +70,7 @@ y1_set = Array{Float64, 2}(undef, 100, ncol*nrow)
 y2_set = Array{Float64, 2}(undef, 100, ncol*nrow)
 xgrid = range(.01, stop=1.2, length=100)
 before = Dates.now()
-for j = 1:n
+for j = 1:nrow*ncol
     mod(j, 10) == 0 ? (@info j) : nothing
     if parsed_args["fast"]
         (pdf, cdf, dpdf) = solve(btg1, validate = j);   
@@ -89,7 +94,7 @@ end
 after = Dates.now()
 elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 
-io = open("test_validation6_full.txt", "a") 
+io = open("test_validation7_partial.txt", "a") 
 write(io, "$(Dates.now())  ;    $ind      ;       $rangeθ    ;    $rangeλ   ;    $posx   ;   $posc  ;  $(parsed_args["fast"])  ;   $elapsedmin \n")
 close(io)
 
@@ -108,4 +113,4 @@ end
 for ax in axs
     ax.label_outer()
 end
-PyPlot.savefig("figure/test_v6_ind_$(ind[1])_$(ind[end])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
+PyPlot.savefig("figure/test_v7_ind_$(ind[1])_$(ind[end])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")

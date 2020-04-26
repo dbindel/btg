@@ -60,7 +60,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
             #
             # temporary definition for testing
-            expr2 = [1]
+            expr2 = [1] 
 
         else # want to do validation instead
             Fx_i = btg.trainingData.Fx[validate:validate, :] #ith row of trainingData
@@ -262,8 +262,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     #cdf_prime_s = (x0, Fx0, y0) -> compute_higher_derivs(main_cdf_prime_s, ...)#gradient of B(s), X0(s), D(s), H(s)
     #cdf_hessian = (x0, Fx0, y0) -> compute_higher #use results from cdf_prime_s and main_pdf_deriv
 
-    m = (x0, Fx0) -> hquadrature(y0 -> y0 * pdf(x0, Fx0, y0), 0, 2)[1]
-    Ex2 = (x0, Fx0) -> hquadrature(y0 -> y0^2 * pdf(x0, Fx0, y0), 0, 2)[1]
+    # m = (x0, Fx0) -> hquadrature(y0 -> y0 * pdf(x0, Fx0, y0), 0, 2)[1]
+    # Ex2 = (x0, Fx0) -> hquadrature(y0 -> y0^2 * pdf(x0, Fx0, y0), 0, 2)[1]
     # m = (x0, Fx0) -> compute_qmC(x0, Fx0)[1] 
     # sigma_m = (x0, Fx0) -> compute_qmC(x0, Fx0)[3] 
 
@@ -271,9 +271,9 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     function q_fun(x0, Fx0, quant)
         m, q, C = compute_qmC(x0, Fx0)
         t = LocationScale(m, sqrt(q*C/(n-p)), TDist(n-p))
-        return Distributions.quantile(t, quant)
+        quant_tdist = Distributions.quantile(t, quant)
+        return invg(quant_tdist, λ)
     end
-    # q_fun = (x0, Fx0, q) -> (m, q, C = compute_qmC(x0, Fx0); invg(sqrt(q*C/(n-p))*tdistinvcdf(n-p, q)+m, λ))
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
     return (pdf_deriv, pdf, cdf, cdf_grad_us, m, Ex2, q_fun)
 end

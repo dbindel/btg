@@ -1,0 +1,30 @@
+         Time            ;    ind_train  ;  ind_test   ;            quadtype            ;     rangeθ    ;    rangeλ   ;  CI accuracy ;   error_abs   ;  error_sq   ; -log(p(y))  ;  failed id 
+2020-04-25T14:00:59.496  ;    1:200    ;   1001:1030   ; ["SparseCarlo", "SparseCarlo"] ;   [10.0 1000.0]   ;  [-1.0 1.0] ;   0.9333333333333333    ;  2.9691971991088915   ;  14.098494448005281   ;   40.18671922407129   ;  Any[]  
+2020-04-25T15:24:49.509  ;    1:400    ;   1001:1100   ; ["SparseCarlo", "SparseCarlo"] ;   [10.0 1000.0]   ;  [-1.0 1.0] ;   0.85    ;  2.3062722402768414   ;  9.084949777251753   ;   81.58467652644921   ;  Any[]  
+2020-04-25T16:09:58.121  ;    1:200    ;   1001:1100   ; ["SparseCarlo", "SparseCarlo"] ;   [0.125 1000.0]   ;  [-1.0 1.0] ;   0.88    ;  1.8852902253219472   ;  6.804255102374701   ;   49.793505059219925   ;  Any[]  
+2020-04-25T17:03:06.83  ;    1:200    ;   1001:1100   ; ["SparseCarlo", "SparseCarlo"] ;   [0.125 1000.0]   ;  [-2.0 1.5] ;   0.8775510204081632    ;  1.9119650453873727   ;  6.9618134701107275   ;   43.11747548166574   ;  Any[88, 96]  
+
+2020-04-25T18:39:36.598 
+Data set: Abalone   
+    id_train:  1:200;  id_test:  1001:1100   
+BTG model:  
+    ["SparseCarlo", "SparseCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.5] 
+BTG test results: 
+    credible intervel accuracy percentage:    0.88000000     
+    mean absolute error:                      1.88484169   
+    mean squared error:                       6.87880868 
+    mean negative log predictive density:    51.40754423   
+    Failed index in credible intervel:       Any[] 
+
+2020-04-25T19:20:49.859 
+Data set: Abalone   
+    id_train:  1:200;  id_test:  1001:1100   
+BTG model:  
+    ["SparseCarlo", "SparseCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.0] 
+BTG test results: 
+    credible intervel accuracy percentage:    0.88000000     
+    mean absolute error:                      1.89479966   
+    mean squared error:                       6.82172137 
+    mean negative log predictive density:    44.16070780   
+    Failed index in credible intervel:       Any[] 
+

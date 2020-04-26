@@ -13,7 +13,7 @@ end
 parsed_args = parse_args(ARGS, s)
 
 
-ind = 3000:3100
+ind = 1:50
 posx = 1:7
 posc = 1:3
 x = data[ind, posx] 

@@ -7,9 +7,12 @@ function get_btg_iterator(nwθ::nodesWeights, nwλ::nodesWeights, quadType::Arra
     nt2 = nwθ.num #number of theta quadrature nodes
     nl1 = nwλ.d   #number of dimensions of lambda 
     nl2 = nwλ.num #number of lambda quadrature nodes
-    if endswith(quadType[1], "MonteCarlo") && endswith(quadType[2], "MonteCarlo")
+    if endswith(quadType[1], "Carlo") && endswith(quadType[2], "Carlo")
         weightsTensorGrid = Array{Float64, 1}(undef, nt2) 
         R = CartesianIndices(weightsTensorGrid)
+        if quadType == ["SparseCarlo", "SparseCarlo"]
+            weightsTensorGrid = nwθ.weights[:]
+        end   
     elseif quadType == ["Gaussian", "Gaussian"]
         weightsTensorGrid = Array{Float64, nt1+nl1}(undef, Tuple(vcat([nt2 for i = 1:nt1], [nl2 for i = 1:nl1]))) #initialize tensor grid
         R = CartesianIndices(weightsTensorGrid)
@@ -32,7 +35,7 @@ Takes in I and interprets it in the context of quadtype pair and (θ, λ)-nodeWe
 Returns (θ, λ) index slices (r1 and r2) and (θ, λ) nodes (t1 and t2)
 """
 function get_index_slices(nwθ::nodesWeights, nwλ::nodesWeights, quadType::Array{String,1}, I)
-    r1 = (endswith(quadType[1], "MonteCarlo") && endswith(quadType[2], "MonteCarlo")) ? I : Tuple(I)[1:end-1] #first n-1 coords or everything
+    r1 = (endswith(quadType[1], "Carlo") && endswith(quadType[2], "Carlo")) ? I : Tuple(I)[1:end-1] #first n-1 coords or everything
     r2 = Tuple(I)[end] #last coord
     t1 = quadType[1] == "Gaussian" ? getNodeSequence(getNodes(nwθ), r1) : getNodes(nwθ)[:, r1[1]] #theta node combo
     t1 = length(t1) == 1 ? t1[1] : t1

@@ -56,10 +56,10 @@ mutable struct btg
         @assert typeof(quadtype)<:Array{String,1}
         @assert typeof(transform)<: NonlinearTransform
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
-        nodesWeightsθ = nodesWeights(rangeθ, quadtype[1]; num_pts = 12, num_MC = 400)
-        nodesWeightsλ = nodesWeights(rangeλ, quadtype[2]; num_pts = 12, num_MC = 400)
+        nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 400)
+        nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 400)
         λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
-        train_buffer_dict  = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
+        train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
         test_buffer_dict =  init_test_buffer_dict(nodesWeightsθ, train_buffer_dict) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances
         θλbuffer_dict = init_θλbuffer_dict(nodesWeightsθ, nodesWeightsλ, trainingData, λbuffer_dict, train_buffer_dict, quadtype) #Stores qtilde, βhat, Σθ_inv_y
         validation_train_buffer_dict = init_validation_train_buffer_dict(nodesWeightsθ) #empty dict, input is used to determine dictionary type
@@ -184,20 +184,21 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     R = CartesianIndices(weightsTensorGrid)
     for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
         (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
-        (dpdf, pdf, cdf, cdf_augmented_deriv, m, sigma_m, quantile_fun) = comp_tdist(btg, θ, λ; validate = validate)
+        (dpdf, pdf, cdf, cdf_augmented_deriv, m, sigma_m, q_fun) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf
-        tgridm[I] = m
-        tgridsigma_m[I] = sigma_m
-        tgridquantile[I] = quantile_fun # function of (x0, Fx0, q)
+        #tgridm[I] = m
+        #tgridsigma_m[I] = sigma_m
+        tgridquantile[I] = q_fun # function of (x0, Fx0, q)
         tgridcdf_augmented_deriv[I] = cdf_augmented_deriv
+
     end
     grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = generate_view(grid_pdf_deriv, nt1, nt2, nl2, quadType)
     grid_pdf = similar(weightsTensorGrid); view_pdf = generate_view(grid_pdf, nt1, nt2, nl2, quadType)
     grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf, nt1, nt2, nl2, quadType)
-    grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m, nt1, nt2, nl2, quadType)
-    grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m, nt1, nt2, nl2, quadType)
+    # grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m, nt1, nt2, nl2, quadType)
+    # grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m, nt1, nt2, nl2, quadType)
     grid_quantile = similar(weightsTensorGrid); view_quantile = generate_view(grid_quantile, nt1, nt2, nl2, quadType)
     grid_augmented_deriv = similar(weightsTensorGrid); view_augmented_deriv = generate_view(grid_augmented_deriv, nt1, nt2, nl2, quadType)
     function evalgrid!(f, view, x0, Fx0...)
@@ -209,8 +210,8 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     evalgrid_dpdf!(x0, Fx0, y0) = evalgrid!(tgridpdfderiv, view_pdf_deriv, x0, Fx0, y0)
     evalgrid_pdf!(x0, Fx0, y0) = evalgrid!(tgridpdf, view_pdf, x0, Fx0, y0)
     evalgrid_cdf!(x0, Fx0, y0) = evalgrid!(tgridcdf, view_cdf, x0, Fx0, y0)
-    evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
-    evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
+    # evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
+    # evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
     evalgrid_quantile!(x0, Fx0, q) = evalgrid!(tgridquantile, view_quantile, x0, Fx0, q)
     evalgrid_augmented_deriv!(x0, Fx0, y0) = evalgrid!(tgridcdf_augmented_deriv, view_augmented_deriv, x0, Fx0, y0)
 
@@ -234,15 +235,15 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     augmented_cdf_deriv = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_augmented_deriv!(x0, Fx0, y0[1]); dot(grid_augmented_deriv, weightsTensorGrid))
 
     # compute estimated quantile
-    EY = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))
-    EY2 = (x0, Fx0) -> (evalgrid_sigma_m!(x0, Fx0); dot(grid_sigma_m, weightsTensorGrid))
-    quantile_range = (x0, Fx0, q) -> (evalgrid_quantile!(x0, Fx0, q); grid_quantile)
-
-    VarY =  (x0, Fx0) -> EY2(x0, Fx0) - (EY(x0, Fx0))^2
-    v = btg.trainingData.n - btg.trainingData.p
-    sigma_Y = (x0, Fx0) -> sqrt(VarY(x0, Fx0) * (v-2)/v)
-    quant_estimt = (x0, Fx0, q) -> sigma_Y(x0, Fx0) * tdistinvcdf(v, q) + EY(x0, Fx0)
-    quantInfo = (quant_estimt, EY, EY2, sigma_Y, quantile_range)
+    # EY = (x0, Fx0) -> (evalgrid_m!(x0, Fx0); dot(grid_m, weightsTensorGrid))
+    # EY2 = (x0, Fx0) -> (evalgrid_sigma_m!(x0, Fx0); dot(grid_sigma_m, weightsTensorGrid))
+    # VarY =  (x0, Fx0) -> EY2(x0, Fx0) - (EY(x0, Fx0))^2
+    # v = btg.trainingData.n - btg.trainingData.p
+    # sigma_Y = (x0, Fx0) -> sqrt(VarY(x0, Fx0) * (v-2)/v)
+    # quant_estimt = (x0, Fx0, q) -> sigma_Y(x0, Fx0) * tdistinvcdf(v, q) + EY(x0, Fx0)
+    quantile_range = (x0, Fx0, q) -> (evalgrid_quantile!(x0, Fx0, q); (minimum(grid_quantile), maximum(grid_quantile)))
+    quantInfo = quantile_range
+    # quantInfo = (quant_estimt, EY, EY2, sigma_Y, quantile_range)
     
     return (pdf, cdf, dpdf, quantInfo, augmented_cdf_deriv) 
 end

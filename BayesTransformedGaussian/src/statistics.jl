@@ -4,17 +4,17 @@ using Roots
 using StatsFuns
 
 # import Statistics: median, pdf, cdf
-"pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support"
-function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quant0::Function) where T<:Float64
-    quant0_estimate(p) = quant0(x0, Fx0, p) 
+"pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support and check if pdf is proper"
+function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quantbound::Function) where T<:Float64
+    quantbound_fixed(p) = quantbound(x0, Fx0, p) 
     pdf_fixed(y) = pdf(x0, Fx0, y)
     cdf_fixed(y) = cdf(x0, Fx0, y)
     dpdf_fixed(y) = dpdf(x0, Fx0, y)
     support = [.1, 5.]
     function support_comp!(pdf, support)
       current = pdf(support[1])
-      for i in 1:14
-        next = pdf(support[1]/10)
+      for i in 1:5
+        next = pdf(support[1]/5)
         if next < current
           support[1] /= 10
         else
@@ -27,22 +27,24 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
       end
       # should make sure CDF(support[2]) - CDF(support[1]) > .96 to make 95% CI possible
       INT = cdf_fixed(support[2]) - cdf_fixed(support[1])
-      @assert INT > .95 "pdf integral $INT"
+      if INT < .96
+        @warn "pdf integral $INT"
+      end
       return nothing
     end
     support_comp!(pdf_fixed, support)
-    return (pdf_fixed, cdf_fixed, dpdf_fixed, quant0_estimate, support)
+    return (pdf_fixed, cdf_fixed, dpdf_fixed, quantbound_fixed, support)
 end
 
 "wrap up all statistics computation"
-function summary_comp(pdf_fixed::Function, cdf_fixed::Function, dpdf_fixed::Function, quant0::Function, support::Array{T,1};
+function summary_comp(pdf_fixed::Function, cdf_fixed::Function, dpdf_fixed::Function, quantbound_fixed::Function, support::Array{T,1};
                        px = .5, confidence_level = .95) where T<:Float64
-    quant_p, error_quant = quantile(pdf_fixed, cdf_fixed, quant0, support; p=px)
-    med, error_med = median(pdf_fixed, cdf_fixed, quant0, support)
-    mod = mode(pdf_fixed, cdf_fixed, support)
-    CI_equal, error_CI_eq = credible_interval(pdf_fixed, cdf_fixed, quant0, support; 
+    quant_p, error_quant = quantile(cdf_fixed, quantbound, support; p=px)
+    med, error_med = median(cdf_fixed, quantbound, support)
+    mod = mode(pdf_fixed, support)
+    CI_equal, error_CI_eq = credible_interval(cdf_fixed, quantbound, support; 
                                                 mode=:equal, wp = confidence_level)
-    # CI_narrow, error_CI_nr = credible_interval(pdf_fixed, cdf_fixed, quant0, support;
+    # CI_narrow, error_CI_nr = credible_interval(cdf_fixed, quantbound, support;
     #                                             mode=:narrow, wp = confidence_level)
     quantileInfo = (level = px, value = quant_p, error = error_quant)
     medianInfo = (value = med, error = error_med)
@@ -59,44 +61,56 @@ Given pdf, cdf and maybe pdf_deriv,
 compute median, quantile, mode, symmetric/narrowest credible interval.
 Warning: only for normalized values
 """
-function median(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; pdf_deriv=nothing) where T<:Float64
-    (med, err) = quantile(pdf, cdf, quant0, support)
-    return (med, err)
+function median(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing) where T<:Float64
+    med, err = quantile(cdf, quantbound, support)
+    return med, err, bound
 end
 
-function quantile(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; pdf_deriv=nothing, p::T=.5) where T<:Float64
-    quant0_estimate = quant0(p) 
-    # quant = find_zero(y0 -> cdf(y0) - p, quant0_estimate) 
-    quant = fzero(y0 -> cdf(y0) - p, support[1], support[2]) 
+function quantile(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing, p::T=.5) where T<:Float64
+    bound = support
+    # try 
+    #   bound = quantbound(p)
+    # catch err
+    # end
+    quant = fzero(y0 -> cdf(y0) - p, bound[1], bound[2]) 
     err = abs(p-cdf(quant))/p
     # status = err < 1e-5 ? 1 : 0
-    return (quant, err)
+    return quant, err, bound
 end
 
-function mode(pdf::Function, cdf::Function, support::Array{T,1}; pdf_deriv=nothing) where T<:Float64
+function mode(pdf::Function, support::Array{T,1}; cdf = nothing, pdf_deriv=nothing) where T<:Float64
     # maximize the pdf 
     routine = optimize(x -> -pdf(x), support[1], support[2]) 
     mod = Optim.minimizer(routine)
     return mod
 end
 
-function credible_interval(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}; 
-                            pdf_deriv=nothing, wp::T=.95, mode=:equal) where T<:Float64
-    return credible_interval(pdf, cdf, quant0, support, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
+function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}; 
+                            pdf=nothing, pdf_deriv=nothing, wp::T=.95, mode=:equal) where T<:Float64
+    return credible_interval(cdf, quantbound, support, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
 end
 
-function credible_interval(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}, ::Val{:equal};  
-                            pdf_deriv=nothing, wp::T=.95) where T<:Float64
+function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}, ::Val{:equal};  
+                            pdf=nothing, pdf_deriv=nothing, wp::T=.95) where T<:Float64
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
-    lower_quant = quantile(pdf, cdf, quant0, support; p=lower_qp)[1]
-    upper_quant = quantile(pdf, cdf, quant0, support; p=upper_qp)[1]
+    lower_quant = lower_qp # random initialization
+    try 
+        lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1] 
+    catch err
+        wp = .9
+        lower_qp = (1 - wp) / 2
+        upper_qp = 1 - lower_qp
+        lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1] 
+        @warn "Can't compute 95% credible intervel, do $(Int(wp*100))% instead."
+    end
+    upper_quant = quantile(cdf, quantbound, support; p=upper_qp)[1]
     err = abs(cdf(upper_quant) -  cdf(lower_quant) - wp)/wp
-    return ([lower_quant, upper_quant], err)
+    return [lower_quant, upper_quant], wp, err
 end
 
-function credible_interval(pdf::Function, cdf::Function, quant0::Function, support::Array{T,1}, ::Val{:narrow}; 
-                            pdf_deriv=nothing, wp::T=.95) where T<:Float64
+function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}, ::Val{:narrow}; 
+                            pdf=nothing, pdf_deriv=nothing, wp::T=.95) where T<:Float64
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp

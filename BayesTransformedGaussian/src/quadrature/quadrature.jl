@@ -22,8 +22,8 @@ struct nodesWeights
     d::Int64 #number of dimensions/length scales
     num::Int64 #number of quadrature nodes
     #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
-    function nodesWeights(ranges::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12, num_MC = 200)
-            d = size(ranges, 1)
+    function nodesWeights(paramtype::String, ranges::Array{Float64, 2}, ranges2::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12, num_MC = 200)
+            d = size(ranges, 1); d2 = size(ranges2, 1)
             if quadtype == "Gaussian"
                 N = Array{Float64, 2}(undef, d, num_pts)
                 W = Array{Float64, 2}(undef, d, num_pts)
@@ -44,7 +44,7 @@ struct nodesWeights
                 N = hcat([next!(s) for i = 1:num_pts]...)
                 W = ones(1, num_pts)
             elseif quadtype == "SparseGrid"
-                level = d < 7 ? 8 : 4
+                level = d < 7 ? 10-d : 4
                 grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d)_l$(level).asc", ',', Float64)
                 num_pts = size(grids, 1)
                 W = reshape(grids[:, end], 1, num_pts)
@@ -53,8 +53,22 @@ struct nodesWeights
                 N = Diagonal(length) * (@view grids[:, 1:end-1])'  
                 N = broadcast(+, N, start) 
                 # W .*= reduce(*, length) -- for high dimen case, this reduce(*, length) could be large, so ignore the constant factor
+            elseif quadtype == "SparseCarlo" 
+                level = (d+d2) < 7 ? 10-(d+d2) : 4
+                grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d+d2)_l$(level).asc", ',', Float64)
+                num_pts = size(grids, 1)
+                W = reshape(grids[:, end], 1, num_pts)
+                start = @view ranges[:, 1]; length = @views ranges[:, 2] .- start
+                if paramtype == "θ"
+                    N = Diagonal(length) * (@view grids[:, 1:d])'  
+                    N = broadcast(+, N, start) 
+                else
+                    N = Diagonal(length) * (@view grids[:, d2+1:end-1])'  
+                    N = broadcast(+, N, start) 
+                    W[:, :] .= 1
+                end
             else 
-                throw(ArgumentError("Quadrature type not supported. Choices are \"Gaussian\", \"MonteCarlo\", \"QuasiMonteCarlo\" and \"SparseGrid\""))
+                throw(ArgumentError("Quadrature type not supported. Choices are \"Gaussian\", \"MonteCarlo\", \"QuasiMonteCarlo\", \"SparseGrid\" and \"SparseCarlo\""))
             end
             return new(N, W, d, num_pts)
     end    

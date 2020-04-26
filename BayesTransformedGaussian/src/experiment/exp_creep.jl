@@ -26,10 +26,8 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 
-# load abalone data
-df = DataFrame(CSV.File("../datasets/abalone.csv"))
-data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
-target = convert(Array, df[:, 9]) #age
+# load creep data
+include("../load_creep.jl")
 # shuffle data
 ind_shuffle = randperm(MersenneTwister(1234), size(data, 1)) 
 data = data[ind_shuffle, :]
@@ -62,7 +60,6 @@ if parsed_args["test"]
     id_test = 1001:2000
     n_test = length(id_test)
     id_fail = []
-    id_nonproper = []
     x_test = data[id_test, posx]
     Fx_test = data[id_test, posc]
     y_test_true = target[id_test]
@@ -76,25 +73,21 @@ if parsed_args["test"]
         # @info "i" i
         x_test_i = reshape(x_test[i, :], 1, length(posx))
         Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
-        try
-            pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw)
-            y_test_i_true = y_test_true[i]
-            median_test_i = ymax_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
-            # @info "True, median " y_test_i_true, median_test_i
-            try 
-                CI_test_i = ymax_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
-                count_test += (y_test_i_true >= CI_test_i[1])&&(y_test_i_true <= CI_test_i[2]) ? 1 : 0
-                # @info "CI" CI_test_i
-            catch err
-                append!(id_fail, i)
-            end
-            error_abs += abs(y_test_i_true - median_test_i)
-            error_sq += (y_test_i_true - median_test_i)^2
-            nlpd += log(pdf_test_i(y_test_i_true)) 
-        # @info "Count, id_fail" count_test, id_fail
-        catch err 
-            append!(id_nonproper, i)
+        pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw)
+        y_test_i_true = y_test_true[i]
+        median_test_i = ymax_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
+        # @info "True, median " y_test_i_true, median_test_i
+        try 
+            CI_test_i = ymax_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
+            count_test += (y_test_i_true >= CI_test_i[1])&&(y_test_i_true <= CI_test_i[2]) ? 1 : 0
+            # @info "CI" CI_test_i
+        catch err
+            append!(id_fail, i)
         end
+        error_abs += abs(y_test_i_true - median_test_i)
+        error_sq += (y_test_i_true - median_test_i)^2
+        nlpd += log(pdf_test_i(y_test_i_true)) 
+        # @info "Count, id_fail" count_test, id_fail
     end
     count_test /= n_test - length(id_fail)
     error_abs  /= n_test
@@ -147,9 +140,9 @@ if parsed_args["test"]
         nlpd_logGP = -mean(log.( dg.(y_test_true) .* pdf.(Normal(), (g_fixed.(y_test_true).-μ)./stdv) ./stdv ))
     end
     
-    io1 = open("Exp_abalone_test.txt", "a") 
+    io1 = open("Exp_creep_test.txt", "a") 
     write(io1, "\n$(Dates.now()) \n" )
-    write(io1, "Data set: Abalone   
+    write(io1, "Data set: creep   
         id_train:  $id_train;  id_test:  $id_test  \n") 
     write(io1, "BTG model:  
         $myquadtype  ;  rangeθ: $rangeθ;   rangeλ: $rangeλ \n")
@@ -160,16 +153,14 @@ if parsed_args["test"]
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))       $(@sprintf("%11.8f", error_abs_GP))       $(@sprintf("%11.8f", error_abs_logGP))  
         mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
-        BTG: Failed index in credible intervel:   $id_fail 
-        BTG: Failed index in pdf computation:     $id_nonproper\n")
+        BTG: Failed index in credible intervel:   $id_fail \n")
     else
         write(io1, "BTG test results: 
         credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
         mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))   
-        Failed index in credible intervel:       $id_fail 
-        BTG: Failed index in pdf computation:     $id_nonproper\n")
+        Failed index in credible intervel:       $id_fail \n")
     end
     close(io1)
 
@@ -181,9 +172,9 @@ end
 ####################################
 if parsed_args["validate"]
     @info "Start validation"
-    if filesize("Exp_abalone_validate.txt") == 0
+    if filesize("Exp_creep_validate.txt") == 0
         # write the setting headers
-        io2 = open("Exp_abalone_validate.txt", "w") 
+        io2 = open("Exp_creep_validate.txt", "w") 
         write(io2, "            Time            ;    ind_train    ;            quadtype            ;     rangeθ    ;    rangeλ   ;  fast ;  elapsedmin ; CI accuracy\n")
         close(io2)
     end
@@ -243,7 +234,7 @@ if parsed_args["validate"]
     count_val /= nrow*ncol # percentage that y_true falls into computed CI
     PyPlot.suptitle("Cross Validation $(parsed_args["fast"]), CI accuracy  $(@sprintf("%.4f", count)) ", fontsize=10)
 
-    io2 = open("Exp_abalone_validate.txt", "a") 
+    io2 = open("Exp_creep_validate.txt", "a") 
     write(io2, "$(Dates.now())  ;  $id_train   ; $myquadtype ;   $rangeθ  ;  $rangeλ  ;  $(parsed_args["fast"])  ;   $elapsedmin ; $count_val \n")
     close(io2)
 

@@ -27,13 +27,15 @@ end
 parsed_args = parse_args(ARGS, s)
 
 # load creep data
-include("../load_creep.jl")
+df = DataFrame(CSV.File("../datasets/creeprupt/taka", header=0))
+data = convert(Matrix, df[:,[1; 3:end]])
+target = convert(Array, df[:, 2]) 
 # shuffle data
 ind_shuffle = randperm(MersenneTwister(1234), size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:200; posx = 1:7; posc = 1:7; n_train = length(id_train)
+id_train = 1:200; posx = 1:30; posc = 1:30; n_train = length(id_train)
 x = data[id_train, posx] 
 Fx = data[id_train, posc] 
 y = float(target[id_train])
@@ -46,7 +48,7 @@ d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimensi
 rangeθ = [0.125 1000]
 rangeθm = repeat(rangeθ, d, 1)
 rangeλ = [-1.5 1.] #we will always used 1 range scale for lambda
-myquadtype = ["SparseCarlo", "SparseCarlo"]
+myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
 
 # build btg model
 btg0 = btg(trainingData0, rangeθm, rangeλ; quadtype = myquadtype)
@@ -57,7 +59,7 @@ btg0 = btg(trainingData0, rangeθm, rangeλ; quadtype = myquadtype)
 ####################################
 if parsed_args["test"]
     @info "Start Test"
-    id_test = 1001:2000
+    id_test = 801:805
     n_test = length(id_test)
     id_fail = []
     x_test = data[id_test, posx]
@@ -73,21 +75,25 @@ if parsed_args["test"]
         # @info "i" i
         x_test_i = reshape(x_test[i, :], 1, length(posx))
         Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
-        pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw)
-        y_test_i_true = y_test_true[i]
-        median_test_i = ymax_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
-        # @info "True, median " y_test_i_true, median_test_i
-        try 
-            CI_test_i = ymax_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
-            count_test += (y_test_i_true >= CI_test_i[1])&&(y_test_i_true <= CI_test_i[2]) ? 1 : 0
-            # @info "CI" CI_test_i
-        catch err
-            append!(id_fail, i)
+        try
+            pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw)
+            y_test_i_true = y_test_true[i]
+            median_test_i = ymax_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
+            try 
+                CI_test_i = ymax_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
+                count_test += (y_test_i_true >= CI_test_i[1])&&(y_test_i_true <= CI_test_i[2]) ? 1 : 0
+            catch err
+                append!(id_fail, i)
+            end
+            error_abs += abs(y_test_i_true - median_test_i)
+            error_sq += (y_test_i_true - median_test_i)^2
+            nlpd += log(pdf_test_i(y_test_i_true)) 
+            # @info y_test_i_true, median_test_i
+            # @info error_abs, error_sq
+            # @info count_test, id_fail, id_nonproper
+        catch err 
+            append!(id_nonproper, i)
         end
-        error_abs += abs(y_test_i_true - median_test_i)
-        error_sq += (y_test_i_true - median_test_i)^2
-        nlpd += log(pdf_test_i(y_test_i_true)) 
-        # @info "Count, id_fail" count_test, id_fail
     end
     count_test /= n_test - length(id_fail)
     error_abs  /= n_test
@@ -95,12 +101,15 @@ if parsed_args["test"]
     nlpd       /= -n_test
 
     if parsed_args["GP"] 
+        @info "Start GP"
         global error_abs_GP, error_sq_GP, CI_test_GP, count_test_GP, nlpd_GP
         # training set
         x = data[id_train, posx]' 
         y = float(target[id_train])
         # build and fit a GP
-        mymean = MeanLin(zeros(d)); kern = SE(zeros(d),0.0) 
+        # mymean = MeanLin(zeros(d));
+        mymean = MeanZero() 
+        kern = SE(zeros(d),0.0) 
         gp = GP(x, y, mymean, kern) 
         optimize!(gp)     
         # predict
@@ -116,6 +125,7 @@ if parsed_args["test"]
     end
 
     if parsed_args["logGP"]
+        @info "Start logGP"
         global error_abs_logGP, error_sq_logGP, CI_test_logGP, count_test_logGP, nlpd_logGP
         x = data[id_train, posx]' 
         y = float(target[id_train])
@@ -124,7 +134,9 @@ if parsed_args["test"]
         invg(x) = inverse(trans, x, 0.)
         gy = g_fixed.(y) 
         # build and fit a GP
-        mymean = MeanLin(zeros(d)); kern = SE(zeros(d),0.0) 
+        # mymean = MeanLin(zeros(d))
+        mymean = MeanZero() 
+        kern = SE(zeros(d),0.0) 
         loggp = GP(x, gy, mymean, kern) 
         optimize!(loggp) 
         # predict
@@ -242,6 +254,6 @@ if parsed_args["validate"]
     for ax in axs
         ax.label_outer()
     end
-    PyPlot.savefig("figure/test_v6_ind_$(myquadtype[1])$(myquadtype[2])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
+    PyPlot.savefig("figure/exp_creep_$(ind[1])_$(ind[2])_$(myquadtype[1])$(myquadtype[2])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
 end
 

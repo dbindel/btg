@@ -1,0 +1,12 @@
+
+2020-04-26T02:20:05.388 
+Data set: creep   
+        id_train:  1:400;  id_test:  801:820  
+BTG model:  
+        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.0] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.85000000        1.00000000        1.00000000 
+        mean absolute error:                     32.64524108       15.18985284       16.36565674  
+        mean squared error:                      2589.02574282       328.89650151       618.86577262   
+        mean negative log predictive density:    121.16283553        4.31775351        4.18960845  
+        BTG: Failed index in credible intervel:   Any[] 

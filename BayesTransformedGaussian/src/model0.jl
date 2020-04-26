@@ -56,8 +56,8 @@ mutable struct btg
         @assert typeof(quadtype)<:Array{String,1}
         @assert typeof(transform)<: NonlinearTransform
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
-        nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 400)
-        nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 400)
+        nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 1000)
+        nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 1000)
         λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
         train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
         test_buffer_dict =  init_test_buffer_dict(nodesWeightsθ, train_buffer_dict) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances

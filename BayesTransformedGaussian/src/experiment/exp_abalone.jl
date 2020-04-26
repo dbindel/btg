@@ -251,6 +251,6 @@ if parsed_args["validate"]
     for ax in axs
         ax.label_outer()
     end
-    PyPlot.savefig("figure/test_v6_ind_$(myquadtype[1])$(myquadtype[2])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
+    PyPlot.savefig("figure/exp_abalone_$(ind[1])_$(ind[2])_$(myquadtype[1])$(myquadtype[2])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
 end
 

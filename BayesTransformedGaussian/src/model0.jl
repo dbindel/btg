@@ -184,7 +184,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     R = CartesianIndices(weightsTensorGrid)
     for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
         (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
-        (dpdf, pdf, cdf, cdf_augmented_deriv, m, sigma_m, q_fun) = comp_tdist(btg, θ, λ; validate = validate)
+        (dpdf, pdf, cdf, cdf_augmented_deriv, q_fun) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf

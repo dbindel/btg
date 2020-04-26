@@ -262,11 +262,6 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     #cdf_prime_s = (x0, Fx0, y0) -> compute_higher_derivs(main_cdf_prime_s, ...)#gradient of B(s), X0(s), D(s), H(s)
     #cdf_hessian = (x0, Fx0, y0) -> compute_higher #use results from cdf_prime_s and main_pdf_deriv
 
-    # m = (x0, Fx0) -> hquadrature(y0 -> y0 * pdf(x0, Fx0, y0), 0, 2)[1]
-    # Ex2 = (x0, Fx0) -> hquadrature(y0 -> y0^2 * pdf(x0, Fx0, y0), 0, 2)[1]
-    # m = (x0, Fx0) -> compute_qmC(x0, Fx0)[1] 
-    # sigma_m = (x0, Fx0) -> compute_qmC(x0, Fx0)[3] 
-
     # compute quantile q for each component
     function q_fun(x0, Fx0, quant)
         m, q, C = compute_qmC(x0, Fx0)
@@ -275,7 +270,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return invg(quant_tdist, λ)
     end
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
-    return (pdf_deriv, pdf, cdf, cdf_grad_us, m, Ex2, q_fun)
+    return (pdf_deriv, pdf, cdf, cdf_grad_us, q_fun)
 end
 
 

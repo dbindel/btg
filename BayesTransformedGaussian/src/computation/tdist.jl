@@ -122,6 +122,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         end
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
+        #return C
+
         #(_, _, _, _, n, p) = unpack(btg.trainingData) 
         #return f
         #return  sqrt(qC/(n-p))
@@ -193,14 +195,192 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return hcat(cdf_deriv * dgλy0, jacG)
         #@info jacG
         #return dsigma
-        #return jacG'
-        return hcat(cdf_deriv_alternate*jacy0, jacG)
+        
+        return jacG'
+        
+        #return hcat(cdf_deriv_alternate*jacy0, jacG)
+        
         #return cdf_deriv_alternate*jacy0
         #return jacC'
         #return jacm
         #return [dgλy0]
         #return cdf_deriv
     end
+
+    """
+    Gradient of CDF w.r.t augmented (u, s) vector (u is for value, and y is for location)
+    """
+    function cdf_grad_us!(x0, Fx0, y0, store)
+        m, q, C, βhat = compute_qmC(x0, Fx0)
+        qC = q*C
+        k = size(qC, 1)
+        gλy0 = btg.g(y0, λ)
+        #dgλy0 = partialx(btg.g, y0, λ) 
+        jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
+        jacy0 = jac(y0)
+        ## N.B: please note the difference between t and vanilla t. By default, the build-in julia tdist pdf
+        ## will divide by the covariance, which isn't what we want if we are differentiating with respect to, say
+        ## the location s. Since we still want to take advantage of the built-in tdist, we create a tdist with
+        ## unit covariance and put in the argument arg ourselves, which corrects for mean and covariance.
+        arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
+        t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p))
+        vanillat = LocationScale(0, 1, TDist(n-p))
+        cdf_eval =  Distributions.cdf.(vanillat, arg)  
+        cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
+        cdf_deriv_alternate = Distributions.pdf.(t, gλy0) 
+        #standard unpacking
+        x0 = reshape(x0, 1, length(x0))
+        #unpack pertinent quantities
+        Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
+        choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
+        choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
+        (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
+        (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+        (jacC, jacm) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        #we need to define covariance (sigma here ...)
+        #sigma is covariance sqrt(qC/(n-p))
+        qC = (q .* Cθ[1])
+        sigma = sqrt(qC/(n-p)) #covariance
+        dsigma = sqrt(q/(n-p)) .* 0.5 * Cθ[1]^(-1/2) .* jacC 
+        function Y(i, sigma, dsigma) 
+            return - jacm[i]/sigma - (gλy0 - m)/sigma^2 * dsigma[i]    
+        end
+        #jacG = zeros(1, d) #1 x d
+        @assert length(store) == d+1
+        store[1] = cdf_deriv_alternate*jacy0
+        for i = 1:d 
+            store[i+1] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
+        end
+        #return jacG
+        #return hcat(cdf_deriv * dgλy0, jacG)
+        #@info jacG
+        #return dsigma
+        #return jacG'
+        #return hcat(cdf_deriv_alternate*jacy0, jacG)
+        return nothing
+        #return cdf_deriv_alternate*jacy0
+        #return jacC'
+        #return jacm
+        #return [dgλy0]
+        #return cdf_deriv
+    end
+
+    function cdf_hess_us(x0, Fx0, y0)
+        m, q, C, βhat = compute_qmC(x0, Fx0)
+        qC = q*C
+        k = size(qC, 1)
+        gλy0 = btg.g(y0, λ)
+        x0 = reshape(x0, 1, length(x0))
+        #unpack pertinent quantities
+        Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
+        choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
+        choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
+        (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
+        (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+        (jacC, jacm, jacB, jacH) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(compute hessian of D)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        ΣinvjacB  = choleskyΣθ\jacB 
+        W = zeros(d, d)
+        S = repeat(x0, n, 1) .- x # n x d 
+        flattenedθ = typeof(θ)<:Real ? [θ for i=1:d] : θ[:]
+        Stheta = S * diagm(- flattenedθ) # n x d
+        for i = 1:d
+            for j = 1:d
+                arg = Bθ' .* Stheta[:, i:i] .* Stheta[:, j:j] 
+                if i==j   
+                    eq = Bθ * (choleskyΣθ \ (-flattenedθ[i] .* Bθ'))
+                else
+                    eq = 0
+                end
+                W[i, j] = (Bθ * (choleskyΣθ\arg) .+ eq)[1]
+            end
+        end
+        hessD = -2*jacB' * ΣinvjacB - 2*W #d x d
+        #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(compute hessian of C)~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        V = zeros(d, d)
+        for i = 1:d
+            for j = 1:d
+                arg = Bθ' .* Stheta[:, i:i] .* Stheta[:, j:j] 
+                if i==j   
+                    eq = (-flattenedθ[i] .* Bθ')
+                else
+                    eq = 0
+                end
+                #println("size arg: ", size(arg))
+                #println("size eq: ", size(eq))
+                # println(arg .+ eq)
+                # println((Fx' * (choleskyΣθ \ (arg .+ eq))))
+                # println((choleskyXΣX \ (Fx' * (choleskyΣθ \ (arg .+ eq)))))
+                # println(Hθ)
+                V[i, j] =  (Hθ * (choleskyXΣX \ ( - Fx' * (choleskyΣθ \ (arg .+ eq)))))[1]
+            end
+        end
+        hessC = hessD + 2*jacH*(choleskyXΣX\jacH') + 2*V #d x d
+        #~~~~~~~~~~~~~~~~~~~~~~~~~(compute derivative and hessian of m)~~~~~~~~~~~~~~~~~~~~~~~~~~
+        #@info "size(jacB')", size(jacB')
+        #@info "size(Σθ_inv_y)",  size(Σθ_inv_y)
+        #@info "size(jacH)", size(jacH)
+        #@info " size(βhat)", size(βhat)
+        jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
+        hess_m = zeros(d, d)
+        for i = 1:d
+            for j = 1:d
+                arg = Bθ' .* Stheta[:, i:i] .* Stheta[:, j:j] 
+                if i==j   
+                    eq = (-flattenedθ[i] .* Bθ')
+                else
+                    eq = 0
+                end
+                #println()
+                #println("sigma inv y: ", size(Σθ_inv_y))
+                #println("size arg .+ eq: ", size(arg .+ eq))
+                expr1 = dot(Σθ_inv_y,  (arg .+ eq))
+                expr2 = dot(( - Fx' * (choleskyΣθ \ (arg .+ eq))), βhat)
+                #println("size expr1: ", size(expr1))
+                #println("size expr2: ", size(expr2))
+                hess_m[i, j] = (expr1 + expr2)[1] #d_i d_j H
+            end
+        end
+        #we need to define covariance (sigma here ...)
+        #sigma is covariance sqrt(qC/(n-p))
+        sigma = sqrt(qC/(n-p)) #covariance
+        dsigma = sqrt(q/(n-p)) .* 0.5 * Cθ[1]^(-1/2) .* jacC 
+        hess_sigma = zeros(d, d)
+        for i = 1:d
+            for j = 1:d
+                hess_sigma[i, j] =  sqrt(q/(n-p)) * ( -0.25 * Cθ[1]^(-3/2) .* jacC[i]jacC[j] + 0.5 * Cθ[1]^(-1/2) * hessC[i, j])
+            end
+        end
+        function Y(i, sigma, dsigma) 
+            return - jacm[i]/sigma - (gλy0 - m)/sigma^2 * dsigma[i]    
+        end
+        function R(i, j, sigma, dsigma, hess_sigma) #assume jacm  and hess_m defined already
+            e1 = -hess_m[i, j]/sigma 
+            e2 = jacm[j] * dsigma[i] / sigma^2
+            e3 = - jacm[i] * dsigma[j] / sigma^2
+            e4 = - 2*(gλy0 - m) * dsigma[j]/sigma^3
+            e5 = (gλy0 - m)*hess_sigma[i, j] / sigma^2
+            return e1 + e2 + e3 + e4 + e5
+        end
+        arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
+        vanillat = LocationScale(0, 1, TDist(n-p))
+        cdf_eval =  Distributions.cdf.(vanillat, arg)
+        cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
+        cdf_second_deriv = -(n-p+k) * arg/(1 + arg^2) * Distributions.pdf.(vanillat, arg) #chain rule term computed later
+        hess_G = zeros(d, d)
+        for i = 1:d
+            for j = 1:d
+                expr1 = cdf_second_deriv * Y(i, sigma, dsigma) * Y(j, sigma, dsigma)
+                expr2 = cdf_deriv * R(i, j, sigma, dsigma, hess_sigma)
+                hess_G[i, j] = (expr1 .+ expr2)[1]
+            end
+        end
+        #return hessC
+        #return hess_sigma
+        return hess_G
+    end
+
 
     #function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Hθ, Σθ_inv_y, θ)#::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
     function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
@@ -225,8 +405,9 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
         jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
         #return (jacB, jacD, jacFx0, jacC, jacm)
-        return jacC, jacm
+        return jacC, jacm, jacB, jacH
     end
+
 
     # parallel to compute, except used to compute derivatives w.r.t location
     # also calls compute_qmC and hence updates test buffers
@@ -270,10 +451,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return invg(quant_tdist, λ)
     end
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
-    return (pdf_deriv, pdf, cdf, cdf_grad_us, q_fun)
+    return (pdf_deriv, pdf, cdf, cdf_grad_us, cdf_hess_us, q_fun)
 end
-
-
 
 
 """

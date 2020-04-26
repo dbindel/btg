@@ -96,11 +96,12 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             #@info Hθ
             #@info βhat
         end
-        return m[1], qtilde[1], Cθ[1], βhat, Dθ, expr2, validate   #sigma_m
+        gλz = btg.λbuffer_dict[λ].λ
+        return m[1], qtilde[1], Cθ[1], βhat, Dθ, expr2, validate,λ    #sigma_m
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
-        m, q, C, βhat, Dθ, expr2  = compute_qmC(x0, Fx0)
+        m, q, C, βhat, Dθ, expr2, validate, λ  = compute_qmC(x0, Fx0)
         #@warn "pushing to debug log"
         #push!(btg.debug_log, (m, C, q))
         qC = q*C
@@ -121,6 +122,12 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         end
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
+        #(_, _, _, _, n, p) = unpack(btg.trainingData) 
+        #return f
+        #return  sqrt(qC/(n-p))
+        #return m
+        #return m
+        #return btg.g(y0, λ)
     end
     
     main_pdf = (y0, t, m, qC) -> (Distributions.pdf.(t, g(y0, λ)) * jac(y0))
@@ -129,7 +136,6 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is a stable computation of the derivative of the tdist
     main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ);  
                     Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
-
 
     function pdf_deriv(x0, Fx0, y0) 
         return compute(main_pdf_deriv, x0, Fx0, y0)
@@ -149,11 +155,19 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         qC = q*C
         k = size(qC, 1)
         gλy0 = btg.g(y0, λ)
-        dgλy0 = partialx(btg, y0, λ) 
+        #dgλy0 = partialx(btg.g, y0, λ) 
+        jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
+        jacy0 = jac(y0)
+        ## N.B: please note the difference between t and vanilla t. By default, the build-in julia tdist pdf
+        ## will divide by the covariance, which isn't what we want if we are differentiating with respect to, say
+        ## the location s. Since we still want to take advantage of the built-in tdist, we create a tdist with
+        ## unit covariance and put in the argument arg ourselves, which corrects for mean and covariance.
         arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
+        t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p))
         vanillat = LocationScale(0, 1, TDist(n-p))
-        cdf_eval =  Distributions.cdf.(vanillat, arg)
+        cdf_eval =  Distributions.cdf.(vanillat, arg)  
         cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
+        cdf_deriv_alternate = Distributions.pdf.(t, gλy0) 
         #standard unpacking
         x0 = reshape(x0, 1, length(x0))
         #unpack pertinent quantities
@@ -162,23 +176,57 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm) = intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Σθ_inv_y)
-        gλy0 = btg.g(y0, λ[1])
+        (jacC, jacm) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
         #we need to define covariance (sigma here ...)
         #sigma is covariance sqrt(qC/(n-p))
         qC = (q .* Cθ[1])
         sigma = sqrt(qC/(n-p)) #covariance
         dsigma = sqrt(q/(n-p)) .* 0.5 * Cθ[1]^(-1/2) .* jacC 
         function Y(i, sigma, dsigma) 
-            return - jacm[i]/sigma + (gλy0 - m)/sigma^2 * dsigma[i]    
+            return - jacm[i]/sigma - (gλy0 - m)/sigma^2 * dsigma[i]    
         end
         jacG = zeros(1, d) #1 x d
         for i = 1:d 
             jacG[i] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
         end
-        return hcat(dgλy0,jacG)
+        #return jacG
+        #return hcat(cdf_deriv * dgλy0, jacG)
+        #@info jacG
+        #return dsigma
+        #return jacG'
+        return hcat(cdf_deriv_alternate*jacy0, jacG)
+        #return cdf_deriv_alternate*jacy0
+        #return jacC'
+        #return jacm
+        #return [dgλy0]
+        #return cdf_deriv
     end
 
+    #function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Hθ, Σθ_inv_y, θ)#::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
+    function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        #@assert typeof(θ) <: Array{T, 1} where T 
+        #@assert length(θ) ==d
+        S = repeat(x0, n, 1) .- x # n x d 
+        d = size(x0, 2)
+        #println("size of S: ", size(S))
+        flattenedθ = typeof(θ)<:Real ? [θ for i=1:d] : θ[:]
+        jacB =   diagm(Bθ[:]) * S * diagm(- flattenedθ) #n x d
+        #println("size of jacB: ", size(jacB))
+        #println("size of Bθ: ", size(Bθ))
+        #println("size of choleskyΣθ: ", size(choleskyΣθ))
+        #println("choleskyΣθ inv Bθ': ", size(choleskyΣθ \ Bθ'))
+        jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
+        #println("size of jacD: ", size(jacD))
+        #assuming linear polynomial basis
+        jacFx0 = vcat(zeros(1, d), diagm(ones(d))) #p x d
+        #println("size of Fx0: ", size(Fx0))
+        jacH = jacFx0' - jacB' * Σθ_inv_X #d x p
+        #println("size of jacH: ", size(jacH))
+        jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
+        jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
+        #return (jacB, jacD, jacFx0, jacC, jacm)
+        return jacC, jacm
+    end
 
     # parallel to compute, except used to compute derivatives w.r.t location
     # also calls compute_qmC and hence updates test buffers
@@ -227,31 +275,10 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return invg(quant_tdist, λ)
     end
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
-    return (pdf_deriv, pdf, cdf, cdf_grad_us, q_fun)
+    return (pdf_deriv, pdf, cdf, cdf_grad_us, m, Ex2, q_fun)
 end
 
-function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Σθ_inv_y)::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
-    @assert typeof(θ)<:Array{T, 1} where T 
-    @assert length(θ) ==d
-    S = repeat(x0, n, 1) .- x # n x d 
-    #println("size of S: ", size(S))
-    jacB =   diagm(Bθ[:]) * S * diagm(- θ[:]) #n x d
-    #println("size of jacB: ", size(jacB))
-    #println("size of Bθ: ", size(Bθ))
-    #println("size of choleskyΣθ: ", size(choleskyΣθ))
-    #println("choleskyΣθ inv Bθ': ", size(choleskyΣθ \ Bθ'))
-    jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
-    #println("size of jacD: ", size(jacD))
-    #assuming linear polynomial basis
-    jacFx0 = vcat(zeros(1, d), diagm(ones(d))) #p x d
-    #println("size of Fx0: ", size(Fx0))
-    jacH = jacFx0' - jacB' * Σθ_inv_X #d x p
-    #println("size of jacH: ", size(jacH))
-    jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
-    jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
-    #return (jacB, jacD, jacFx0, jacC, jacm)
-    return jacC, jacm
-end
+
 
 
 """

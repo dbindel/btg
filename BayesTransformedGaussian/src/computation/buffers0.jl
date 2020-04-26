@@ -515,7 +515,12 @@ end
 Update test_buffer, which depends on testing data, training data, and train_buffer. 
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
-    @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
+    try 
+        @assert checkCompatibility(trainingData, testingData) #make sure testingData is compatible with trainingData
+    catch e
+        @info "train", trainingData
+        @info "test", testingData
+    end
         #println("updating test buffer for $θ")
     test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0)    
     Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  

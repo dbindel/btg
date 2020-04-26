@@ -30,6 +30,7 @@ function tgrids(nt1::Int64, nt2::Int64, nl2::Int64, quadType::Array{String}, wei
         tgridm = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid))
         tgridquantile = Array{Function, nt1+1}(undef, Base.size(weightsTensorGrid)) # store quantile of each T component
+        tgridcdf_augmented_deriv = similar(tgridcdf)
 
     elseif endswith(quadType[1], "Carlo") && endswith(quadType[2], "Carlo")
         tgridpdfderiv = Array{Function, 1}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
@@ -38,6 +39,7 @@ function tgrids(nt1::Int64, nt2::Int64, nl2::Int64, quadType::Array{String}, wei
         tgridm = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
         tgridquantile = Array{Function, 1}(undef, Base.size(weightsTensorGrid))
+        tgridcdf_augmented_deriv = similar(tgridcdf)
     else
         tgridpdfderiv = Array{Function, 2}(undef, Base.size(weightsTensorGrid)) #total num of length scales is num length scales of theta +1, because lambda is 1D
         tgridpdf = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
@@ -45,6 +47,9 @@ function tgrids(nt1::Int64, nt2::Int64, nl2::Int64, quadType::Array{String}, wei
         tgridm = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
         tgridsigma_m = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
         tgridquantile = Array{Function, 2}(undef, Base.size(weightsTensorGrid))
+        tgridcdf_augmented_deriv = similar(tgridcdf)
     end
-    return (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile)
+    return (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile, tgridcdf_augmented_deriv)
 end
+
+

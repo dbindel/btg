@@ -133,13 +133,13 @@ if test_btg2 #test btg2
 # polynomial mean basis
 
 ind = 120:140
-posx = [1;4] #
-posc = 1:3
+posx = 1:7 #
+posc = 1:7
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
 POLYNOMIAL_BASIS_COVARIATES = true
 if POLYNOMIAL_BASIS_COVARIATES
-    Fx = hcat(ones(length(ind), 1), data[ind, 1:2])
+    Fx = hcat(ones(length(ind), 1), x)
 else 
     Fx = data[ind, posc] 
 end
@@ -148,18 +148,18 @@ y = float(target[ind])
 pind = 10:10 #prediction index
 trainingData1 = trainingData(x, Fx, y) #training data used for testing various functions
 
-d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
+d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)   
+x0 = reshape(data[pind, posx], 1, length(posx)) 
 if POLYNOMIAL_BASIS_COVARIATES
-    Fx0 = hcat(ones(length(pind), 1), data[pind, 1:(length(posc)-1)])
+    Fx0 = hcat(1, x0)
 else 
     Fx0 = reshape(data[pind, posc], 1, length(posc))
 end
-x0 = reshape(data[pind, posx], 1, length(posx)) 
-rangeθ = [100.0 200; 200.0 400.0]
-rangeλ = [0.5 5] #we will always used 1 range scale for lambda
-btg2 = btg(trainingData1, rangeθ, rangeλ)
-θ2 = btg2.nodesWeightsθ.nodes[1:2, 6] #pick some theta value which doubles as quadrature node
-λ2 = btg1.nodesWeightsλ.nodes[3]
+rangeθ = [10 1000.0]
+rangeλ = [0.2 2] #we will always used 1 range scale for lambda
+btg2 = btg(trainingData1, rangeθ, rangeλ);
+θ2 = btg2.nodesWeightsθ.nodes[6] #pick some theta value which doubles as quadrature node
+λ2 = btg2.nodesWeightsλ.nodes[1]
 ##################################################################################################
 
 if false  #test comp_tdist for btg2
@@ -202,57 +202,95 @@ if false #test bayesian predictive distribution (pdf, cdf, pdf_deriv) for btg 2
     end
 end
 
+if true
+    #if true #test derivatives of new function 
+        println("test derivative of cdf/cdf-related quantities w.r.t augmented vector [u, s]")
+        #v is augmented vector 
+            function linear_polynomial_basis(x0)#linear polynomial basis
+                return hcat([1], reshape(x0, 1, length(x0)))
+            end
+            #val = [0.45, 0.375, 0.115, 0.4105]
+            (dpdf, pdf, cdf, cdf_grad_us) = comp_tdist(btg2, θ2, λ2)    
+           # A = v -> cdf((tmp = v[2:end]; reshape(tmp, 1, length(tmp))), (tmp = Fx0(v[2:end]); reshape(tmp, 1, length(tmp))), v[1])
+            #B = v -> cdf_grad_us(v[2:end], Fx0(v[2:end]), v[1])
+            #y=.26
+            y0 = .26
+            x0 = [0.35 0.275 0.1 0.2355 0.0895 0.0585 0.08]
+            A = au -> cdf_grad_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+            B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+            #C = y -> pdf(x0, Fx0(x0), y)
+            init = hcat(y0, x0)
+            if false
+                #cdf_fixed = y -> cdf([0.45, 0.375, 0.115, 0.4105], Fx0([0.45, 0.375, 0.115, 0.4105]), y)
+                #cdf_fixed 
+                #plt(cdf_fixed, .01, 1, 100)
+            end 
+            (_, _, plt1, pol1) = checkDerivative(B, A, init, nothing, 5, 13, 10) #first arg is function, second arg is derivative
+            #@test coeffs(pol1)[end] > 2 - 3e-1
+            println("pol1:",pol1)
 
-if false #test derivatives of location, and derivatives of auxiliary functions w.r.t location
-    ### test jacobian and Hessian of C, D, m, etc.
-    #@testset "location derivs in btg2" begin  
-        Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
-        y0 = .5
-        (_, _, _, cdf_prime_loc) = comp_tdist(btg2, θ2, λ2)      
-        A = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[1]
-        B = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[2]
-        C = x0 -> cdf_prime_loc(reshape(x0, 1, length(x0)), Fx0(x0), y0)[3]
-        init_x = x[1:1, :] + rand(1, length(posx)) .* 1e-3
-        #println(size(init_x))
-        (_, _, plt1, pol1) = checkDerivative(A, B, init_x, nothing, 2, 5, 10) #first arg is function, second arg is derivative
-        #@test coeffs(pol1)[end] > 2 - 3e-1
-        @assert coeffs(pol1)[end] > 2 - 3e-1
-        
-        println("loc deriv pol1: ", pol1)
-        display(plt1)
-        (_, _, plt2, pol2) = checkDerivative(A, B, init_x, C, 2, 6, 10) #first arg is function, second arg is derivative
-        #@test coeffs(pol2)[end] > 3 - 3e-1
-        @assert coeffs(pol2)[end] > 3 - 3e-1
-        
-        println("loc deriv pol2: ", pol2)
-        display(plt2)
+            (pdf, cdf, dpdf, quantInfo, augmented_cdf_deriv) = solve(btg2)
+            A = au -> augmented_cdf_deriv(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+            B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+
+            (_, _, plt2, pol2) = checkDerivative(B, A, init, nothing, 5, 13, 10) #first arg is function, second arg is derivative
+            println("pol2: ", pol2)
+
+        #end
     #end
-end
+    end
 
-if true #test derivatives of new function 
-    println("test derivative of cdf w.r.t augmented value-location vector")
+
+
+if false
+#if true #test derivatives of new function 
+    println("test derivative of cdf/cdf-related quantities w.r.t s")
     #v is augmented vector 
         Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
+        #val = [0.45, 0.375, 0.115, 0.4105]
+        (dpdf, pdf, cdf, cdf_grad_us) = comp_tdist(btg2, θ2, λ2)    
+       # A = v -> cdf((tmp = v[2:end]; reshape(tmp, 1, length(tmp))), (tmp = Fx0(v[2:end]); reshape(tmp, 1, length(tmp))), v[1])
+        #B = v -> cdf_grad_us(v[2:end], Fx0(v[2:end]), v[1])
+        y=.26
+        A = x0 -> cdf_grad_us(x0, Fx0(x0), y)
+        B = x0 -> cdf(x0, Fx0(x0), y)
         
-        (_, cdf, _, cdf_grad_us) = comp_tdist(btg2, θ2, λ2)    
-        A = v -> cdf(v[2:end], Fx0(x0), v[1])
-        B = v -> cdf_grad_us(v[2:end], Fx0(x0), v[1])
-    
-        init_v = hcat(0.5, x[1:1, :] + rand(1, length(posx)) .* 1e-2)
-
-        #println(size(init_x))
-        (_, _, plt1, pol1) = checkDerivative(A, B, init_v, nothing, 2, 5, 10) #first arg is function, second arg is derivative
+        #init_v = (tmp = hcat(0.5, x[1:1, :] + rand(1, length(posx)) .* 1e-1); reshape(tmp, 1, length(tmp)))
+        #init_v = [0.32, 0.45, 0.375, 0.115, 0.4105]
+        init_v =  [0.35 0.275 0.1 0.2355 0.0895 0.0585 0.08]
+        if false
+            #cdf_fixed = y -> cdf([0.45, 0.375, 0.115, 0.4105], Fx0([0.45, 0.375, 0.115, 0.4105]), y)
+            #cdf_fixed 
+            #plt(cdf_fixed, .01, 1, 100)
+        end 
+        (_, _, plt1, pol1) = checkDerivative(B, A, init_v, nothing, 5, 15, 10) #first arg is function, second arg is derivative
         #@test coeffs(pol1)[end] > 2 - 3e-1
-        @assert coeffs(pol1)[end] > 2 - 3e-1
-        println("loc deriv pol1: ", pol1)
-        display(plt1)
-        (_, _, plt2, pol2) = checkDerivative(A, B, init_x, C, 2, 6, 10) #first arg is function, second arg is derivative
-        #@test coeffs(pol2)[end] > 3 - 3e-1
-        @assert coeffs(pol2)[end] > 3 - 3e-1
-        
-        println("loc deriv pol2: ", pol2)
-        display(plt2)
+        println(pol1)
     #end
+#end
+end
+if false
+#if true #test derivatives of new function 
+println("test derivative of cdf w.r.t value/label u")
+#v is augmented vector 
+    Fx0 = x0 -> hcat([1], reshape(x0, 1, length(x0))) #linear polynomial basis
+    val = [.425 .3 .1 .35 .15 .09 .15]
+    (pdf, dpdf, cdf, cdf_grad_us) = comp_tdist(btg2, θ2, λ2)    
+   # A = v -> cdf((tmp = v[2:end]; reshape(tmp, 1, length(tmp))), (tmp = Fx0(v[2:end]); reshape(tmp, 1, length(tmp))), v[1])
+    #B = v -> cdf_grad_us(v[2:end], Fx0(v[2:end]), v[1])
+    A = y -> cdf_grad_us(val, Fx0(val), y)
+    B = y -> cdf(val, Fx0(val), y)
+    
+    #init_v = (tmp = hcat(0.5, x[1:1, :] + rand(1, length(posx)) .* 1e-1); reshape(tmp, 1, length(tmp)))
+    #init_v = [0.32, 0.45, 0.375, 0.115, 0.4105]
+    init_v = 0.3
+    if false
+        #cdf_fixed = y -> cdf([0.45, 0.375, 0.115, 0.4105], Fx0([0.45, 0.375, 0.115, 0.4105]), y)
+        plt(B, .01, 1, 100)
+    end 
+    (_, _, plt1, pol1) = checkDerivative(B, A, init_v, nothing, 4, 15, 10) #first arg is function, second arg is derivative
+    #@test coeffs(pol1)[end] > 2 - 3e-1
+    println(pol1)
 end
 
 

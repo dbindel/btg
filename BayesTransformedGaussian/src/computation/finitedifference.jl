@@ -30,7 +30,14 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     #@assert size(df0) == (m, n) ||  size(df0) == (m, ) #keep 1D list as possibility
     #println("size df0, 1: ", size(df0, 1))
     #println("size df0, 2: ", size(df0, 2))
-    @assert size(df0, 1) == m && size(df0, 2) == n 
+    try 
+        @assert size(df0, 1) == m && size(df0, 2) == n 
+    catch e
+        @info "size df0", size(df0)
+        @info "m", m
+        @info "n", n
+    end
+
     try 
         df0 = reshape(df0, m, n) #reshapes to m x n if non-scalar
     catch e

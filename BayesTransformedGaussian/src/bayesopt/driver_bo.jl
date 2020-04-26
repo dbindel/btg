@@ -13,7 +13,8 @@ for i = 1:10 #take 10 BO steps
     # - logdetΣθ    compute directly
     # - logdetXΣX compute directly
     # 
-    # 
+    #
+     
 end
 """
 cdf(u, s) is a function of location s and value u, gradients and hessian are

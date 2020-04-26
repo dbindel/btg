@@ -202,6 +202,64 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return cdf_deriv
     end
 
+    """
+    Gradient of CDF w.r.t augmented (u, s) vector (u is for value, and y is for location)
+    """
+    function cdf_grad_us!(x0, Fx0, y0, store)
+        m, q, C, βhat = compute_qmC(x0, Fx0)
+        qC = q*C
+        k = size(qC, 1)
+        gλy0 = btg.g(y0, λ)
+        #dgλy0 = partialx(btg.g, y0, λ) 
+        jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
+        jacy0 = jac(y0)
+        ## N.B: please note the difference between t and vanilla t. By default, the build-in julia tdist pdf
+        ## will divide by the covariance, which isn't what we want if we are differentiating with respect to, say
+        ## the location s. Since we still want to take advantage of the built-in tdist, we create a tdist with
+        ## unit covariance and put in the argument arg ourselves, which corrects for mean and covariance.
+        arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
+        t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p))
+        vanillat = LocationScale(0, 1, TDist(n-p))
+        cdf_eval =  Distributions.cdf.(vanillat, arg)  
+        cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
+        cdf_deriv_alternate = Distributions.pdf.(t, gλy0) 
+        #standard unpacking
+        x0 = reshape(x0, 1, length(x0))
+        #unpack pertinent quantities
+        Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
+        choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
+        choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
+        (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
+        (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+        (jacC, jacm) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        #we need to define covariance (sigma here ...)
+        #sigma is covariance sqrt(qC/(n-p))
+        qC = (q .* Cθ[1])
+        sigma = sqrt(qC/(n-p)) #covariance
+        dsigma = sqrt(q/(n-p)) .* 0.5 * Cθ[1]^(-1/2) .* jacC 
+        function Y(i, sigma, dsigma) 
+            return - jacm[i]/sigma - (gλy0 - m)/sigma^2 * dsigma[i]    
+        end
+        #jacG = zeros(1, d) #1 x d
+        @assert length(store) == d+1
+        store[1] = cdf_deriv_alternate*jacy0
+        for i = 1:d 
+            store[i+1] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
+        end
+        #return jacG
+        #return hcat(cdf_deriv * dgλy0, jacG)
+        #@info jacG
+        #return dsigma
+        #return jacG'
+        #return hcat(cdf_deriv_alternate*jacy0, jacG)
+        return nothing
+        #return cdf_deriv_alternate*jacy0
+        #return jacC'
+        #return jacm
+        #return [dgλy0]
+        #return cdf_deriv
+    end
+
     #function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Hθ, Σθ_inv_y, θ)#::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
     function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
         #@assert typeof(θ) <: Array{T, 1} where T 
@@ -275,7 +333,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return invg(quant_tdist, λ)
     end
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
-    return (pdf_deriv, pdf, cdf, cdf_grad_us, m, Ex2, q_fun)
+    return (pdf_deriv, pdf, cdf, cdf_grad_us!, q_fun)
 end
 
 

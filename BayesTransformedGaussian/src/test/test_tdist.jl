@@ -220,22 +220,19 @@ if true
             B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
             #C = y -> pdf(x0, Fx0(x0), y)
             init = hcat(y0, x0)
-            if false
-                #cdf_fixed = y -> cdf([0.45, 0.375, 0.115, 0.4105], Fx0([0.45, 0.375, 0.115, 0.4105]), y)
-                #cdf_fixed 
-                #plt(cdf_fixed, .01, 1, 100)
-            end 
+            
+            if false 
             (_, _, plt1, pol1) = checkDerivative(B, A, init, nothing, 5, 13, 10) #first arg is function, second arg is derivative
+            
             #@test coeffs(pol1)[end] > 2 - 3e-1
+            
             println("pol1:",pol1)
-
-            (pdf, cdf, dpdf, quantInfo, augmented_cdf_deriv) = solve(btg2)
+            end
+            (pdf, cdf, dpdf, augmented_cdf_deriv, quantInfo) = solve(btg2)
             A = au -> augmented_cdf_deriv(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
             B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
-
-            (_, _, plt2, pol2) = checkDerivative(B, A, init, nothing, 5, 13, 10) #first arg is function, second arg is derivative
-            println("pol2: ", pol2)
-
+            (_, _, plt2, pol2) = checkDerivative(B, A, init, nothing, 5, 13, 10); #first arg is function, second arg is derivative;
+            #println("pol2: ", pol2)
         #end
     #end
     end

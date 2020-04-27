@@ -44,7 +44,7 @@ struct nodesWeights
                 N = hcat([next!(s) for i = 1:num_pts]...)
                 W = ones(1, num_pts)
             elseif quadtype == "SparseGrid"
-                level = d < 7 ? 10-d : 5
+                level = d < 7 ? 10-d : 4
                 grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d)_l$(level).asc", ',', Float64)
                 num_pts = size(grids, 1)
                 W = reshape(grids[:, end], 1, num_pts)
@@ -54,7 +54,7 @@ struct nodesWeights
                 N = broadcast(+, N, start) 
                 # W .*= reduce(*, length) -- for high dimen case, this reduce(*, length) could be large, so ignore the constant factor
             elseif quadtype == "SparseCarlo" 
-                level = (d+d2) < 7 ? 10-(d+d2) : 5
+                level = (d+d2) < 7 ? 10-(d+d2) : 4
                 grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d+d2)_l$(level).asc", ',', Float64)
                 num_pts = size(grids, 1)
                 W = reshape(grids[:, end], 1, num_pts)

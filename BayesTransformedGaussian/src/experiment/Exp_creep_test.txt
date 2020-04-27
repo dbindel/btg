@@ -10,3 +10,16 @@ Compare test results:                                BTG               GP       
         mean squared error:                      2589.02574282       328.89650151       618.86577262   
         mean negative log predictive density:    121.16283553        4.31775351        4.18960845  
         BTG: Failed index in credible intervel:   Any[] 
+
+2020-04-27T00:45:03.891 
+Data set: creep   
+        id_train:  1:400;  id_test:  801:2066  
+BTG model:  
+        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.0] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.93996840        0.91232227        0.92575039 
+        mean absolute error:                     31.36835688       20.33326939       22.06039327  
+        mean squared error:                      1809.82260810       854.80677198       1082.67723433   
+        mean negative log predictive density:    97.92267794        4.70972732        4.65033762  
+        BTG: Failed index in credible intervel:  Any[] 
+        BTG: Failed index in pdf computation:    Any[78, 86, 179, 256, 274, 364, 515, 530, 593, 645, 658, 747, 757, 1075]

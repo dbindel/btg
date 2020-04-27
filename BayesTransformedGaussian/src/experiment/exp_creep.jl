@@ -11,11 +11,17 @@ s = ArgParseSettings()
     "--test"
         help = "test or not"
         action = :store_true
+    "--single"
+        help = "use single length scale or not"
+        action = :store_true 
+    "--sparse"   
+        help = "use SparseGrid or not"
+        action = :store_true
     "--validate"
         help = "do cross validation or not"
         action = :store_true
     "--fast"
-        help = "use fast or not"
+        help = "use fast validation or not"
         action = :store_true
     "--GP"
         help = "test GP model"
@@ -23,6 +29,10 @@ s = ArgParseSettings()
     "--logGP"
         help = "test log-GP model"
         action = :store_true
+    "--posc"
+        help = "another option with an argument"
+        arg_type = Int
+        default = 30
 end
 parsed_args = parse_args(ARGS, s)
 
@@ -31,34 +41,43 @@ df = DataFrame(CSV.File("../datasets/creeprupt/taka", header=0))
 data = convert(Matrix, df[:,[1; 3:end]])
 target = convert(Array, df[:, 2]) 
 # shuffle data
-ind_shuffle = randperm(MersenneTwister(123), size(data, 1)) 
+randseed = 1234; rng = MersenneTwister(randseed)
+ind_shuffle = randperm(rng, size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:400; posx = 1:30; posc = 1:30; n_train = length(id_train)
+id_train = 1:400; posx = 1:30; posc = 1:parsed_args["posc"]
+n_train = length(id_train)
 x = data[id_train, posx] 
 Fx = data[id_train, posc] 
 y = float(target[id_train])
 ymax_train = maximum(y)
 y ./= ymax_train
-trainingData0 = trainingData(x, Fx, y) #training data used for testing various functions
+trainingData0 = trainingData(x, Fx, y) 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
 #parameter setting
-rangeθ = [0.125 1000]
-rangeθm = repeat(rangeθ, d, 1)
-rangeλ = [-1.5 1.] #we will always used 1 range scale for lambda
-myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+rangeλ = [-1.5 1.] 
+rangeθs = [0.125 1000]
+rangeθm = repeat(rangeθs, d, 1)
+rangeθ = parsed_args["single"] ? rangeθs : rangeθm
+
+if rangeθ == rangeθm && myquadtype == ["SparseCarlo", "SparseCarlo"]
+    @info "Can't do Sparse Grid of dimension $(d+1)"
+    myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+end
 
 # build btg model
-btg0 = btg(trainingData0, rangeθm, rangeλ; quadtype = myquadtype)
-(pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0); #initialize training_buffer_dicts, solve once so can use fast techiques to extrapolate submatrix determinants, etc.
+btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
+(pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
 
 ####################################
 ############### Test ###############
 ####################################
 if parsed_args["test"]
     @info "Start Test"
+    before = Dates.now()
     id_test = 801:length(target)
     n_test = length(id_test)
     id_fail = []
@@ -72,7 +91,7 @@ if parsed_args["test"]
     nlpd = 0.
     for i in 1:n_test
         global error_abs, error_sq, nlpd, count_test
-        mod(i, 10) == 0 ? (@info i) : nothing
+        mod(i, 20) == 0 ? (@info i) : nothing
         # @info "i" i
         x_test_i = reshape(x_test[i, :], 1, length(posx))
         Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
@@ -100,6 +119,8 @@ if parsed_args["test"]
     error_abs  /= n_test
     error_sq   /= n_test
     nlpd       /= -n_test
+    after = Dates.now()
+    elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 
     if parsed_args["GP"] 
         @info "Start GP"
@@ -158,7 +179,7 @@ if parsed_args["test"]
     write(io1, "Data set: creep   
         id_train:  $id_train;  id_test:  $id_test  \n") 
     write(io1, "BTG model:  
-        $myquadtype  ;  rangeθ: $rangeθ;   rangeλ: $rangeλ \n")
+        $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
     if parsed_args["GP"] && parsed_args["logGP"]
         write(io1, "Compare test results: ")
         write(io1, "                               BTG               GP               logGP
@@ -166,6 +187,7 @@ if parsed_args["test"]
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))       $(@sprintf("%11.8f", error_abs_GP))       $(@sprintf("%11.8f", error_abs_logGP))  
         mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
+        Time BTG took: $elapsedmin
         BTG: Failed index in credible intervel:  $id_fail 
         BTG: Failed index in pdf computation:    $id_nonproper\n")
     else
@@ -174,6 +196,7 @@ if parsed_args["test"]
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
         mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))   
+        Time BTG took: $elapsedmin
         BTG: Failed index in credible intervel:  $id_fail 
         BTG: Failed index in pdf computation:    $id_nonproper\n")
     end

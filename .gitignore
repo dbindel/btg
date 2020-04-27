@@ -29,3 +29,10 @@ BayesTransformedGaussian/src/experiment/Test_writelog.txt
 BayesTransformedGaussian/src/experiment/Test_gp.ipynb
 BayesTransformedGaussian/src/experiment/Test_exp_abalone.ipynb
 BayesTransformedGaussian/src/experiment/Test_creep.ipynb
+BayesTransformedGaussian/src/experiment/log_abalone_qmc_m_posc3.txt
+BayesTransformedGaussian/src/experiment/log_abalone_qmc_s_posc3.txt
+BayesTransformedGaussian/src/experiment/log_abalone_sparse_m_posc7.txt
+BayesTransformedGaussian/src/experiment/log_abalone_sparse_s_posc3.txt
+BayesTransformedGaussian/src/experiment/log_abalone_sparse_m_posc3.txt
+BayesTransformedGaussian/src/experiment/log_abalone_sparse_s_posc7.txt
+BayesTransformedGaussian/src/experiment/Test_exp_abalone.ipynb

@@ -22,7 +22,7 @@ s = ArgParseSettings()
         help = "do cross validation or not"
         action = :store_true
     "--fast"
-        help = "use fast or not"
+        help = "use fast validation or not"
         action = :store_true
     "--GP"
         help = "test GP model"
@@ -30,6 +30,10 @@ s = ArgParseSettings()
     "--logGP"
         help = "test log-GP model"
         action = :store_true
+    "--posc"
+        help = "another option with an argument"
+        arg_type = Int
+        default = 3
 end
 parsed_args = parse_args(ARGS, s)
 # load abalone data
@@ -42,7 +46,8 @@ ind_shuffle = randperm(rng, size(data, 1))
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:200; posx = 1:7; posc = 1:3; n_train = length(id_train)
+id_train = 1:200; posx = 1:7; posc = 1:parsed_args["posc"]
+n_train = length(id_train)
 x = data[id_train, posx] 
 Fx = data[id_train, posc] 
 y = float(target[id_train])
@@ -66,7 +71,8 @@ btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
 ####################################
 if parsed_args["test"]
     @info "Start Test"
-    id_test = 1001:1100
+    before = Dates.now()
+    id_test = 1001:2000
     n_test = length(id_test)
     id_fail = []
     id_nonproper = []
@@ -79,7 +85,7 @@ if parsed_args["test"]
     nlpd = 0.
     for i in 1:n_test
         global error_abs, error_sq, nlpd, count_test
-        mod(i, 10) == 0 ? (@info i) : nothing
+        mod(i, 20) == 0 ? (@info i) : nothing
         # @info "i" i
         x_test_i = reshape(x_test[i, :], 1, length(posx))
         Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
@@ -107,6 +113,8 @@ if parsed_args["test"]
     error_abs  /= n_test
     error_sq   /= n_test
     nlpd       /= -n_test
+    after = Dates.now()
+    elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 
     if parsed_args["GP"] 
         global error_abs_GP, error_sq_GP, CI_test_GP, count_test_GP, nlpd_GP
@@ -114,7 +122,9 @@ if parsed_args["test"]
         x = data[id_train, posx]' 
         y = float(target[id_train])
         # build and fit a GP
-        mymean = MeanLin(zeros(d)); kern = SE(zeros(d),0.0) 
+        mymean = MeanLin(zeros(d))
+        # mymean = MeanZero() 
+        kern = SE(zeros(d),0.0) 
         gp = GP(x, y, mymean, kern) 
         optimize!(gp)     
         # predict
@@ -138,7 +148,9 @@ if parsed_args["test"]
         invg(x) = inverse(trans, x, 0.)
         gy = g_fixed.(y) 
         # build and fit a GP
-        mymean = MeanLin(zeros(d)); kern = SE(zeros(d),0.0) 
+        mymean = MeanLin(zeros(d))
+        # mymean = MeanZero() 
+        kern = SE(zeros(d),0.0) 
         loggp = GP(x, gy, mymean, kern) 
         optimize!(loggp) 
         # predict
@@ -155,7 +167,7 @@ if parsed_args["test"]
     end
     
     io1 = open("Exp_abalone_test.txt", "a") 
-    write(io1, "\n$(Dates.now()), rng: $randseed \n" )
+    write(io1, "\n$(Dates.now()), randseed: $randseed \n" )
     write(io1, "Data set: Abalone   
         id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
     write(io1, "BTG model:  
@@ -167,6 +179,7 @@ if parsed_args["test"]
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))       $(@sprintf("%11.8f", error_abs_GP))       $(@sprintf("%11.8f", error_abs_logGP))  
         mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
+        Time BTG took: $elapsedmin
         BTG: Failed index in credible intervel:   $id_fail 
         BTG: Failed index in pdf computation:     $id_nonproper\n")
     else
@@ -174,7 +187,8 @@ if parsed_args["test"]
         credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
         mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
-        mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))   
+        mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))
+        Time BTG took: $elapsedmin   
         Failed index in credible intervel:       $id_fail 
         BTG: Failed index in pdf computation:     $id_nonproper\n")
     end

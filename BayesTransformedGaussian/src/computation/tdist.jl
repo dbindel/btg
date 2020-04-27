@@ -124,9 +124,11 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             @info "logdet choleskyΣθ", logdet(choleskyΣθ)
         end
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
+        #@info "n", n; @info "p", p; @info "g(y0, λ)", g(y0, λ); 
+        #return (g(y0, λ) .- m)/sqrt(qC/(n-p))
         return f(y0, t, m, qC) # return location parameter to utilize T mixture structure
         #return C
-
+        #return m
         #(_, _, _, _, n, p) = unpack(btg.trainingData) 
         #return f
         #return  sqrt(qC/(n-p))
@@ -181,7 +183,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        (jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
         #we need to define covariance (sigma here ...)
         #sigma is covariance sqrt(qC/(n-p))
         qC = (q .* Cθ[1])
@@ -194,13 +196,19 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         for i = 1:d 
             jacG[i] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
         end
-        #return jacG
+        check_arg = zeros(1, d)
+        for i = 1:d
+            check_arg[i] = Y(i, sigma, dsigma)
+        end
+        #@info "n", n; @info "p", p; @info "gλy0", gλy0   
+        #return check_arg
+        return jacG
         #return hcat(cdf_deriv * dgλy0, jacG)
         #@info jacG
         #return dsigma
-        
-        return jacG'
-        
+        #return jacD
+        #return jacG'
+        #return jacm
         #return hcat(cdf_deriv_alternate*jacy0, jacG)
         
         #return cdf_deriv_alternate*jacy0
@@ -239,7 +247,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        (jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
         #we need to define covariance (sigma here ...)
         #sigma is covariance sqrt(qC/(n-p))
         qC = (q .* Cθ[1])
@@ -254,13 +262,19 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         for i = 1:d 
             store[i+1] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
         end
-        #return jacG
+        check_arg = zeros(1, d)
+        for i = 1:d
+            check_arg[i] = Y(i, sigma, dsigma)
+        end
+        #return check_arg
+        return jacG
         #return hcat(cdf_deriv * dgλy0, jacG)
         #@info jacG
         #return dsigma
         #return jacG'
         #return hcat(cdf_deriv_alternate*jacy0, jacG)
-        return nothing
+        #return nothing
+        #return jacD
         #return cdf_deriv_alternate*jacy0
         #return jacC'
         #return jacm
@@ -280,7 +294,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm, jacB, jacH) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        (jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
 
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(compute hessian of D)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         ΣinvjacB  = choleskyΣθ\jacB 
@@ -356,24 +370,35 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             end
         end
         function Y(i, sigma, dsigma) 
-            return - jacm[i]/sigma - (gλy0 - m)/sigma^2 * dsigma[i]    
+            return - jacm[i]/sigma .- (gλy0 .- m)/sigma^2 * dsigma[i]    
         end
         function R(i, j, sigma, dsigma, hess_sigma) #assume jacm  and hess_m defined already
             e1 = -hess_m[i, j]/sigma 
             e2 = jacm[j] * dsigma[i] / sigma^2
-            e3 = - jacm[i] * dsigma[j] / sigma^2
-            e4 = - 2*(gλy0 - m) * dsigma[j]/sigma^3
-            e5 = (gλy0 - m)*hess_sigma[i, j] / sigma^2
-            return e1 + e2 + e3 + e4 + e5
+            e3 = jacm[i] * dsigma[j] / sigma^2
+            e4 = 2*(gλy0 .- m) * dsigma[j]dsigma[i]/sigma^3
+            e5 = -(gλy0 .- m)*hess_sigma[i, j] / sigma^2
+            return (e1 .+ e2 .+ e3 .+ e4 .+ e5)[1]
+        end
+
+        check_arg = zeros(d, d)
+        for i = 1:d
+            for j = 1:d
+                check_arg[i, j] = R(i, j, sigma, dsigma, hess_sigma)
+            end
         end
         arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
         vanillat = LocationScale(0, 1, TDist(n-p))
         cdf_eval =  Distributions.cdf.(vanillat, arg)
         cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
-        cdf_second_deriv = -(n-p+k) * arg/(1 + arg^2) * Distributions.pdf.(vanillat, arg) #chain rule term computed later
+        cdf_second_deriv = -(n-p+k) * arg/( n - p  + arg^2) * cdf_deriv #chain rule term computed later
         hess_G = zeros(d, d)
-        for i = 1:d
+        for i = 1:d    #can make this loop 2x faster by using symmetry
             for j = 1:d
+                #@info "gλy0", gλy0
+                #@info "m", m
+                #@info "cdf_second_deriv", cdf_second_deriv
+                #@info "Y[i]", Y(i, sigma, dsigma)
                 expr1 = cdf_second_deriv * Y(i, sigma, dsigma) * Y(j, sigma, dsigma)
                 expr2 = cdf_deriv * R(i, j, sigma, dsigma, hess_sigma)
                 hess_G[i, j] = (expr1 .+ expr2)[1]
@@ -381,9 +406,16 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         end
         #return hessC
         #return hess_sigma
+        #return hessD
+        #return hess_m
+        #@info "n", n; @info "p", p; @info "gλy0", gλy0
+        #return check_arg
         return hess_G
+        #jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
+        #jacy0 = jac(y0)
+        #return (cdf_eval, cdf_deriv* dg(y0,  λ) /sqrt(qC/(n-p)), cdf_second_deriv * (dg(y0, λ)/ sqrt(qC/(n-p)))^2 + cdf_deriv * dg2(y0,λ) / sqrt(qC/(n-p)))    
+        #return (gλy0, dg(y0,  λ), dg2(y0,λ))
     end
-
 
     #function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Hθ, Σθ_inv_y, θ)#::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
     function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
@@ -408,7 +440,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
         jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
         #return (jacB, jacD, jacFx0, jacC, jacm)
-        return jacC, jacm, jacB, jacH
+        return (jacC, jacm, jacB, jacH, jacD)
     end
 
 

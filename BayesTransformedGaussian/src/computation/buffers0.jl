@@ -522,7 +522,7 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
         @info "test", testingData
     end
         #println("updating test buffer for $θ")
-    test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0)    
+    test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0; jitter = 1e-7)    
     Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
     @assert size(Bθ, 2)>= size(Bθ, 1) #row vector, as in the paper
     test_buffer.Bθ = Bθ

@@ -7,9 +7,16 @@ using GaussianProcesses
 include("../btg.jl")
 
 s = ArgParseSettings()
+# The defaut setting: --test: multiple length scale, QMC
 @add_arg_table! s begin
     "--test"
         help = "test or not"
+        action = :store_true
+    "--single"
+        help = "use single length scale or not"
+        action = :store_true 
+    "--sparse"   
+        help = "use SparseGrid or not"
         action = :store_true
     "--validate"
         help = "do cross validation or not"
@@ -25,41 +32,41 @@ s = ArgParseSettings()
         action = :store_true
 end
 parsed_args = parse_args(ARGS, s)
-
 # load abalone data
 df = DataFrame(CSV.File("../datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
 # shuffle data
-ind_shuffle = randperm(MersenneTwister(1234), size(data, 1)) 
+randseed = 1234; rng = MersenneTwister(randseed)
+ind_shuffle = randperm(rng, size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:200; posx = 1:7; posc = 1:7; n_train = length(id_train)
+id_train = 1:200; posx = 1:7; posc = 1:3; n_train = length(id_train)
 x = data[id_train, posx] 
 Fx = data[id_train, posc] 
 y = float(target[id_train])
 ymax_train = maximum(y)
 y ./= ymax_train
-trainingData0 = trainingData(x, Fx, y) #training data used for testing various functions
+trainingData0 = trainingData(x, Fx, y) 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
 #parameter setting
-rangeθ = [0.125 1000]
-rangeθm = repeat(rangeθ, d, 1)
-rangeλ = [-1.5 1.] #we will always used 1 range scale for lambda
-myquadtype = ["SparseCarlo", "SparseCarlo"]
-
+myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+rangeλ = [-1.5 1.] 
+rangeθs = [0.125 1000]
+rangeθm = repeat(rangeθs, d, 1)
+rangeθ = parsed_args["single"] ? rangeθs : rangeθm
 # build btg model
-btg0 = btg(trainingData0, rangeθm, rangeλ; quadtype = myquadtype)
-(pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0); #initialize training_buffer_dicts, solve once so can use fast techiques to extrapolate submatrix determinants, etc.
+btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
+(pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
 
 ####################################
 ############### Test ###############
 ####################################
 if parsed_args["test"]
     @info "Start Test"
-    id_test = 1001:2000
+    id_test = 1001:1100
     n_test = length(id_test)
     id_fail = []
     id_nonproper = []
@@ -148,11 +155,11 @@ if parsed_args["test"]
     end
     
     io1 = open("Exp_abalone_test.txt", "a") 
-    write(io1, "\n$(Dates.now()) \n" )
+    write(io1, "\n$(Dates.now()), rng: $randseed \n" )
     write(io1, "Data set: Abalone   
-        id_train:  $id_train;  id_test:  $id_test  \n") 
+        id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
     write(io1, "BTG model:  
-        $myquadtype  ;  rangeθ: $rangeθ;   rangeλ: $rangeλ \n")
+        $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
     if parsed_args["GP"] && parsed_args["logGP"]
         write(io1, "Compare test results: ")
         write(io1, "                               BTG               GP               logGP
@@ -217,7 +224,7 @@ if parsed_args["validate"]
             pdf_val_i, cdf_val_i, dpdf_val_i, quantbound_val_i, support_val_i = pre_process(x[1, :], Fx[1, :], pdf_val_i_raw, cdf_val_i_raw, dpdf_val_i_raw, quantInfo_val_i_raw)   
         else
             (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, i)
-            btg_val_naive = btg(trainingdata_minus_i, rangeθm, rangeλ; quadtype = myquadtype)
+            btg_val_naive = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = myquadtype)
             (pdf_val_i_raw, cdf_val_i_raw, dpdf_val_i_raw, quantInfo_val_i_raw) = solve(btg_val_naive)
             pdf_val_i, cdf_val_i, dpdf_val_i, quantbound_val_i, support_val_i  = pre_process(x_i, Fx_i, pdf_val_i_raw, cdf_val_i_raw, dpdf_val_i_raw, quantInfo_val_i_raw)
         end
@@ -244,13 +251,13 @@ if parsed_args["validate"]
     PyPlot.suptitle("Cross Validation $(parsed_args["fast"]), CI accuracy  $(@sprintf("%.4f", count)) ", fontsize=10)
 
     io2 = open("Exp_abalone_validate.txt", "a") 
-    write(io2, "$(Dates.now())  ;  $id_train   ; $myquadtype ;   $rangeθ  ;  $rangeλ  ;  $(parsed_args["fast"])  ;   $elapsedmin ; $count_val \n")
+    write(io2, "$(Dates.now())  ;  $id_train   ; $myquadtype ;   $rangeθs  ;  $rangeλ  ;  $(parsed_args["fast"])  ;   $elapsedmin ; $count_val \n")
     close(io2)
 
     # Hide x labels and tick labels for top plots and y ticks for right plots.
     for ax in axs
         ax.label_outer()
     end
-    PyPlot.savefig("figure/exp_abalone_$(ind[1])_$(ind[2])_$(myquadtype[1])$(myquadtype[2])_rθ_$(Int(rangeθ[1]))_$(Int(rangeθ[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
+    PyPlot.savefig("figure/exp_abalone_$(ind[1])_$(ind[2])_$(myquadtype[1])$(myquadtype[2])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
 end
 

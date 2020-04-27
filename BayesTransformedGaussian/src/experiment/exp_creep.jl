@@ -31,11 +31,11 @@ df = DataFrame(CSV.File("../datasets/creeprupt/taka", header=0))
 data = convert(Matrix, df[:,[1; 3:end]])
 target = convert(Array, df[:, 2]) 
 # shuffle data
-ind_shuffle = randperm(MersenneTwister(1234), size(data, 1)) 
+ind_shuffle = randperm(MersenneTwister(123), size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:200; posx = 1:30; posc = 1:30; n_train = length(id_train)
+id_train = 1:400; posx = 1:30; posc = 1:30; n_train = length(id_train)
 x = data[id_train, posx] 
 Fx = data[id_train, posc] 
 y = float(target[id_train])
@@ -59,9 +59,10 @@ btg0 = btg(trainingData0, rangeθm, rangeλ; quadtype = myquadtype)
 ####################################
 if parsed_args["test"]
     @info "Start Test"
-    id_test = 801:805
+    id_test = 801:length(target)
     n_test = length(id_test)
     id_fail = []
+    id_nonproper = []
     x_test = data[id_test, posx]
     Fx_test = data[id_test, posc]
     y_test_true = target[id_test]
@@ -165,14 +166,16 @@ if parsed_args["test"]
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))       $(@sprintf("%11.8f", error_abs_GP))       $(@sprintf("%11.8f", error_abs_logGP))  
         mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
-        BTG: Failed index in credible intervel:   $id_fail \n")
+        BTG: Failed index in credible intervel:  $id_fail 
+        BTG: Failed index in pdf computation:    $id_nonproper\n")
     else
         write(io1, "BTG test results: 
         credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
         mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
         mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
         mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))   
-        Failed index in credible intervel:       $id_fail \n")
+        BTG: Failed index in credible intervel:  $id_fail 
+        BTG: Failed index in pdf computation:    $id_nonproper\n")
     end
     close(io1)
 

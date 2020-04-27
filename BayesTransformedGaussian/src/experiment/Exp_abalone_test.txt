@@ -1,3 +1,26 @@
+Hyperparameter settings: 
+In BTG we should find
+    1. a good param range
+    2. single or multiple length scale
+    3. a good discretization method -- QMC or SparseGrid 
+    4. a good size of param sample
+    5. how the size of training data affect the results
+    6. how the choice of covariates affect the results
+
+Mini-test plan
+    1. use level 5 SparseGrid -- 3905 theta&lambda
+        a) multiple theta 
+            1.4min per test 
+        b) single theta
+
+    2. use 1000 QMC nodes
+        a) multiple theta
+        b) single theta
+
+****************************
+   Mini Test Results
+****************************
+
          Time            ;    ind_train  ;  ind_test   ;            quadtype            ;     rangeθ    ;    rangeλ   ;  CI accuracy ;   error_abs   ;  error_sq   ; -log(p(y))  ;  failed id 
 2020-04-25T14:00:59.496  ;    1:200    ;   1001:1030   ; ["SparseCarlo", "SparseCarlo"] ;   [10.0 1000.0]   ;  [-1.0 1.0] ;   0.9333333333333333    ;  2.9691971991088915   ;  14.098494448005281   ;   40.18671922407129   ;  Any[]  
 2020-04-25T15:24:49.509  ;    1:400    ;   1001:1100   ; ["SparseCarlo", "SparseCarlo"] ;   [10.0 1000.0]   ;  [-1.0 1.0] ;   0.85    ;  2.3062722402768414   ;  9.084949777251753   ;   81.58467652644921   ;  Any[]  
@@ -27,4 +50,103 @@ BTG test results:
     mean squared error:                       6.82172137 
     mean negative log predictive density:    44.16070780   
     Failed index in credible intervel:       Any[] 
+
+
+# adjust jitter in E, number of SparseCarlo (level 4 -> level 5), number of QMC nodes (400 -> 1000)
+2020-04-26T19:18:17.575, randseed: 1234 
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.92000000     
+        mean absolute error:                      1.79889664   
+        mean squared error:                       6.49063076 
+        mean negative log predictive density:    37.97808943   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+ 
+2020-04-26T19:47:39.896, randseed: 1234 
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.92000000     
+        mean absolute error:                      1.83700106   
+        mean squared error:                       6.62714094 
+        mean negative log predictive density:    80.55491326   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-04-26T19:52:37.702, randseed: 1234
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.91000000     
+        mean absolute error:                      1.84718428   
+        mean squared error:                       6.62896910 
+        mean negative log predictive density:    44.61145536   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-04-26T21:34:57.884, randseed: 1234
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.89000000     
+        mean absolute error:                      1.87752335   
+        mean squared error:                       6.75332345 
+        mean negative log predictive density:    43.64820670   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+
+****************************
+   Compare to GP and logGp
+****************************
+
+2020-04-26T02:40:03.294 
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:2000  
+BTG model:  
+        ["SparseCarlo", "SparseCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.0] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.90100000        0.92200000        0.92500000 
+        mean absolute error:                      2.04936110        1.52333078        1.56505215  
+        mean squared error:                       8.02816936        4.66758355        4.97897833   
+        mean negative log predictive density:    40.29320338        2.19675349        2.04691148  
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[202]
+
+2020-04-26T12:40:50.071 
+Data set: Abalone   
+        id_train:  1:200;  id_test:  2001:4176  
+BTG model:  
+        ["SparseCarlo", "SparseCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.0] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91819853        0.91452206        0.91911765 
+        mean absolute error:                      1.98666626        1.57019091        1.59917183  
+        mean squared error:                       7.70655755        5.11268713        5.33051610   
+        mean negative log predictive density:    38.45550746        2.25159872        2.09077026  
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+Summary:
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:4176  
+BTG model:  
+        ["SparseCarlo", "SparseCarlo"]  ;  rangeθ: [0.125 1000.0];   rangeλ: [-1.5 1.0] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.90959927        0.91826103        0.92205883 
+        mean absolute error:                      2.01801368        1.54676085        1.58211199  
+        mean squared error:                       7.86736346        4.89013534        5.15474722   
+        mean negative log predictive density:    39.37435542        2.22417611        2.06884087  
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
 

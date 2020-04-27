@@ -49,7 +49,9 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             Hθ = btg.test_buffer_dict[θ].Hθ
             Cθ = btg.test_buffer_dict[θ].Cθ
             Dθ = btg.test_buffer_dict[θ].Dθ
-
+            Eθ = btg.test_buffer_dict[θ].Eθ
+            ΣθinvBθ = btg.test_buffer_dict[θ].ΣθinvBθ
+            BθΣθinvBθ = Bθ*ΣθinvBθ 
             #(_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
             #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
             ###############################################################
@@ -57,8 +59,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             
             m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
             qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
-            sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
-            #
+            # sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
+            
             # temporary definition for testing
             expr2 = [1] 
 
@@ -74,7 +76,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             ΣθinvBθ = btg.test_buffer_dict[θ].ΣθinvBθ
             ΣθinvBθ_minus_i = lin_sys_loocv_IC(ΣθinvBθ, choleskyΣθ, validate) 
 
-            (Eθ, Bθ, _, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
+            (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ]) #a critical assumption is that the covariates Fx0 remain constant throughout cross-validation
             
              Bθ_minus_i = @view Bθ[:, [1:validate-1; validate+1:end]] #discard ith entry 
              Dθ_minus_i = Eθ - Bθ_minus_i * ΣθinvBθ_minus_i #Eθ is going to be 1 for 
@@ -87,8 +89,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
              m = Bθ_minus_i * Σθ_inv_y + Hθ_minus_i * βhat
 
             #temporary definition for testing
-            #Dθ = Dθ_minus_i
-
+            Dθ = Dθ_minus_i
             #@info "ΣθinvBθ_minus_i", ΣθinvBθ_minus_i
             #@info "Eθ", Eθ
             #@info Bθ 
@@ -97,11 +98,11 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             #@info βhat
         end
         gλz = btg.λbuffer_dict[λ].λ
-        return m[1], qtilde[1], Cθ[1], βhat, Dθ, expr2, validate,λ    #sigma_m
+        return m[1], qtilde[1], Cθ[1], βhat, Dθ, expr2, validate,λ, BθΣθinvBθ, Eθ
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
-        m, q, C, βhat, Dθ, expr2, validate, λ  = compute_qmC(x0, Fx0)
+        m, q, C, βhat, Dθ, expr2, validate, λ, BθΣθinvBθ, Eθ  = compute_qmC(x0, Fx0)
         #@warn "pushing to debug log"
         #push!(btg.debug_log, (m, C, q))
         qC = q*C
@@ -112,12 +113,14 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             @assert C[1] > 0
             @assert n-p > 0
         catch e
+            @info "θ", θ
             @info "D_theta", Dθ[1]
+            @info "BθΣθinvBθ" BθΣθinvBθ
+            @info "Eθ" Eθ
             @info "H(XsigmaX)'H", expr2[1]
             @info "q", q
             @info "C", C
             @info "validate", validate
-            @info "θ", θ
             @info "logdet choleskyΣθ", logdet(choleskyΣθ)
         end
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist

@@ -262,12 +262,26 @@ if true
             #cdf_fixed 
             #plt(cdf_fixed, .01, 1, 100)
         end 
-        (_, _, plt1, pol1) = checkDerivative(B, A, init_v, nothing, 3, 10, 10) #first arg is function, second arg is derivative
+        
+        (_, _, plt1, pol1) = checkDerivative(B, A, init_v, nothing, 4, 10, 10) #first arg is function, second arg is derivative
         #@test coeffs(pol1)[end] > 2 - 3e-1
         println(pol1)
-        (_, _, plt2, pol2) = checkDerivative(B, A, init_v, C, 3, 11, 10); #first arg is function, second arg is derivative
+        (_, _, plt2, pol2) = checkDerivative(B, A, init_v, C, 3, 13, 10); #first arg is function, second arg is derivative
         #@test coeffs(pol1)[end] > 2 - 3e-1
         println(pol2)
+        
+ 
+        if false #temporary test for second derivative of cdf w.r.t x
+        A = y -> cdf_hess_us(init_v, Fx0(init_v), y)[1]
+        B = y -> cdf_hess_us(init_v, Fx0(init_v), y)[2]
+        C = y -> cdf_hess_us(init_v, Fx0(init_v), y)[3]
+        (_, _, plt1, pol1) = checkDerivative(A, B, 0.26, nothing, 4, 10, 10) #first arg is function, second arg is derivative
+        #@test coeffs(pol1)[end] > 2 - 3e-1
+        println(pol1)
+        (_, _, plt2, pol2) = checkDerivative(B, C, 0.26, nothing, 3, 13, 10); #first arg is function, second arg is derivative
+        #@test coeffs(pol1)[end] > 2 - 3e-1
+        println(pol2)
+        end
 
     #end
 #end

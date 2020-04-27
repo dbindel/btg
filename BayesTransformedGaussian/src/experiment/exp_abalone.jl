@@ -7,9 +7,16 @@ using GaussianProcesses
 include("../btg.jl")
 
 s = ArgParseSettings()
+# The defaut setting: --test: multiple length scale, QMC
 @add_arg_table! s begin
     "--test"
         help = "test or not"
+        action = :store_true
+    "--single"
+        help = "use single length scale or not"
+        action = :store_true 
+    "--sparse"   
+        help = "use SparseGrid or not"
         action = :store_true
     "--validate"
         help = "do cross validation or not"
@@ -23,40 +30,36 @@ s = ArgParseSettings()
     "--logGP"
         help = "test log-GP model"
         action = :store_true
-    "--single"
-    help = "use single length scale or not"
-    action = :store_true    
 end
 parsed_args = parse_args(ARGS, s)
-
 # load abalone data
 df = DataFrame(CSV.File("../datasets/abalone.csv"))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
 # shuffle data
-ind_shuffle = randperm(MersenneTwister(1234), size(data, 1)) 
+randseed = 1234; rng = MersenneTwister(randseed)
+ind_shuffle = randperm(rng, size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:200; posx = 1:7; posc = 1:7; n_train = length(id_train)
+id_train = 1:200; posx = 1:7; posc = 1:3; n_train = length(id_train)
 x = data[id_train, posx] 
 Fx = data[id_train, posc] 
 y = float(target[id_train])
 ymax_train = maximum(y)
 y ./= ymax_train
-trainingData0 = trainingData(x, Fx, y) #training data used for testing various functions
+trainingData0 = trainingData(x, Fx, y) 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
 #parameter setting
-# myquadtype = ["SparseCarlo", "SparseCarlo"]
-myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
 rangeλ = [-1.5 1.] 
 rangeθs = [0.125 1000]
 rangeθm = repeat(rangeθs, d, 1)
 rangeθ = parsed_args["single"] ? rangeθs : rangeθm
 # build btg model
 btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
-(pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0); #initialize training_buffer_dicts, solve once so can use fast techiques to extrapolate submatrix determinants, etc.
+(pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
 
 ####################################
 ############### Test ###############
@@ -152,9 +155,9 @@ if parsed_args["test"]
     end
     
     io1 = open("Exp_abalone_test.txt", "a") 
-    write(io1, "\n$(Dates.now()) \n" )
+    write(io1, "\n$(Dates.now()), rng: $randseed \n" )
     write(io1, "Data set: Abalone   
-        id_train:  $id_train;  id_test:  $id_test  \n") 
+        id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
     write(io1, "BTG model:  
         $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
     if parsed_args["GP"] && parsed_args["logGP"]

@@ -15,10 +15,7 @@ Mini-test plan
 
     2. use 1000 QMC nodes
         a) multiple theta
-
         b) single theta
-
-    3. 
 
 ****************************
    Mini Test Results
@@ -54,24 +51,63 @@ BTG test results:
     mean negative log predictive density:    44.16070780   
     Failed index in credible intervel:       Any[] 
 
-2020-04-26T16:11:39.537 
+
+# adjust jitter in E, number of SparseCarlo (level 4 -> level 5), number of QMC nodes (400 -> 1000)
+2020-04-26T19:18:17.575, randseed: 1234 
 Data set: Abalone   
-        id_train:  1:200;  id_test:  1001:1100  
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
 BTG model:  
         ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
 BTG test results: 
         credible intervel accuracy percentage:    0.92000000     
         mean absolute error:                      1.79889664   
-        mean squared error:                       6.49063077 
-        mean negative log predictive density:    37.97809871   
+        mean squared error:                       6.49063076 
+        mean negative log predictive density:    37.97808943   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+ 
+2020-04-26T19:47:39.896, randseed: 1234 
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.92000000     
+        mean absolute error:                      1.83700106   
+        mean squared error:                       6.62714094 
+        mean negative log predictive density:    80.55491326   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-04-26T19:52:37.702, randseed: 1234
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.91000000     
+        mean absolute error:                      1.84718428   
+        mean squared error:                       6.62896910 
+        mean negative log predictive density:    44.61145536   
+        Failed index in credible intervel:       Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-04-26T21:34:57.884, randseed: 1234
+Data set: Abalone   
+        id_train:  1:200;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7  
+BTG model:  
+        ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+        credible intervel accuracy percentage:    0.89000000     
+        mean absolute error:                      1.87752335   
+        mean squared error:                       6.75332345 
+        mean negative log predictive density:    43.64820670   
         Failed index in credible intervel:       Any[] 
         BTG: Failed index in pdf computation:     Any[]
 
 
-
-
 ****************************
-         Experiment
+   Compare to GP and logGp
 ****************************
 
 2020-04-26T02:40:03.294 
@@ -114,17 +150,3 @@ Compare test results:                                BTG               GP       
         BTG: Failed index in pdf computation:     Any[]
 
 
-
-
-2020-04-26T16:37:25.12 
-Data set: Abalone   
-        id_train:  1:200;  id_test:  1001:1100  
-BTG model:  
-        ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
-BTG test results: 
-        credible intervel accuracy percentage:    0.74000000     
-        mean absolute error:                      1.57173129   
-        mean squared error:                       6.18514658 
-        mean negative log predictive density:    54.47105754   
-        Failed index in credible intervel:       Any[] 
-        BTG: Failed index in pdf computation:     Any[5, 8, 11, 14, 18, 19, 25, 28, 30, 46, 47, 51, 52, 60, 63, 67, 70, 74, 80, 82, 87]

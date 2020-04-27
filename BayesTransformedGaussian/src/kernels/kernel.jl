@@ -92,7 +92,7 @@ function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 0, dims=1)
     out .= (τ -> k(τ, θ)).(out) 
     if jitter != 0
         out[diagind(out)] .+= jitter 
-        out ./= out[1, 1] #covariance must be in [0, 1]
+        # out ./= out[1, 1] #covariance must be in [0, 1]
     end
     return nothing
 end

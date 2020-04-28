@@ -1,5 +1,9 @@
 include("../btg.jl")
 
+
+y, x = sample(f, lx, ux)
+Fx = linearPolynomialBasis
+
 for i = 1:10 #take 10 BO steps
     #(pdf, cdf, dpdf, cdf_gradient, cdf_hessian) = solve(btg)
     #(u_star, s_star) = optimize_acquisition(cdf, cdf_gradient, cdf_hessian)
@@ -14,7 +18,6 @@ for i = 1:10 #take 10 BO steps
     # - logdetXΣX compute directly
     # 
     #
-     
 end
 """
 cdf(u, s) is a function of location s and value u, gradients and hessian are

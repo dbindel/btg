@@ -537,9 +537,6 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     test_buffer.θ = train_buffer.θ
     #@info "D" test_buffer.Dθ
     #@info "H" test_buffer.Hθ
-
-    
-
     return nothing
 end
 

@@ -30,11 +30,9 @@ target = target/normalizing_constant #normalization
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~(to test or not to test)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 test_btg1 = false
-test_btg2 = true
+test_btg2 = true #used to test derivatives of cdf w.r.t augmented label-location vector [u, s]
 test_btg3 = false
 test_btg4 = false #weird finite difference behavior when n >1000
-
-
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~(btg1)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 #Attributes: 
@@ -277,24 +275,40 @@ if true
         end
         if true
             println("test derivatives of average augmented cdf_deriv...\n ")
-            y0 = 0.4
-            x0 = [0.3 0.4 0.05 0.3 0.03 0.05 0.15]
-            (pdf, cdf, dpdf, cdf_grad_us, cdf_hess_us, quantInfo) = solve(btg2; derivatives = true)
-            A = au -> cdf_grad_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
-            B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
-            C = au -> cdf_hess_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
-            init = hcat(y0, x0)
-            (_, _, plt1, pol1) = checkDerivative(B, A, init, nothing, 5, 11, 10) #first arg is function, second arg is derivative
-            @test coeffs(pol1)[end] > 2 - 3e-1
-            println("pol1:",pol1)
-            (_, _, plt2, pol2) = checkDerivative(B, A, init, C, 5, 11, 10) #first arg is function, second arg is derivative
-            println("pol1:",pol2)
-            @test coeffs(pol2)[end]> 3 - 3e-1
+            @testset "btg augmented cdf_function test 1" begin
+                y0 = 0.4
+                x0 = [0.3 0.4 0.05 0.3 0.03 0.05 0.15]
+                (pdf, cdf, dpdf, cdf_grad_us, cdf_hess_us, quantInfo) = solve(btg2; derivatives = true)
+                A = au -> cdf_grad_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+                B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+                C = au -> cdf_hess_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+                init = hcat(y0, x0)
+                (_, _, plt1, pol1) = checkDerivative(B, A, init, nothing, 5, 11, 10) #first arg is function, second arg is derivative
+                @test coeffs(pol1)[end] > 2 - 3e-1
+                println("pol1:",pol1)
+                (_, _, plt2, pol2) = checkDerivative(B, A, init, C, 5, 11, 10) #first arg is function, second arg is derivative
+                println("pol1:",pol2)
+                @test coeffs(pol2)[end]> 3 - 3e-1
+            end
+            @testset "btg augmented cdf_function test 2" begin
+                y0 =1.1
+                x0 = [0.8 0.02 0.4 0.3 0.5 0.2 0.4]
+                (pdf, cdf, dpdf, cdf_grad_us, cdf_hess_us, quantInfo) = solve(btg2; derivatives = true)
+                A = au -> cdf_grad_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+                B = au -> cdf(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+                C = au -> cdf_hess_us(au[2:end], linear_polynomial_basis(au[2:end]), au[1])
+                init = hcat(y0, x0)
+                (_, _, plt1, pol1) = checkDerivative(B, A, init, nothing, 5, 11, 10) #first arg is function, second arg is derivative
+                @test coeffs(pol1)[end] > 2 - 3e-1
+                println("pol1:",pol1)
+                (_, _, plt2, pol2) = checkDerivative(B, A, init, C, 5, 11, 10) #first arg is function, second arg is derivative
+                println("pol1:",pol2)
+                @test coeffs(pol2)[end]> 3 - 3e-1
+            end
         end
         #end
     #end
     end
-
 if false
 #if true #test derivatives of new function 
     println("test derivative of cdf/cdf-related quantities computed using comp_tdist w.r.t s")

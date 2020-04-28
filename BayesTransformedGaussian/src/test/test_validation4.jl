@@ -1,4 +1,5 @@
 using Dates
+using PyPlot
 #using ProfileView
 
 include("../btg.jl")
@@ -33,6 +34,8 @@ PyPlot.close("all") #close existing windows
 #pdf(x0, Fx0, .4);
 #(pdf, cdf, dpdf) = solve(btg1; validate = i) #do LOOCV this time around
 #a1 = y-> pdf(x0, Fx0, y)
+
+println("recommended theta range:", select_single_theta_range(x))
 
 """
 leave-one-out-training-data
@@ -114,5 +117,5 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     end
 end
 
-test_LOOCV(btg1, 6, 10; fast = false)
+#test_LOOCV(btg1, 6, 10; fast = false)
 

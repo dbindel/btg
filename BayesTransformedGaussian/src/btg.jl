@@ -8,6 +8,8 @@ using DataFrames
 using CSV                                                                         
 using Polynomials      
 using PyPlot
+include("range_selector.jl")
+include("covariatefun.jl")
 include("validation/det_loocv.jl")                                             
 include("validation/loocv.jl")                                             
 include("quadrature/quadrature.jl")                                             

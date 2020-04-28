@@ -7,6 +7,7 @@ using Distributions
 using DataFrames                                                                    
 using CSV                                                                         
 using Polynomials   
+include("../range_selector.jl")
 include("../validation/det_loocv.jl")                                             
 include("../validation/loocv.jl")                                             
 include("../quadrature/quadrature.jl")                                             
@@ -134,6 +135,7 @@ ind = 120:140
 posx = 1:7 #
 posc = 1:7
 x = data[ind, posx] 
+@info "recommended theta range: ", select_single_theta_range(x)
 #choose a subset of variables to be regressors for the mean
 POLYNOMIAL_BASIS_COVARIATES = true
 if POLYNOMIAL_BASIS_COVARIATES

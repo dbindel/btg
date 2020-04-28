@@ -1,8 +1,12 @@
 include("../btg.jl")
 
-
+#initialize bayesopt proxy function with burn-in points
 y, x = sample(f, lx, ux)
-Fx = linearPolynomialBasis
+Fx = linear_polynomial_basis(x)
+train = trainingData(x, Fx, y)
+rangeθ = 
+rangeλ = [1, 2]
+btg1 = btg(train, rangeθ, rangeλ);
 
 for i = 1:10 #take 10 BO steps
     #(pdf, cdf, dpdf, cdf_gradient, cdf_hessian) = solve(btg)

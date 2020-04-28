@@ -10,6 +10,7 @@ function linear_polynomial_basis(x)#linear polynomial basis
         return hcat(ones(size(x, 1), 1), x)
     end
 end
+
 """
 Computes constant polynomial basis
 OUTPUT: 2D Array

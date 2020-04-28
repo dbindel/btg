@@ -196,21 +196,22 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         for i = 1:d 
             jacG[i] = (cdf_deriv .* Y(i, sigma, dsigma))[1]
         end
-        check_arg = zeros(1, d)
-        for i = 1:d
-            check_arg[i] = Y(i, sigma, dsigma)
+        if false #check derivative of arg
+            check_arg = zeros(1, d)
+            for i = 1:d
+                check_arg[i] = Y(i, sigma, dsigma)
+            end
         end
         #@info "n", n; @info "p", p; @info "gλy0", gλy0   
         #return check_arg
-        return jacG
+        #return jacG
         #return hcat(cdf_deriv * dgλy0, jacG)
         #@info jacG
         #return dsigma
         #return jacD
         #return jacG'
         #return jacm
-        #return hcat(cdf_deriv_alternate*jacy0, jacG)
-        
+        return hcat(cdf_deriv_alternate*jacy0, jacG)
         #return cdf_deriv_alternate*jacy0
         #return jacC'
         #return jacm
@@ -267,8 +268,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             check_arg[i] = Y(i, sigma, dsigma)
         end
         #return check_arg
-        return jacG
-        #return hcat(cdf_deriv * dgλy0, jacG)
+        #return jacG
+        return hcat(cdf_deriv * dgλy0, jacG)
         #@info jacG
         #return dsigma
         #return jacG'
@@ -287,6 +288,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         qC = q*C
         k = size(qC, 1)
         gλy0 = btg.g(y0, λ)
+        dgλy0 = dg(y0, λ)
+        d2gλy0 = dg2(y0, λ)
         x0 = reshape(x0, 1, length(x0))
         #unpack pertinent quantities
         Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
@@ -380,7 +383,6 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             e5 = -(gλy0 .- m)*hess_sigma[i, j] / sigma^2
             return (e1 .+ e2 .+ e3 .+ e4 .+ e5)[1]
         end
-
         check_arg = zeros(d, d)
         for i = 1:d
             for j = 1:d
@@ -392,18 +394,23 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         cdf_eval =  Distributions.cdf.(vanillat, arg)
         cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
         cdf_second_deriv = -(n-p+k) * arg/( n - p  + arg^2) * cdf_deriv #chain rule term computed later
-        hess_G = zeros(d, d)
-        for i = 1:d    #can make this loop 2x faster by using symmetry
-            for j = 1:d
-                #@info "gλy0", gλy0
-                #@info "m", m
-                #@info "cdf_second_deriv", cdf_second_deriv
-                #@info "Y[i]", Y(i, sigma, dsigma)
+        gλy0 = btg.g(y0, λ)
+        dgλy0 = dg(y0, λ)
+        d2gλy0 = dg2(y0, λ)
+        hess_G = zeros(1+d, 1+d)
+        for i = 1:d  #can make this loop 2x faster by using symmetry
+            for j = 1:i
                 expr1 = cdf_second_deriv * Y(i, sigma, dsigma) * Y(j, sigma, dsigma)
                 expr2 = cdf_deriv * R(i, j, sigma, dsigma, hess_sigma)
-                hess_G[i, j] = (expr1 .+ expr2)[1]
+                hess_G[i+1, j+1] = hess_G[j+1, i+1] = (expr1 .+ expr2)[1]
             end
         end
+        for i = 1:d 
+            expr1 = cdf_second_deriv * Y(i, sigma, dsigma) * dgλy0 / sigma
+            expr2 = cdf_deriv * (-dgλy0) / sigma^2 * dsigma[i]
+            hess_G[1, i+1] = hess_G[i+1, 1] = (expr1 + expr2)[1]
+        end
+        hess_G[1, 1] = cdf_second_deriv * (dgλy0/sigma)^2 + cdf_deriv * d2gλy0 / sigma        
         #return hessC
         #return hess_sigma
         #return hessD
@@ -442,41 +449,6 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return (jacB, jacD, jacFx0, jacC, jacm)
         return (jacC, jacm, jacB, jacH, jacD)
     end
-
-
-    # parallel to compute, except used to compute derivatives w.r.t location
-    # also calls compute_qmC and hence updates test buffers
-    # Comes after pdf, cdf, pdf_deriv computations, because those are needed for current computation 
-    function compute_location_derivs(x0, Fx0, y0)
-        m, q, C, βhat = compute_qmC(x0, Fx0)
-        qC = q*C
-        k = size(qC, 1)
-        gλy0 = btg.g(y0, λ)
-        dgλy0 = partialx(btg, y0, λ) 
-        d2gλy0 = partialxx(btg, y0, λ)
-
-        arg = ((gλy0 .- m)/sqrt(qC/(n-p)))[1] #1 x 1
-        vanillat = LocationScale(0, 1, TDist(n-p))
-        cdf_eval =  Distributions.cdf.(vanillat, arg)
-        cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
-        cdf_second_deriv = -(n-p+k) * arg/(1 + arg^2) * Distributions.pdf.(vanillat, arg) #chain rule term computed later
-        # t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
-        # #(C, jacC) = compute_higher_derivs(btg, θ, x0, Fx0, y0)
-        # pdf_eval = Distributions.pdf.(vanillat, arg)
-        # cdf_eval = Distributions.cdf.(vanillat, arg)
-        # pdf_deriv_eval = main_pdf_deriv_location_helper(y0, t, m, qC)
-        (func, jacobian, hessian) = compute_BO_derivs(btg, θ, λ, x0, Fx0, y0, m, q, βhat, Σθ_inv_y, cdf_deriv, cdf_second_deriv, cdf_eval)
-    end
-
-    cdf_prime_loc = (x0, Fx0, y0) -> compute_location_derivs(x0, Fx0, y0)
-    
-    #derivatives w.r.t s + Hessian for augmented vector (y0, x0) for Bayesian optimization
-
-    function main_cdf_prime_s() 
-        #used to compute gradient and Hessian using necessary ingredients
-    end
-    #cdf_prime_s = (x0, Fx0, y0) -> compute_higher_derivs(main_cdf_prime_s, ...)#gradient of B(s), X0(s), D(s), H(s)
-    #cdf_hessian = (x0, Fx0, y0) -> compute_higher #use results from cdf_prime_s and main_pdf_deriv
 
     # compute quantile q for each component
     function q_fun(x0, Fx0, quant)

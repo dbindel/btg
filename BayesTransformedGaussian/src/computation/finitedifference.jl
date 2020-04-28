@@ -32,9 +32,9 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     try 
         @assert size(df0, 1) == m && size(df0, 2) == n 
     catch e
-        @info "df0", df0
-        @info "m", m
-        @info "n", n
+        #@info "df0", df0
+        #@info "m", m
+        #@info "n", n
     end
 
     try 

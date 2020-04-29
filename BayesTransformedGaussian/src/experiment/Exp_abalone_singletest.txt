@@ -1,0 +1,83 @@
+2020-04-28T01:08:27.673, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:400;  id_test:  1001:1010;   posx: 1:7;   posc: 1:3
+BTG model:  
+            ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.90000000     
+            mean absolute error:                      3.54409964   
+            mean squared error:                      16.61531243 
+            mean negative log predictive density:    48.13575706
+            Time BTG took: 1.85982   
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-04-28T01:54:51.221, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:400;  id_test:  1001:1050;   posx: 1:7;   posc: 1:3
+BTG model:  
+            ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.86000000     
+            mean absolute error:                      2.75328026   
+            mean squared error:                      12.41561185 
+            mean negative log predictive density:    74.26801265
+            Time BTG took: 40.70992   
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-04-28T02:47:00.57, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:400;  id_test:  1001:1050;   posx: 1:7;   posc: 1:3
+BTG model:  
+            ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.90000000     
+            mean absolute error:                      2.72334448   
+            mean squared error:                      12.16231652 
+            mean negative log predictive density:    109.56432684
+            Time BTG took: 50.42762   
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-04-28T03:40:37.24, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:400;  id_test:  1001:1050;   posx: 1:7;   posc: 1:3
+BTG model:  
+            ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.90000000     
+            mean absolute error:                      2.62096611   
+            mean squared error:                      11.60773638 
+            mean negative log predictive density:    70.36841833
+            Time BTG took: 51.85065   
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-04-28T06:28:10.741, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:800;  id_test:  1001:1050;   posx: 1:7;   posc: 1:3
+BTG model:  
+            ["SparseCarlo", "SparseCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: false) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.83673469     
+            mean absolute error:                      2.79813060   
+            mean squared error:                      13.29209428 
+            mean negative log predictive density:    167.17769800
+            Time BTG took: 164.31042   
+            Failed index in credible intervel:       Any[2] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-04-28T09:46:10.52, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:800;  id_test:  1001:1050;   posx: 1:7;   posc: 1:3
+BTG model:  
+            ["QuasiMonteCarlo", "QuasiMonteCarlo"]  ;  rangeλ: [-1.5 1.0];   rangeθ: [0.125 1000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.90000000     
+            mean absolute error:                      2.58301914   
+            mean squared error:                      10.77357357 
+            mean negative log predictive density:    255.29780120
+            Time BTG took: 195.71763   
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]

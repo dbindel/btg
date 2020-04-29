@@ -20,7 +20,7 @@ function select_single_theta_range(x)
 
     #want k(x, y) to be between .001 and .999
     lb =  2/maxi * ( - log(lower) )
-    ub = 2/mini * (- log(upper) ) 
-    return [lb ub]
+    ub = 2/mini * (- log(upper)) 
+    return [min(lb, ub) max(lb, ub)]
 end
 

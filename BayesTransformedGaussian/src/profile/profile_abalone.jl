@@ -83,7 +83,7 @@ btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
 ############### Test ###############
 ####################################
 if parsed_args["test"]
-    @info "Start Test"
+    @info "Start Test..."
     before = Dates.now()
     id_test = 1001:(parsed_args["ntest"]+1000)
     n_test = length(id_test)
@@ -179,52 +179,36 @@ if parsed_args["test"]
         nlpd_logGP = -mean(log.( dg.(y_test_true) .* pdf.(Normal(), (g_fixed.(y_test_true).-μ)./stdv) ./stdv ))
     end
 
-    if parsed_args["singletest"]
-        @info "Average time for single test: " elapsedmin/n_test
-        io1 = open("Exp_abalone_singletest.txt", "a")
-        write(io1, "\n$(Dates.now()), randseed: $randseed \n" )
-        write(io1, "Data set: Abalone   
-            id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
-        write(io1, "BTG model:  
-            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+
+    @info "Average time for single test: " elapsedmin/n_test
+    io1 = open("Profile_abalone_results.txt", "a") 
+    write(io1, "\n$(Dates.now()), randseed: $randseed \n" )
+    write(io1, "Data set: Abalone   
+        id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
+    write(io1, "BTG model:  
+        $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+    if parsed_args["GP"] && parsed_args["logGP"]
+        write(io1, "Compare test results: ")
+        write(io1, "                               BTG               GP               logGP
+        credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))       $(@sprintf("%11.8f", count_test_GP))       $(@sprintf("%11.8f", count_test_logGP)) 
+        mean absolute error:                     $(@sprintf("%11.8f", error_abs))       $(@sprintf("%11.8f", error_abs_GP))       $(@sprintf("%11.8f", error_abs_logGP))  
+        mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
+        mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
+        Time cost by prediction: $elapsedmin
+        BTG: Failed index in credible intervel:   $id_fail 
+        BTG: Failed index in pdf computation:     $id_nonproper\n")
+    else
         write(io1, "BTG test results: 
-            credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
-            mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
-            mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
-            mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))
-            Time cost by prediction: $elapsedmin   
-            Failed index in credible intervel:       $id_fail 
-            BTG: Failed index in pdf computation:     $id_nonproper\n")
-        close(io1)
-    else # write results 
-        io1 = open("Exp_abalone_test.txt", "a") 
-        write(io1, "\n$(Dates.now()), randseed: $randseed \n" )
-        write(io1, "Data set: Abalone   
-            id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
-        write(io1, "BTG model:  
-            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
-        if parsed_args["GP"] && parsed_args["logGP"]
-            write(io1, "Compare test results: ")
-            write(io1, "                               BTG               GP               logGP
-            credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))       $(@sprintf("%11.8f", count_test_GP))       $(@sprintf("%11.8f", count_test_logGP)) 
-            mean absolute error:                     $(@sprintf("%11.8f", error_abs))       $(@sprintf("%11.8f", error_abs_GP))       $(@sprintf("%11.8f", error_abs_logGP))  
-            mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
-            mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
-            Time cost by prediction: $elapsedmin
-            BTG: Failed index in credible intervel:   $id_fail 
-            BTG: Failed index in pdf computation:     $id_nonproper\n")
-        else
-            write(io1, "BTG test results: 
-            credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
-            mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
-            mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
-            mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))
-            Time cost by prediction: $elapsedmin   
-            Failed index in credible intervel:       $id_fail 
-            BTG: Failed index in pdf computation:     $id_nonproper\n")
-        end
-        close(io1)
+        credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
+        mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
+        mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
+        mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))
+        Time cost by prediction: $elapsedmin   
+        Failed index in credible intervel:       $id_fail 
+        BTG: Failed index in pdf computation:     $id_nonproper\n")
     end
+    close(io1)
+    
 
 
 end

@@ -16,8 +16,8 @@ function select_single_theta_range(x)
     @info mini
     
     #want values in kernel matrix to fall in this range, assuming RBF kernel
-    lower = 0.0005 
-    upper = 0.999
+    lower = 1e-4
+    upper = 0.9999
 
     #want k(x, y) to be between .001 and .999
     lb =  2/maxi * ( - log(lower) )

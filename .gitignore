@@ -40,3 +40,7 @@ BayesTransformedGaussian/src/experiment/log_abalone_qmc_s_posc7.txt
 BayesTransformedGaussian/src/experiment/log_abalone_qmc_m_posc7.txt
 BayesTransformedGaussian/src/experiment/log_creep_qmc_s_posc30.txt
 BayesTransformedGaussian/src/experiment/log_creep_sparse_s_posc30.txt
+BayesTransformedGaussian/src/experiment/exp_single_test.sh
+BayesTransformedGaussian/src/experiment/log_creep_qmc_m_posc30.txt
+BayesTransformedGaussian/src/experiment/Exp_abalone_LOOCV.txt
+BayesTransformedGaussian/src/experiment/Untitled.ipynb

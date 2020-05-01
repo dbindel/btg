@@ -1,0 +1,1 @@
+julia profile_abalone.jl --test --single  --ntrain 500  --ntest 50

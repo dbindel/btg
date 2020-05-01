@@ -57,8 +57,8 @@ end
 Represents a set of testing data. Currently supports single-point prediction.
 """
 mutable struct testingData<:AbstractTestingData
-    x0::Array{T, 2} where T<:Float64
-    Fx0::Array{T, 2} where T<:Float64
+    x0::Array{T} where T<:Real
+    Fx0::Array{T} where T<:Real
     d::Int64
     p::Int64
     k::Int64
@@ -99,6 +99,12 @@ function update!(e:: AbstractTestingData, x0, Fx0)
     @assert typeof(x0)<:Array{T, 2} where T<:Real
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
     @assert size(x0, 1) == size(Fx0, 1)
+    if (bool = [x0[i] == NaN for i = 1:length(x0)]; reduce((x, y)-> x || y, bool)) == true
+        @warn "entry of x0 is NaN"
+        @info "x0", x0
+        @info "Fx0", Fx0
+    end
+    #@info("x0", x0)
     e.x0 = x0
     e.Fx0 = Fx0
     e.d = size(x0, 2)

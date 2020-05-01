@@ -35,7 +35,6 @@ struct BoxCox <:NonlinearTransform end
 struct anotherone<:NonlinearTransform end
 
 #jitter = 1e-6
-
 (::BoxCox)(x, λ::Union{Array{T, 1}, T} where T<:Real) = (@assert (typeof(λ) <:Array{T} where T<:Real && size(λ, 2)==1) || (typeof(λ)<:Real); 
                                                  λ[1] == 0 ? log.(x ) : expm1.(log.(x) .* λ[1]) ./ λ[1])
 partialx(::BoxCox, x, λ) =  λ[1]==0 ? float(x).^(-1) : float(x).^(λ[1] .-1)

@@ -24,30 +24,22 @@ end;
 
 x0 = [0.0, 0.0]
 df = TwiceDifferentiable(fun, fun_grad!, fun_hess!, x0)
-
 lx = [-0.5, -0.5]; ux = [0.5, 0.5]
 dfc = TwiceDifferentiableConstraints(lx, ux)
-
 res = optimize(df, dfc, x0, IPNewton())
-
+if false
 ux = fill(Inf, 2)
 dfc = TwiceDifferentiableConstraints(lx, ux)
-
 clear!(df)
 res = optimize(df, dfc, x0, IPNewton())
-
 lx = fill(-Inf, 2); ux = fill(Inf, 2)
 dfc = TwiceDifferentiableConstraints(lx, ux)
-
 clear!(df)
 res = optimize(df, dfc, x0, IPNewton())
-
 lx = Float64[]; ux = Float64[]
 dfc = TwiceDifferentiableConstraints(lx, ux)
-
 clear!(df)
 res = optimize(df, dfc, x0, IPNewton())
-
 con_c!(c, x) = (c[1] = x[1]^2 + x[2]^2; c)
 function con_jacobian!(J, x)
     J[1,1] = 2*x[1]
@@ -58,7 +50,6 @@ function con_h!(h, x, λ)
     h[1,1] += λ[1]*2
     h[2,2] += λ[1]*2
 end;
-
 lx = Float64[]; ux = Float64[]
 lc = [-Inf]; uc = [0.5^2]
 dfc = TwiceDifferentiableConstraints(con_c!, con_jacobian!, con_h!,
@@ -118,4 +109,5 @@ if true
     scatter3D(loc[:, 1], loc[:, 2], res, color = "red")
     #contour(x, y, z)
     #scatter3D([0], [0], [100], color = "red")
+end
 end

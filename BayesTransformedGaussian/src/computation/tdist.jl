@@ -137,20 +137,35 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return btg.g(y0, λ)
     end
     
-    main_pdf = (y0, t, m, qC) -> (Distributions.pdf.(t, g(y0, λ)) * jac(y0))
-    main_cdf = (y0, t, m, qC) -> (Distributions.cdf.(t, g(y0, λ))) 
-    main_pdf_deriv_helper = (y0, t, m, qC) -> (k = size(qC, 1); gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0);
+    function main_pdf(y0, t, m, qC)
+        @assert y0 >= 0
+        Distributions.pdf.(t, g(y0, λ)) * jac(y0)
+    end
+    function main_cdf(y0, t, m, qC)
+        @assert y0 >= 0
+        return Distributions.cdf.(t, g(y0, λ))
+    end
+    function main_pdf_deriv_helper(y0, t, m, qC)
+        @assert y0 >= 0 
+        return (k = size(qC, 1); gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0);
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is a stable computation of the derivative of the tdist
-    main_pdf_deriv = (y0, t, m, qC) -> (gλy0 = g(y0, λ);  
-                    Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
+    end
+
+    function main_pdf_deriv(y0, t, m, qC)
+        @assert y0>=0
+        return (gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
+    end
 
     function pdf_deriv(x0, Fx0, y0) 
+        @assert y0 >= 0
         return compute(main_pdf_deriv, x0, Fx0, y0)
     end
     function pdf(x0, Fx0, y0)
+        @assert y0>=0
         return compute(main_pdf, x0, Fx0, y0) 
     end
     function cdf(x0, Fx0, y0)
+        @assert y0 >= 0
         return compute(main_cdf, x0, Fx0, y0)
     end
 

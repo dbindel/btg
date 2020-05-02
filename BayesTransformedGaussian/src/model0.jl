@@ -182,6 +182,7 @@ end
 Compute pdf and cdf functions
 """
 function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate = 0, derivatives = false) #depends on both train_data and test_data
+    #@info "sum(weightsTensorGrid)", sum(weightsTensorGrid)
     nwθ = btg.nodesWeightsθ
     nt1 = getNumLengthScales(nwθ) # number of dimensions of theta
     nt2 = getNum(nwθ) #number of theta quadrature in each dimension

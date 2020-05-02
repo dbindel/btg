@@ -123,6 +123,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             @info "validate", validate
             @info "logdet choleskyΣθ", logdet(choleskyΣθ)
         end
+        #@assert m>=0
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
         #@info "n", n; @info "p", p; @info "g(y0, λ)", g(y0, λ); 
         #return (g(y0, λ) .- m)/sqrt(qC/(n-p))

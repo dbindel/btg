@@ -11,11 +11,9 @@ cdf_gradient - takes in (x, Fx, y) and outputs Jacobian
 cdf_hessian - takes in (x, Fx, y) and outputs Hessian
 
 OUTPUTS:
-
 """
 function optimizeUCB(cdf, cdf_gradient, cdf_hessian, lx, ux)
     #v is augmented vector consisting of [u, s], where u is value and s is location
-
     cdf_fixed(v) = cdf(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
     cdf_gradient_fixed(v) = cdf_gradient(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
     cdf_hessian_fixed(v) = cdf_hessian(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
@@ -51,7 +49,7 @@ function optimizeUCB(cdf, cdf_gradient, cdf_hessian, lx, ux)
         end
     end;
     #lx = [-5.0, -5.0]; ux = [5.0, 5.0] #function box constraint
-    lc = [0.2]; uc = [0.3] #constraint on cdf by default, since we want 1 stdev 
+    lc = [0.24]; uc = [0.26] #approximation to equality constraintx
     x0 = init_constrained_pt(cdf_fixed, lx[2:end], ux[2:end]; quantile = 0.25)
     @info "x0 found with init_constr_point", x0
     @info "cdf_fixed(x0)", cdf_fixed(x0)
@@ -62,8 +60,11 @@ function optimizeUCB(cdf, cdf_gradient, cdf_hessian, lx, ux)
     @info "uc" uc
     dfc = TwiceDifferentiableConstraints(con_c!, con_jacobian!, con_h!, lx, ux, lc, uc)
     @info x0
+    Optim.Options(allow_f_increases = true, successive_f_tol = 2)
     res = optimize(df, dfc, x0, IPNewton())
-    return (res.minimizer, res.minimum)
+    minimizer = res.minimizer
+    @info "does constraint hold?", cdf_fixed(minimizer)
+    return (minimizer, res.minimum, res)
 end
 
 

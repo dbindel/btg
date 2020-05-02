@@ -4,8 +4,8 @@
  cdf_gradient_fixed(v) = cdf_gradient(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
  cdf_hessian_fixed(v) = cdf_hessian(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
 
- pdf_vstar = y -> pdf_fixed(vcat(y, vstar[2:end]))
+pdf_vstar = y -> pdf_fixed(vcat(y, vstar[2:end]))
 cdf_vstar = y -> cdf_fixed(vcat(y, vstar[2:end]))
-plt(cdf_vstar, .0001, 400.0)
-plt(pdf_vstar, .0001, 50)
+#plt(cdf_vstar, .0001, 400.0)
+#plt(pdf_vstar, .0001, 50)
 

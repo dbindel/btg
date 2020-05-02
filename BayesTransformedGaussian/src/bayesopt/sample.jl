@@ -10,7 +10,7 @@ OUTPUTS:
 res: length num array of sampled values
 loc: num x d matrix of sample locations
 """
-function sample(f, lx, ux; num = 10)
+function sample_points(f, lx, ux; num = 10)
     @assert length(lx) == length(ux)
     d = length(lx)
     loc = rand(num, d)

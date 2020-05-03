@@ -17,7 +17,7 @@ function init_constrained_pt(cdf_fixed, lx, ux; quantile = 0.25)
     @info "lx", lx
     @info "ux", ux
     #try 
-    (ystar, _, _) = findQuantile(cdf_y, [0, 6000]; p = quantile)
+    (ystar, _, _) = findQuantile(cdf_y, [0, 5000]; p = quantile)
     #catch e
     #    println("findQuantile Error...")
     #    @info "cdf_y(2000)", cdf_y(2000)

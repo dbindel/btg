@@ -96,7 +96,11 @@ Replaces prediction location and covariates in testingData with new
 new locations and covariates 
 """
 function update!(e:: AbstractTestingData, x0, Fx0)
-    @assert typeof(x0)<:Array{T, 2} where T<:Real
+    try
+        @assert typeof(x0)<:Array{T, 2} where T<:Real
+    catch e
+        @warn "x0", x0
+    end
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
     @assert size(x0, 1) == size(Fx0, 1)
     if (bool = [x0[i] == NaN for i = 1:length(x0)]; reduce((x, y)-> x || y, bool)) == true

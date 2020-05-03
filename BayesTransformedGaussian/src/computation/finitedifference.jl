@@ -109,7 +109,7 @@ function checkDerivative_in_place(f, df, x0, store, hessian = nothing, first = 3
     end
     f0 = f(x0)
     #df0 = df(x0) 
-    df(x0, store) #result in store
+    df(store, x0) #result in store
     n = length(x0)
     m = length(f0) 
     @assert size(f0, 2)==1 #no reason for f0 to be 2D
@@ -130,9 +130,6 @@ function checkDerivative_in_place(f, df, x0, store, hessian = nothing, first = 3
         catch e
         end
     end
-
-    
-    
     if hessian!=nothing 
         @assert m == 1 #we can only compute the Hessian for functions to R^1
         d2f0 = hessian(x0)

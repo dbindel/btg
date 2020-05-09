@@ -7,12 +7,14 @@ include("../bayesopt/incremental.jl")
 include("../quadrature/quadrature.jl")
 include("../transforms/transforms.jl")
 
-
+using TimerOutputs
 #module buffers0
 #export train_buffer, test_buffer, init_train_buffer_dict, update!
+if !@isdefined(to)
+    const to = TimerOutput()
+end
 
-
-######
+######s
 ###### Assortment of buffers for storing values in regular BTG workflow
 ###### Includes initialization and unpacking functions for each buffer type
 ######
@@ -38,48 +40,53 @@ mutable struct train_buffer
         Fx = train.Fx
         n = train.n
         capacity = typeof(train)<: extensible_trainingData ? train.capacity : n #if not extensible training type, then set size of buffer to be number of data points
-        Σθ = Array{Float64}(undef, capacity, capacity)
-        if length(θ)>1
-            Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
-        else
-            Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
+        @timeit to "Σθ" begin
+            Σθ = Array{Float64}(undef, capacity, capacity)
+            if length(θ)>1
+                Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
+            else
+                Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
+            end
+            choleskyΣθ = incremental_cholesky!(Σθ, n)
         end
-        choleskyΣθ = incremental_cholesky!(Σθ, n)
-        L = get_chol(choleskyΣθ).L
-        U = get_chol(choleskyΣθ).U
+        #L = get_chol(choleskyΣθ).L
+        #U = get_chol(choleskyΣθ).U
         #L_inv_X = L\Fx
         L_inv_X = nothing #not used for now
         #qr_Σθ_inv_X = qr(L_inv_X)
         qr_Σθ_inv_X = nothing #we don't use the qr factorization right now
         Σθ_inv_X = choleskyΣθ\Fx
-        choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
+        @timeit to "choleskyXΣX" choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
         new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, logdet(choleskyΣθ), logdet(choleskyXΣX), capacity, n, corr, θ, L_inv_X)
     end
 end
 
-
 """
 (θ, testingData)-dependent quantities, also depends on training data, specifically Σθ
 """
-mutable struct test_buffer
-    Eθ::Array{Float64, 2}
-    Bθ::Array{Float64, 2}
-    ΣθinvBθ::Array{Float64, 2}
-    Dθ::Array{Float64, 2}
-    Hθ::Array{Float64, 2}
-    Cθ::Array{Float64, 2}
-    θ::Union{Array{T, 1}, T} where T<:Real
-    test_buffer() = new()
-    #function test_buffer(θ::Array{Real, 1}, trainingData::AbstractTrainingData, testingData::AbstractTestingData, corr::AbstractCorrelation)::test_buffer 
-    #    Eθ = correlation(corr, θ, testingData.x0)    
-    #    Bθ = cross_correlation(corr, θ, testingData.x0, trainingData.x)  
-    #    ΣθinvBθ = trainingData.choleskyΣθ\Bθ'
-    #    Dθ = Eθ - Bθ*ΣθinvBθ
-    #    Hθ = testingData.Fx0 - Bθ*(trainingData.Σθ_inv_X) 
-    #    Cθ = Dθ + Hθ*(choleskyXΣX\Hθ') 
-    #    new(Eθ, Bθ, ΣθinvBθ, Dθ, Hθ , Cθ)
-    #end
+mutable struct test_buffer 
+    Eθ::Union{Array{Float64, 2}, Nothing}
+    Bθ::Union{Array{Float64, 2}, Nothing}
+    ΣθinvBθ::Union{Array{Float64, 2}, Nothing}
+    Dθ::Union{Array{Float64, 2}, Nothing}
+    Hθ::Union{Array{Float64, 2}, Nothing}
+    Cθ::Union{Array{Float64, 2}, Nothing}
+    θ::Union{Union{Array{T, 1}, T}, Nothing} where T<:Real
+    update_bit::Union{Bool, Nothing} #can we update the test buffer without recomputing stuff?
+    init_bit::Bool #has the test_buffer been initialized yet?
+    test_buffer() = new(nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, false)
 end
+
+mutable struct jac_buffer
+    jacB::Union{Union{Array{T, 1}, Array{T, 2}}, Nothing} where T<:Float64
+    jacD::Union{Union{Array{T, 1}, Array{T, 2}}, Nothing} where T<:Float64
+    jacH::Union{Union{Array{T, 1}, Array{T, 2}}, Nothing} where T<:Float64
+    jacC::Union{Union{Array{T, 1}, Array{T, 2}}, Nothing} where T<:Float64
+    update_bit::Union{Bool, Nothing} #can we update the test buffer without recomputing stuff?
+    init_bit::Bool #has the test_buffer been initialized yet?
+    jac_buffer() = new(nothing, nothing, nothing, nothing, nothing, false)
+end
+
 """
 Store results like Σθ_inv_y, so we have a fast way to do hat(Σθ)_inv_y, where hat(Σθ) is a submatrix
 """
@@ -264,8 +271,6 @@ function anotherone(b::test_buffer)
     #println("in anotherone")
     return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ)
 end
-
-
 ##################### I now deem the unpack functions to be unsafe...it's hard to count underscores...
 ##################### to get a field, just use dot notation
 
@@ -279,13 +284,12 @@ function unpack(b::test_buffer)
     return (b.Eθ, b.Bθ, b.ΣθinvBθ, b.Dθ, b.Hθ, b.Cθ, b.θ)
 end
 unpack(b::train_buffer) = (b.Σθ, b.Σθ_inv_X, b.qr_Σθ_inv_X, b.choleskyΣθ, b.choleskyXΣX, b.logdetΣθ, b.logdetXΣX, b.θ)
-
 unpack(b::λbuffer) = (b.λ, b.gλz, b.logjacval, b.dgλz)
-
 unpack(b::validation_train_buffer) = (b.θ, b.i, b.Σθ_inv_X_minus_i, b.logdetΣθ_minus_i, b.logdetXΣX_minus_i)
 unpack(b::validation_test_buffer) = (b.θ, b.ΣθinvBθ)
 unpack(b::validation_θλ_buffer) = (b.θ, b.λ, b.i, b.βhat_minus_i, b.qtilde_minus_i, b.Σθ_inv_y_minus_i) #depends on theta and lambda
 unpack(b::validation_λ_buffer) = (b.logjacval)
+unpack(b::jac_buffer) = (b.jacC, b.jacB, b.jacH, b.jacD)
 
 #mutable struct validation_buffer_block
 #    validation_test_buffer_dict::Dict{Union{Array{T}, T} where T<:Real, validation_test_buffer}
@@ -297,8 +301,6 @@ unpack(b::validation_λ_buffer) = (b.logjacval)
 #         Dict{Tuple{Union{Array{T}, T}, T} where T<:Float64, validation_θλ_buffer}())
 #    end
 #end
-
-
 
 """
 Initialize θ to train_buffer dictionary
@@ -353,12 +355,14 @@ function init_λbuffer_dict(nw::nodesWeights, train::AbstractTrainingData, nt:: 
         end
         return gλvals, logjacvals, dgλvals
     end
-    gλvals, logjacvals, dgλvals = jac_comp(btg)
+    @timeit to "gλvals, logjacvals, dgλvals" gλvals, logjacvals, dgλvals = jac_comp(btg)
+    @timeit to "build λbuffer_dict" begin
     λbuffer_dict = Dict{Real, λbuffer}()
     for i = 1:size(gλvals, 2)
         cur_node = nw.nodes[i]
         @assert typeof(cur_node) <: Real #lambda is always real
         push!(λbuffer_dict, cur_node => λbuffer(cur_node, gλvals[:, i], logjacvals[i], dgλvals[:, i]))
+    end
     end
     return λbuffer_dict
 end
@@ -396,11 +400,11 @@ function init_θλbuffer_dict(nwθ::nodesWeights, nwλ::nodesWeights, train::Abs
         choleskyXΣX = cur_train_buf.choleskyXΣX
         choleskyΣθ = cur_train_buf.choleskyΣθ
         Fx = getCovariates(train)
-        Σθ_inv_y = choleskyΣθ\gλz
+        @timeit to "Σθ_inv_y" Σθ_inv_y = choleskyΣθ\gλz
         #Σθ_inv_y = (choleskyΣθ \ gλz) #O(n^2)
-        βhat = choleskyXΣX\(Fx'*Σθ_inv_y)  #O
+        @timeit to "βhat" βhat = choleskyXΣX\(Fx'*Σθ_inv_y)  #O
         #qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
-        qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np) checks out b/c qtilde = norm(remainder)^2
+        @timeit to "qtilde" qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np) checks out b/c qtilde = norm(remainder)^2
         #remainder = L_inv_y - L_inv_X*βhat
         Σθ_inv_remainder = Σθ_inv_y - Σθ_inv_X*βhat
         cur_θλbuffer = θλbuffer(t1, t2, βhat, qtilde, nothing, Σθ_inv_y, nothing, Σθ_inv_remainder)
@@ -409,17 +413,27 @@ function init_θλbuffer_dict(nwθ::nodesWeights, nwλ::nodesWeights, train::Abs
         return θλbuffer_dict
 end
 
-"""
-Initializes test_buffer_dict with empty test buffers, so that the keys match those of train_buffer
-"""
-function init_test_buffer_dict(nw::nodesWeights, train_buffer_dict::Union{Dict{Array{T, 1}, train_buffer}, Dict{T, train_buffer}} where T<: Real)
+function init_empty_buffer_dict(nw::nodesWeights, train_buffer_dict::Union{Dict{Array{T, 1}, train_buffer}, Dict{T, train_buffer}} where T<: Real, 
+    buf_type::Union{Type{jac_buffer}, Type{test_buffer}})
     d = getDimension(nw)
     if d==1 #if single length scale, then key will be Real, else array
-        return Dict{Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict))
+        return Dict{Real, buf_type}(arr => buf_type() for arr in keys(train_buffer_dict))
     else
-        return Dict{Array{T, 1} where T<:Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict))
+        return Dict{Array{T, 1} where T<:Real, buf_type}(arr => buf_type() for arr in keys(train_buffer_dict))
     end
 end
+
+# """
+# Initializes test_buffer_dict with empty test buffers, so that the keys match those of train_buffer
+# """
+# function init_test_buffer_dict(nw::nodesWeights, train_buffer_dict::Union{Dict{Array{T, 1}, train_buffer}, Dict{T, train_buffer}} where T<: Real)
+#     d = getDimension(nw)
+#     if d==1 #if single length scale, then key will be Real, else array
+#         return Dict{Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict))
+#     else
+#         return Dict{Array{T, 1} where T<:Real, test_buffer}(arr => test_buffer() for arr in keys(train_buffer_dict))
+#     end
+# end
 
 function init_validation_train_buffer_dict(nw::nodesWeights)
     d = getDimension(nw)
@@ -511,8 +525,23 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
     return nothing 
 end
 
+function refresh_buffer(buffer::Union{test_buffer, jac_buffer})
+    buffer.update_bit = true
+    return nothing
+end
+
+function refresh_buffer_dict(buffer_dict::Union{Union{Dict{Array{T, 1} where T<: Real, test_buffer}, Dict{T where T<: Real, test_buffer}}, 
+    Union{Dict{Array{T, 1} where T<: Real, jac_buffer}, Dict{T where T<: Real, jac_buffer}}})
+    for key in keys(buffer_dict)
+        refresh_buffer(buffer_dict[key])
+    end
+    return nothing
+end
+
 """
 Update test_buffer, which depends on testing data, training data, and train_buffer. 
+Note that a test_buffer, attached to a unique theta-value, is only capable of being updated once before being having to be
+refreshed again. The logic in this function, which checks init_bit and update_bit, ensure that this invariant holds.
 """
 function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData, testingData::AbstractTestingData)
     try 
@@ -521,26 +550,90 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
         @info "train", trainingData
         @info "test", testingData
     end
-        #println("updating test buffer for $θ")
-    #test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0; jitter = 1e-7)    
-    test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0; jitter = 0)  
-    Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
-    @assert size(Bθ, 2)>= size(Bθ, 1) #row vector, as in the paper
-    test_buffer.Bθ = Bθ
-    test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
-    test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
-    #println("shape of Dtheta: ", size(test_buffer.Dθ ))
-    #println("shape of Btheta: ", size(test_buffer.Bθ ))
-    #println("shape of Fx0: " , size(testingData.Fx0))
-    #println("shape of train_buffer.Σθ_inv_X", size(train_buffer.Σθ_inv_X))
-    test_buffer.Hθ = testingData.Fx0 - test_buffer.Bθ*(train_buffer.Σθ_inv_X) 
-    test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
-    test_buffer.θ = train_buffer.θ
-    #@info "D" test_buffer.Dθ
-    #@info "H" test_buffer.Hθ
+    function update_me()
+        @timeit to "Eθ" test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0; jitter = 0)  
+        @timeit to "Bθ" Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
+        @assert size(Bθ, 2)>= size(Bθ, 1) #row vector, as in the paper
+        test_buffer.Bθ = Bθ
+        @timeit to "ΣθinvBθ" test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
+        @timeit to "Dθ" test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
+        #println("shape of Dtheta: ", size(test_buffer.Dθ ))
+        #println("shape of Btheta: ", size(test_buffer.Bθ ))
+        #println("shape of Fx0: " , size(testingData.Fx0))
+        #println("shape of train_buffer.Σθ_inv_X", size(train_buffer.Σθ_inv_X))
+        @timeit to "Hθ" test_buffer.Hθ = testingData.Fx0 - test_buffer.Bθ*(train_buffer.Σθ_inv_X) 
+        @timeit to "Cθ" test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
+        test_buffer.θ = train_buffer.θ
+        test_buffer.update_bit = false
+        test_buffer.init_bit = true
+        #@info "D" test_buffer.Dθ
+        #@info "H" test_buffer.Hθ
+    end
+    if test_buffer.init_bit
+        if test_buffer.update_bit
+            update_me()     
+        end
+    else
+        update_me()
+    end
     return nothing
 end
 
+"""
+Update jac_buffer
+"""
+function update!(jac_buffer::jac_buffer, test_data::testingData, train_data::trainingData, test_buffer::test_buffer, train_buffer::train_buffer)
+    function update_me()
+        x0 = test_data.x0
+        θ = test_buffer.θ
+        Bθ = test_buffer.Bθ
+        Hθ = test_buffer.Hθ
+        Σθ_inv_X = train_buffer.Σθ_inv_X
+        choleskyXΣX = train_buffer.choleskyXΣX
+        ΣθinvBθ = test_buffer.ΣθinvBθ
+
+        x = getPosition(train_data)
+        n = getNumPts(train_data)
+
+        @timeit to "derivative intermediates" begin
+            #@assert typeof(θ) <: Array{T, 1} where T 
+            #@assert length(θ) ==d
+
+            S = repeat(x0, n, 1) .- x # n x d 
+            d = size(x0, 2)
+            #println("size of S: ", size(S))
+            flattenedθ = typeof(θ)<:Real ? [θ for i=1:d] : θ[:]
+            @timeit to "jacB" jacB =   diagm(Bθ[:]) * S * diagm(- flattenedθ) #n x d
+            #println("size of jacB: ", size(jacB))
+            #println("size of Bθ: ", size(Bθ))
+            #println("size of choleskyΣθ: ", size(choleskyΣθ))
+            #println("choleskyΣθ inv Bθ': ", size(choleskyΣθ \ Bθ'))
+            #jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
+            @timeit to "jacD" jacD = -2* jacB' * ΣθinvBθ
+            #println("size of jacD: ", size(jacD))
+            #assuming linear polynomial basis
+            @timeit to "jacFx0" jacFx0 = vcat(zeros(1, d), diagm(ones(d))) #p x d
+            #println("size of Fx0: ", size(Fx0))
+            @timeit to "jacH" jacH = jacFx0' - jacB' * Σθ_inv_X #d x p
+            #println("size of jacH: ", size(jacH))
+            @timeit to "jacC" jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
+            jac_buffer.jacB = jacB
+            jac_buffer.jacD = jacD
+            jac_buffer.jacH = jacH
+            jac_buffer.jacC = jacC
+        end
+        jac_buffer.update_bit = false
+        jac_buffer.init_bit = true
+    end
+    if jac_buffer.init_bit
+        if jac_buffer.update_bit
+            update_me()     
+        end
+    else
+        update_me()
+    end
+    return nothing
+end
 
 
 # """

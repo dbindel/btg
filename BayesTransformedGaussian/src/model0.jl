@@ -9,7 +9,10 @@
 include("grids.jl")
 include("iterator.jl")
 using StatsFuns
-
+using TimerOutputs
+if !@isdefined(to)
+    const to = TimerOutput()
+end
 """
 BTG object may include (some may be unnecessary)
     x: Nmax*d array
@@ -41,6 +44,7 @@ mutable struct btg
     λbuffer_dict::Dict{T where T<:Real, λbuffer} #λbuffer stores gλvals and logjacvals
     train_buffer_dict::Union{Dict{Array{T, 1}, train_buffer}, Dict{T, train_buffer}} where T<: Real     #buffer for each theta value
     test_buffer_dict::Union{Dict{Array{T, 1} where T<: Real, test_buffer}, Dict{T where T<: Real, test_buffer}}  #buffer for each theta value  
+    jac_buffer_dict::Union{Dict{Array{T, 1} where T<: Real, jac_buffer}, Dict{T where T<: Real, jac_buffer}} #buffer for storing Jacobians
     θλbuffer_dict::Union{Dict{Tuple{Array{T, 1}, T} where T<:Real , θλbuffer}, Dict{Tuple{T, T} where T<:Real , θλbuffer}} #key should be theta-lambda pair
     validation_λ_buffer_dict::Dict{Real, validation_λ_buffer} 
     validation_train_buffer_dict::Union{Dict{Array{T, 1} where  T<: Real, validation_train_buffer}, Dict{T where  T<: Real, validation_train_buffer}} 
@@ -49,26 +53,29 @@ mutable struct btg
     capacity::Int64 
     debug_log::Any
     debug_log2::Any
-    function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
-        @assert typeof(corr)<:AbstractCorrelation
-        @assert typeof(priorθ)<:priorType
-        @assert typeof(priorλ)<:priorType
-        @assert typeof(quadtype)<:Array{String,1}
-        @assert typeof(transform)<: NonlinearTransform
+   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
+        @timeit to "assert statements, type-checking" begin
+            @assert typeof(corr)<:AbstractCorrelation
+            @assert typeof(priorθ)<:priorType
+            @assert typeof(priorλ)<:priorType
+            @assert typeof(quadtype)<:Array{String,1}
+            @assert typeof(transform)<: NonlinearTransform
+        end
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
-        nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 1000)
-        nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 1000)
-        λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
-        train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
-        test_buffer_dict =  init_test_buffer_dict(nodesWeightsθ, train_buffer_dict) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances
-        θλbuffer_dict = init_θλbuffer_dict(nodesWeightsθ, nodesWeightsλ, trainingData, λbuffer_dict, train_buffer_dict, quadtype) #Stores qtilde, βhat, Σθ_inv_y
-        validation_train_buffer_dict = init_validation_train_buffer_dict(nodesWeightsθ) #empty dict, input is used to determine dictionary type
-        validation_θλ_buffer_dict = init_validation_θλ_buffer_dict(nodesWeightsθ) #empty dict
-        validation_test_buffer_dict =  init_validation_test_buffer_dict(nodesWeightsθ, test_buffer_dict) #empty dict
-        validation_λ_buffer_dict = init_validation_λ_buffer_dict() #empty dict
+        @timeit to "nodesWeightsθ" nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 1000)
+        @timeit to "nodesWeightsλ" nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 1000)
+        @timeit to "init λbuffer_dict" λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
+        @timeit to "init train buffer dict" train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
+        @timeit to "test_buffer_dict" test_buffer_dict =  init_empty_buffer_dict(nodesWeightsθ, train_buffer_dict, test_buffer) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances
+        @timeit to "jac_buffer_dict" jac_buffer_dict = init_empty_buffer_dict(nodesWeightsθ, train_buffer_dict, jac_buffer)
+        @timeit to "θλbuffer_dict" θλbuffer_dict = init_θλbuffer_dict(nodesWeightsθ, nodesWeightsλ, trainingData, λbuffer_dict, train_buffer_dict, quadtype) #Stores qtilde, βhat, Σθ_inv_y
+        @timeit to "validation_train_buffer_dict" validation_train_buffer_dict = init_validation_train_buffer_dict(nodesWeightsθ) #empty dict, input is used to determine dictionary type
+        @timeit to "validation_θλ_buffer_dict" validation_θλ_buffer_dict = init_validation_θλ_buffer_dict(nodesWeightsθ) #empty dict
+        @timeit to "validation_test_buffer_dict" validation_test_buffer_dict =  init_validation_test_buffer_dict(nodesWeightsθ, test_buffer_dict) #empty dict
+        @timeit to "validation_λ_buffer_dict" validation_λ_buffer_dict = init_validation_λ_buffer_dict() #empty dict
         cap = getCapacity(trainingData)
-        return new(trainingData, testingData(), trainingData.n, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict, θλbuffer_dict, 
-                    validation_λ_buffer_dict, validation_train_buffer_dict, validation_test_buffer_dict, validation_θλ_buffer_dict, cap, [], [])
+        new(trainingData, testingData(), trainingData.n, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict,  
+        jac_buffer_dict, θλbuffer_dict, validation_λ_buffer_dict, validation_train_buffer_dict, validation_test_buffer_dict, validation_θλ_buffer_dict, cap, [], [])
     end
 end
 """
@@ -132,7 +139,7 @@ function solve(btg::btg; validate = 0, derivatives = false)
         @assert validate > 0 && btg.n>=validate
         init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
     end
-    weightTensorGrid = weight_comp(btg; validate = validate)
+    @timeit to "compute weights" weightTensorGrid = weight_comp(btg; validate = validate)
     (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
 end
 
@@ -178,6 +185,17 @@ function weight_comp(btg::btg; validate = 0)#depends on train_data and not test_
     return weightsTensorGrid
 end
 
+
+function reset_test_buf(btg::btg)
+    refresh_buffer_dict(btg.test_buffer_dict)
+    return nothing
+end
+
+function reset_jac_buf(btg::btg)
+    refresh_buffer_dict(btg.jac_buffer_dict)
+    return nothing
+end
+
 """
 Compute pdf and cdf functions
 """
@@ -190,8 +208,10 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     quadType = btg.quadType
     (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile, tgridcdf_augmented_deriv, tgridcdf_augmented_hess) = tgrids(nt1, nt2, nl2, quadType, weightsTensorGrid; derivatives = derivatives)
     R = CartesianIndices(weightsTensorGrid)
+    @timeit to "put functions in array" begin
     for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
         (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
+
         (dpdf, pdf, cdf, cdf_jac_us, cdf_hess_us, q_fun) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
@@ -204,6 +224,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
             tgridcdf_augmented_hess[I] = cdf_hess_us
         end
     end
+end
     grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = generate_view(grid_pdf_deriv, nt1, nt2, nl2, quadType)
     grid_pdf = similar(weightsTensorGrid); view_pdf = generate_view(grid_pdf, nt1, nt2, nl2, quadType)
     grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf, nt1, nt2, nl2, quadType)
@@ -248,7 +269,6 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
         #&&  == size(Fx0, 1)) || typeof(y0) <:Real
         return nothing
     end
-
     """
     Computes dot product of multi-dimensional array of arrays and multi-dimensional array of scalars
     Return type is array
@@ -262,11 +282,11 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
         return res
     end
     #below we write y0[1] instead of y0, because sometimes the output will have a box around it, due to matrix-operations in the internal implementation
-    dpdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
-    pdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
-    cdf = (x0, Fx0, y0) -> (btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
+    dpdf = (x0, Fx0, y0) -> (reset_test_buf(btg); btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
+    pdf = (x0, Fx0, y0) -> (reset_test_buf(btg); btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
+    cdf = (x0, Fx0, y0) -> (reset_test_buf(btg); btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
     
-    augmented_cdf_deriv = (x0, Fx0, y0) -> (derivatives == true ? (btg.debug_log = []; 
+    augmented_cdf_deriv = (x0, Fx0, y0) -> ( reset_test_buf(btg); reset_jac_buf(btg); derivatives == true ? (btg.debug_log = []; 
                                 evalgrid_augmented_deriv!(x0, Fx0, y0[1]); 
                                 #println("in augmented_cdf_deriv"); 
                                 #@info "grid_augmented_deriv", size(grid_augmented_deriv);
@@ -274,7 +294,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
                                 #@info "weightsTensorGrid", typeof(weightsTensorGrid);
                                 dot2(grid_augmented_deriv, weightsTensorGrid)) : nothing )
 
-    augmented_cdf_hess = (x0, Fx0, y0) -> (derivatives == true ? (btg.debug_log = []; 
+    augmented_cdf_hess = (x0, Fx0, y0) -> (reset_test_buf(btg); reset_jac_buf(btg); derivatives == true ? (btg.debug_log = []; 
                                 evalgrid_augmented_hess!(x0, Fx0, y0[1]); 
                                 #println("in augmented_cdf_deriv"); 
                                 #@info "grid_augmented_deriv", size(grid_augmented_deriv);

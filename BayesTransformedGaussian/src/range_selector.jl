@@ -10,10 +10,10 @@ function select_single_theta_range(x)
     end
     M = pairwise(SqEuclidean(), x, dims=1)
     maxi = maximum(M)
-    @info maxi
+    #@info maxi
     M = M + UniformScaling(maxi) #couldn't think of better way of ignoring zero elts on diagonal
     mini = minimum(M)
-    @info mini
+    #@info mini
     
     #want values in kernel matrix to fall in this range, assuming RBF kernel
     lower = 1e-4
@@ -32,9 +32,9 @@ r = select_single_theta_range(x)
 @info "range", r
 ker1 = correlation(Gaussian(), r[1], x; jitter = 0, dims=1)
 ker2 = correlation(Gaussian(), r[2], x; jitter = 0, dims=1)
-@info "min ker 1", minimum(ker1)
-@info "max ker 1", maximum(ker1 - UniformScaling(1.0))
-@info "min ker 2", minimum(ker2)
-@info "max ker 2", maximum(ker2 - UniformScaling(1.0) )
+#@info "min ker 1", minimum(ker1)
+#@info "max ker 1", maximum(ker1 - UniformScaling(1.0))
+#@info "min ker 2", minimum(ker2)
+#@info "max ker 2", maximum(ker2 - UniformScaling(1.0) )
 
 

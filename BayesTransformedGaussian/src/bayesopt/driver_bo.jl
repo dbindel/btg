@@ -3,14 +3,19 @@ include("btgBayesopt.jl")
 include("../computation/finitedifference.jl")
 using Plots
 using Random
-Random.seed!(0);
+Random.seed!(8);
+#
+# trying out diff random seeds:
+# failure: (3)
+# success : (4, 5 works with good initialization, 6 works with init, 7 works with and w/o init.)
+#use 12 for all prev experiments
 
 #####
 ##### Define optimization problem, initialize GP with burn-in points, initialize btg parameters
 #####
 
 Himmelblau(x) = (x[1]^2 + x[2] -11)^2 + (x[1]+x[2]^2-7)^2+400 #function to optimize
-y, x = sample_points(Himmelblau, [-5, -5], [5, 5]; num = 12) #burn-in points which are used as training data in GP
+y, x = sample_points(Himmelblau, [-5, -5], [5, 5]; num = 20) #burn-in points which are used as training data in GP
 @info "y-vals", y[1:5] 
 ### Set BTG parameters and get function handles for pdf, cdf, dpdf, etc. 
 Fx = linear_polynomial_basis(x)
@@ -49,35 +54,62 @@ function cdf_gradient_wrapper(g, x...)
     return nothing
 end
 model = Model(Ipopt.Optimizer)
+set_optimizer_attributes(model, "tol" => 1e-2, "max_iter" => 200)
 #model = Model(Gurobi.Optimizer)
 #NLoptSolver(algorithm=:SLSQP))
 register(model, :fun, 3, fun, dfun)
 register(model, :cdf_wrapper, 3, cdf_wrapper, cdf_gradient_wrapper)
-
 #####
 ##### Initial guess for IPopt. Check gradient before starting optimizer
 #####
-
 #println("checking gradient at initial point...")
-initval = init_constrained_pt(cdf_fixed, lx, ux; quantile = 0.25)
-#store = [0.0 0 0]
-#(r1, r2, plt1, pol1) = checkDerivative_in_place(cdf_wrapper, cdf_gradient_wrapper, initval, store, nothing); #input here is a vector
-
 #####
 ##### Register variables and constraints in model and run optimizer.
 #####
-if true
-    println("Running Optimizer...")
+@variable(model, lx[i] <= au[i=1:3] <= ux[i], start = initval[i])
+@NLobjective(model, Min, fun(au...))
+@NLconstraint(model, cdf_wrapper(au...) == 0.25)
+
+function single_optimization()
+    initval = init_constrained_pt(cdf_fixed, lx, ux; quantile = 0.25)
+    set_start_value(au[1], initval[1])
+    set_start_value(au[2], initval[2])
+    set_start_value(au[3], initval[3])
+    #println("Running Optimizer...")
     #initval = [200, 4, 4]              
-    @info "initval", initval
-    @variable(model, lx[i] <= au[i=1:3] <= ux[i], start = initval[i])
-    @NLobjective(model, Min, fun(au...))
-    @NLconstraint(model, cdf_wrapper(au...) == 0.25)
+    #@info "initval", initval
+    #@variable(model, lx[i] <= au[i=1:3] <= ux[i])
     JuMP.optimize!(model)
     println(value.(au))
     vstar = value.(au)
+    return (vstar, initval)
 end
+
 include("test_script.jl")
+function run_func(n)
+    x = [];
+    vstars = [];
+    init_vals = []
+    for i = 1:n
+        Random.seed!(i+200)
+        (vstar, initval) = single_optimization();
+        push!(x, cdf_fixed(vstar));
+        push!(vstars, vstar);
+        push!(init_vals, cdf_fixed(initval))
+    end
+    return x, vstars, init_vals
+end
+
+(res, vstars, init_vals) = run_func(10);
+vcdfplot_sequence(vstars; res = res, upper = 2000) #shows cdfs at points we converged to
+
+### check derivatives after the fact
+
+#for i = 1:length(vstars)
+#    check
+#end
+
+(_, _, plt1, pol) = checkDerivative(cdf_fixed, cdf_gradient_fixed, vstars[1],  nothing, 4, 8)
 
 for i = 1:10 #take 10 BO steps
     #(u_star, s_star) = optimize_acquisition(cdf, cdf_gradient, cdf_hessian)

@@ -2,15 +2,19 @@
 include("../computation/buffers0.jl")
 include("../bayesopt/kernel.jl")
 using Cubature
+using TimerOutputs
+
+if !@isdefined(to)
+    const to = TimerOutput()
+end
 
 """
 Compute cdf, pdf, and pdf_deriv of T-distribution
 """
 function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real; validate = 0) 
-    trainingData = btg.trainingData
     g = btg.g #nonlinear transform, e.g. BoxCox
     invg = (x, λ) -> inverse(btg.g, x, λ)
-    (x, Fx, y, _, n, p) = unpack(trainingData) #unpack training data
+    (x, Fx, y, _, n, p) = unpack(btg.trainingData) #unpack training data
     @assert validate >= 0 && n >= validate
     n = validate == 0 ? n : n-1 #downsize by 1, if we will be deleting 1 data point
     θλpair = (θ, λ)
@@ -41,28 +45,32 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #@info "validate" validate
         if validate == 0
             #@warn "not in validation mode"
-            update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0 with USER INPUT
-            update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer (which holds Dθ, Hθ, Cθ,...) with testingData
+            @timeit to "update testingData" update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0 with USER INPUT
+            @timeit to "update Dθ, Hθ, Cθ,... " update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData) #update θ-testing buffer (which holds Dθ, Hθ, Cθ,...) with testingData
             #print((btg.test_buffer_dict[θ]))
             #######       unpack throws an odd error here, still need to figure out why      ##############################
-            Bθ = btg.test_buffer_dict[θ].Bθ
-            Hθ = btg.test_buffer_dict[θ].Hθ
-            Cθ = btg.test_buffer_dict[θ].Cθ
-            Dθ = btg.test_buffer_dict[θ].Dθ
-            Eθ = btg.test_buffer_dict[θ].Eθ
-            ΣθinvBθ = btg.test_buffer_dict[θ].ΣθinvBθ
-            BθΣθinvBθ = Bθ*ΣθinvBθ 
-            #(_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
-            #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-            ###############################################################
-            #println("past the breakpoint")
+            @timeit to "load Bθ, Hθ, Cθ, Dθ, Eθ" begin
+                Bθ = btg.test_buffer_dict[θ].Bθ
+                Hθ = btg.test_buffer_dict[θ].Hθ
+                Cθ = btg.test_buffer_dict[θ].Cθ
+                Dθ = btg.test_buffer_dict[θ].Dθ
+                Eθ = btg.test_buffer_dict[θ].Eθ
+                ΣθinvBθ = btg.test_buffer_dict[θ].ΣθinvBθ
+            end
             
-            m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
-            qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
-            # sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
-            
-            # temporary definition for testing
-            expr2 = [1] 
+            @timeit to "BθΣθinvBθ, m, qC" begin
+                BθΣθinvBθ = Bθ*ΣθinvBθ 
+                #(_, Bθ, _, _, Hθ, Cθ) = anotherone(btg.test_buffer_dict[θ])
+                #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+                ###############################################################
+                #println("past the breakpoint")
+                m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
+                qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
+                # sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
+                
+                # temporary definition for testing
+                expr2 = [1] 
+            end
 
         else # want to do validation instead
             Fx_i = btg.trainingData.Fx[validate:validate, :] #ith row of trainingData
@@ -102,10 +110,11 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     end
 
     function compute(f, x0, Fx0, y0)#updates testingData and test_buffer, but leaves train_buffer and trainingData alone
-        m, q, C, βhat, Dθ, expr2, validate, λ, BθΣθinvBθ, Eθ  = compute_qmC(x0, Fx0)
+        @timeit to "compute q, m, C, etc." m, q, C, βhat, Dθ, expr2, validate, λ, BθΣθinvBθ, Eθ  = compute_qmC(x0, Fx0)
         #@warn "pushing to debug log"
         #push!(btg.debug_log, (m, C, q))
         qC = q*C
+        @timeit to "try-catch statement" begin
         try 
             @assert Dθ[1]>0
             @assert expr2[1]>0
@@ -122,6 +131,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             @info "C", C
             @info "validate", validate
             @info "logdet choleskyΣθ", logdet(choleskyΣθ)
+        end
         end
         #@assert m>=0
         t = LocationScale(m, sqrt(qC/(n-p)), TDist(n-p)) #avail ourselves of built-in tdist
@@ -140,26 +150,26 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     
     function main_pdf(y0, t, m, qC)
         @assert y0 >= 0
-        Distributions.pdf.(t, g(y0, λ)) * jac(y0)
+        @timeit to "atomic pdf eval" Distributions.pdf.(t, g(y0, λ)) * jac(y0)
     end
     function main_cdf(y0, t, m, qC)
         @assert y0 >= 0
-        return Distributions.cdf.(t, g(y0, λ))
+        @timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
     end
     function main_pdf_deriv_helper(y0, t, m, qC)
         @assert y0 >= 0 
-        return (k = size(qC, 1); gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0);
+        (k = size(qC, 1); gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0);
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is a stable computation of the derivative of the tdist
     end
 
     function main_pdf_deriv(y0, t, m, qC)
         @assert y0>=0
-        return (gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
+        (gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
     end
 
     function pdf_deriv(x0, Fx0, y0) 
         @assert y0 >= 0
-        return compute(main_pdf_deriv, x0, Fx0, y0)
+        @timeit to "atomic pdf deriv" compute(main_pdf_deriv, x0, Fx0, y0)
     end
     function pdf(x0, Fx0, y0)
         @assert y0>=0
@@ -174,7 +184,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     Gradient of CDF w.r.t augmented (u, s) vector (u is for value, and y is for location)
     """
     function cdf_grad_us(x0, Fx0, y0)
-        m, q, C, βhat = compute_qmC(x0, Fx0)
+        @timeit to "m, q, c" m, q, C, βhat = compute_qmC(x0, Fx0)
+        @timeit to "cdf jacobian" begin
         qC = q*C
         k = size(qC, 1)
         gλy0 = btg.g(y0, λ)
@@ -198,8 +209,15 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
+        
+        ## update block 
+        @timeit to "update testingData" update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0 with USER INPUT
+        @timeit to "update test buffer" update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)  #attempt to update test buffer
         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        #@timeit to "intermediates_old" (jacC, jacm, jacB, jacH, jacD) = intermediates_old(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+        @timeit to "intermediates_new" (jacC, jacm, jacB, jacH, jacD) = intermediates(btg.jac_buffer_dict[θ], btg.testingData, btg.trainingData, btg.test_buffer_dict[θ], 
+        btg.train_buffer_dict[θ], btg.θλbuffer_dict[θλpair])
+
         #we need to define covariance (sigma here ...)
         #sigma is covariance sqrt(qC/(n-p))
         qC = (q .* Cθ[1])
@@ -227,6 +245,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return jacD
         #return jacG'
         #return jacm
+    end
         return hcat(cdf_deriv_alternate*jacy0, jacG)
         #return cdf_deriv_alternate*jacy0
         #return jacC'
@@ -258,14 +277,22 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         cdf_deriv_alternate = Distributions.pdf.(t, gλy0) 
         #standard unpacking
         x0 = reshape(x0, 1, length(x0))
+
         #unpack pertinent quantities
         Σθ_inv_X  = btg.train_buffer_dict[θ].Σθ_inv_X
         choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
-        (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
-        #we need to define covariance (sigma here ...)
+
+         ## update block 
+         @timeit to "update testingData" update!(btg.testingData, x0, Fx0)# update testing data with x0, Fx0 with USER INPUT
+         @timeit to "update test buffer" update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)  #attempt to update test buffer
+         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
+         #@timeit to "intermediates_old" (jacC, jacm, jacB, jacH, jacD) = intermediates_old(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+         @timeit to "intermediates_new" (jacC, jacm, jacB, jacH, jacD) = intermediates(btg.jac_buffer_dict[θ], btg.testingData, btg.trainingData, btg.test_buffer_dict[θ], 
+         btg.train_buffer_dict[θ], btg.θλbuffer_dict[θλpair])
+       
+       #we need to define covariance (sigma here ...)
         #sigma is covariance sqrt(qC/(n-p))
         qC = (q .* Cθ[1])
         sigma = sqrt(qC/(n-p)) #covariance
@@ -300,6 +327,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     end
 
     function cdf_hess_us(x0, Fx0, y0)
+        @timeit to "cdf hessian eval" begin
         m, q, C, βhat = compute_qmC(x0, Fx0)
         qC = q*C
         k = size(qC, 1)
@@ -312,9 +340,12 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         choleskyΣθ = btg.train_buffer_dict[θ].choleskyΣθ
         choleskyXΣX = btg.train_buffer_dict[θ].choleskyXΣX
         (x, Fx, y, d, n, p) = unpack(btg.trainingData) 
+        @timeit to "update testingData" update!(btg.testingData, x0, Fx0)
+        @timeit to "update Dθ, Hθ, Cθ,... " update!(btg.train_buffer_dict[θ], btg.test_buffer_dict[θ], btg.trainingData, btg.testingData)#attempt to update
         (Eθ, Bθ, ΣθinvBθ, Dθ, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
-        (jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
-
+        #(jacC, jacm, jacB, jacH, jacD) = intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX, ΣθinvBθ)
+        (jacC, jacm, jacB, jacH, jacD) = intermediates(btg.jac_buffer_dict[θ], btg.testingData, btg.trainingData, btg.test_buffer_dict[θ], 
+        btg.train_buffer_dict[θ], btg.θλbuffer_dict[θλpair])
         #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~(compute hessian of D)~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         ΣinvjacB  = choleskyΣθ\jacB 
         W = zeros(d, d)
@@ -433,6 +464,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return hess_m
         #@info "n", n; @info "p", p; @info "gλy0", gλy0
         #return check_arg
+        end
         return hess_G
         #jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
         #jacy0 = jac(y0)
@@ -440,8 +472,16 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return (gλy0, dg(y0,  λ), dg2(y0,λ))
     end
 
-    #function intermediates(x0, choleskyΣθ, choleskyXΣX, Σθ_inv_X, Bθ, Hθ, Σθ_inv_y, θ)#::Tuple{Array{T}, Array{T}, Array{T}, Array{T}} where T<:Real
-    function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
+    #function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX, ΣθinvBθ)
+    function intermediates(jac_buffer::jac_buffer, test_data::testingData, train_data::trainingData, test_buffer::test_buffer, train_buffer::train_buffer, θλbuffer::θλbuffer)
+        update!(jac_buffer, test_data, train_data, test_buffer, train_buffer) #attemot to update jac_buffer
+        (jacC, jacB, jacH, jacD) = unpack(jac_buffer)
+        Σθ_inv_y = θλbuffer.Σθ_inv_y
+        βhat = θλbuffer.βhat
+        @timeit to "jacm" jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
+        return (jacC, jacm, jacB, jacH, jacD) 
+    end
+    function intermediates_old(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX)
         #@assert typeof(θ) <: Array{T, 1} where T 
         #@assert length(θ) ==d
         S = repeat(x0, n, 1) .- x # n x d 
@@ -453,7 +493,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #println("size of Bθ: ", size(Bθ))
         #println("size of choleskyΣθ: ", size(choleskyΣθ))
         #println("choleskyΣθ inv Bθ': ", size(choleskyΣθ \ Bθ'))
-        jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
+        @timeit to "choleskyΣθ inv Bθ" jacD = -2* jacB' * (choleskyΣθ \ Bθ') #d x 1
         #println("size of jacD: ", size(jacD))
         #assuming linear polynomial basis
         jacFx0 = vcat(zeros(1, d), diagm(ones(d))) #p x d
@@ -463,7 +503,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         jacC = jacD + 2 * jacH * (choleskyXΣX \ Hθ') #d x 1
         jacm = jacB' * Σθ_inv_y + jacH * βhat  # d x 1
         #return (jacB, jacD, jacFx0, jacC, jacm)
-        return (jacC, jacm, jacB, jacH, jacD)
+        return (jacC, jacm, jacB, jacH, jacD) 
     end
 
     # compute quantile q for each component
@@ -476,7 +516,6 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
     return (pdf_deriv, pdf, cdf, cdf_grad_us, cdf_hess_us, q_fun)
 end
-
 
 """
 * Assumes Fx0 is linear polynomial mean basis 

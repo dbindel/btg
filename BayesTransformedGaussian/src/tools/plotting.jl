@@ -15,21 +15,29 @@ end
 """
 Displays graph of f on interval [a, b]
 """
-function plt(f, a, b, numpts=100; label = "y", title="")
+function plt(f, a, b, numpts=100; label = "y", title="", color = nothing)
     h = (b-a)/(numpts-1)
     y = zeros(1,numpts)
     x = collect(a:h:b)
     y = map(f, x)
-    display(Plots.plot(x, y, label = label, title = title))
+    if color!=nothing
+        display(Plots.plot!(x, y, label = label, title = title, color = color, linewidth = 3))
+    else 
+        display(Plots.plot!(x, y, label = label, title = title, linewidth = 3))
+    end
     return (x, y)
 end
 
-function plt!(f, a, b, numpts=100; label = "y", title = "")
+function plt!(f, a, b, numpts=100; label = "y", title = "", color = nothing)
     h = (b-a)/(numpts-1)
     y = zeros(1,numpts)
     x = collect(a:h:b)
     y = map(f, x)
-    display(Plots.plot!(x, y, label = label, title = title))
+    if color!=nothing
+        display(Plots.plot!(x, y, label = label, title = title, color = color, linewidth = 3))
+    else 
+        display(Plots.plot!(x, y, label = label, title = title, linewidth = 3))
+    end
     return(x, y)
 end
 

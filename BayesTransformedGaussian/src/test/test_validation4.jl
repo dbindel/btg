@@ -1,5 +1,6 @@
 using Dates
 using PyPlot
+using Plots
 #using ProfileView
 
 include("../btg.jl")
@@ -8,12 +9,14 @@ include("../datasets/load_abalone.jl")
 #ind = 350:370
 ind = 3300:3359
 #posx = 1:3 #
-posx = [1;4]
-posc = 1:1
+#posx = [1;4]
+posx = 1:7
+#posc = 1:1
+posc = 1:7
 x = data[ind, posx] 
 #choose a subset of variables to be regressors for the mean
 Fx = data[ind, posc] 
-y = float(target[ind])
+y = float(target[ind])/29
 pind = 10:10 #prediction index
 #pind = i:i
 trainingData1 = trainingData(x, Fx, y) #training data used for testing various functions
@@ -22,9 +25,10 @@ d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimensi
 Fx0 = reshape(data[pind, posc], 1, length(posc))
 x0 = reshape(data[pind, posx], 1, length(posx)) 
 #rangeθ = [100.0 200]
-rangeθ = [100.0 200]
-rangeλ = [-1.0 1] #we will always used 1 range scale for lambda
-btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
+#rangeθ = [100.0 200]
+rangeθ = select_single_theta_range(x)
+rangeλ = [1.0 3.0] #we will always used 1 range scale for lambda
+btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["Gaussian", "Gaussian"])
 #θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
 #λ1 = btg1.nodesWeightsλ.nodes[3]
 ##################################################################################################
@@ -58,10 +62,8 @@ Run
 function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     fast = fast
     m = m; n=n
-
     #plt, axs = PyPlot.subplots(m, n,figsize=[20,11])
     plt, axs = PyPlot.subplots(m, n)
-
     #figure(1)
     before = Dates.now()
     println("LOOCV type is fast?: $fast")
@@ -77,13 +79,14 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
                 (x, y) = plt_data(b1, .01, 1.2, 100)
                 (xc, yc) = plt_data(c1, .01, 1.2, 100)
             else
-                (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j)
-                btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
-                (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2)
-                b1 = y -> pdf_minus_i(x_i, Fx_i, y) 
-                c1 = y -> cdf_minus_i(x_i, Fx_i, y) 
-                (x, y) = plt_data(b1, .01, 1.2, 100)
-                (xc, yc) = plt_data(c1, .01, 1.2, 100)
+                (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, j);
+                #btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["MonteCarlo", "MonteCarlo"])
+                btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["Gaussian", "Gaussian"]);
+                (pdf_minus_i, cdf_minus_i, dpdf_minus_i) = solve(btg2);
+                b1 = y -> pdf_minus_i(x_i, Fx_i, y);
+                c1 = y -> cdf_minus_i(x_i, Fx_i, y);
+                (x, y) = plt_data(b1, .01, 1.2, 100);
+                (xc, yc) = plt_data(c1, .01, 1.2, 100);
             end
             axs[ind1, ind2].plot(x, y, color = "red", linewidth = 2.0, linestyle = ":")
             axs[ind1, ind2].plot(xc, yc, color = "orange", linewidth = 2.0, linestyle = ":")
@@ -117,5 +120,41 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     end
 end
 
-#test_LOOCV(btg1, 6, 10; fast = false)
+if false
+    test_LOOCV(btg1, 4, 5; fast = false);
+end
+
+###
+### reserved REPL testing block
+###
+function isolate(i)
+    (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, i);
+    btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["Gaussian", "Gaussian"]);
+    #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m, weightsTensorGrid)  = solve(btg2);
+    (pdf_minus_i, cdf_minus_i, dpdf_minus_i, _, _, _, tgridpdf, tgridcdf, tgridm, tgridsigma, weightsTensorGrid) = solve(btg2);
+
+    function func_grid_eval(funcgrid, x_i, Fx_i, y)
+        g = similar(weightsTensorGrid)
+        R = CartesianIndices(weightsTensorGrid)
+        for I in R
+            g[I] = funcgrid[I](x_i, Fx_i, y)
+        end
+        return g
+    end
+    b1 = y -> pdf_minus_i(x_i, Fx_i, y);
+    c1 = y -> cdf_minus_i(x_i, Fx_i, y);
+    d1 = y->  func_grid_eval(tgridpdf, x_i, Fx_i, y);
+    e1 = y-> func_grid_eval(tgridcdf, x_i, Fx_i, y);
+    f1 = () -> func_grid_eval(tgridm, x_i, Fx_i, y);
+    g1 = () -> func_grid_eval(tgridsigma, x_i, Fx_i, y);
+    (x, y) = plt_data(b1, .01, 1.2, 100);
+    (xc, yc) = plt_data(c1, .01, 1.2, 100);
+    return (b1, c1, d1, e1, f1, g1, weightsTensorGrid)
+end
+
+if false
+    (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, 2);
+    (b1, c1, d1, e1, f1, g1, w) = isolate(2);
+end
+
 

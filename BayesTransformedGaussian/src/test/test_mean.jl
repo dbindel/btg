@@ -27,8 +27,9 @@ Fx0 = reshape(data[pind, posc], 1, length(posc))
 x0 = reshape(data[pind, posx], 1, length(posx)) 
 #rangeθ = [100.0 200]
 #rangeθ = [100.0 200]
-rangeθ = select_single_theta_range(x)
-rangeλ = [-1 1.0] #we will always used 1 range scale for lambda
+#rangeθ = select_single_theta_range(x)
+rangeθ = [500.0 1000]
+rangeλ = [-2.0 2.0] #we will always used 1 range scale for lambda
 btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["Gaussian", "Gaussian"])
 #θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
 #λ1 = btg1.nodesWeightsλ.nodes[3]
@@ -121,7 +122,7 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     end
 end
 
-if false
+if true
     test_LOOCV(btg1, 4, 5; fast = false);
 end
 
@@ -175,7 +176,7 @@ Fx0_cur = btg2.testingData.Fx0;
 theta_cur = btg2.nodesWeightsθ.nodes[1];
 lambda_cur = btg2.nodesWeightsλ.nodes[1];
 #computation by hand
-Σθ_cur = correlation(Gaussian(), theta_cur, trainingdata_minus_i.x; jitter = 1e-8);
+Σθ_cur = correlation(Gaussian(), theta_cur, trainingdata_minus_i.x);
 Σθ_inv_X_cur = Σθ_cur\trainingdata_minus_i.Fx;
 Bθ_cur = cross_correlation(Gaussian(), theta_cur, x0_cur, trainingdata_minus_i.x);
 Fx_cur = trainingdata_minus_i.Fx;

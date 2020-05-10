@@ -65,10 +65,17 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
                 #(_, Bθ, _, _, Hθ, Cθ) = unpack(btg.test_buffer_dict[θ])
                 ###############################################################
                 #println("past the breakpoint")
+                #@info "θ", θ
                 m = Bθ*Σθ_inv_y + Hθ*βhat #recompute mean
+                #if m[1] < 0
+                #    @info "in tdist computeqMC..."
+                #    @info "Bθ", Bθ
+                #    @info "Σθ_inv_y", Σθ_inv_y
+                #    @info "Hθ", Hθ
+                #    @info "βhat", βhat
+                #end
                 qC = qtilde[1]*Cθ[1] #both q and C are 1x1 for single-point prediction
                 # sigma_m = qC/(n-p-2) + m[1]^2 # E[T_i^2] for quantile estimation
-                
                 # temporary definition for testing
                 expr2 = [1] 
             end
@@ -154,34 +161,34 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     end
     
     function main_pdf(y0, t, m, qC)
-        @assert y0 >= 0
+        #@assert y0 >= 0
         @timeit to "atomic pdf eval" Distributions.pdf.(t, g(y0, λ)) * jac(y0)
     end
     function main_cdf(y0, t, m, qC)
-        @assert y0 >= 0
+        #@assert y0 >= 0
         @timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
     end
     function main_pdf_deriv_helper(y0, t, m, qC)
-        @assert y0 >= 0 
+        #@assert y0 >= 0 
         (k = size(qC, 1); gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0);
                             Ty0 .* (-(n-p+k)) .* ( gλy0 .- m) ./ (qC .+ (gλy0 .- m) .^2) .* dg(y0, λ)) #this is a stable computation of the derivative of the tdist
     end
 
     function main_pdf_deriv(y0, t, m, qC)
-        @assert y0>=0
+        #@assert y0>=0
         (gλy0 = g(y0, λ); Ty0 = Distributions.pdf.(t, gλy0); (dg2(y0, λ) .* Ty0 .+ abs.(dg(y0, λ)) .* main_pdf_deriv_helper(y0, t, m, qC))[1])
     end
 
     function pdf_deriv(x0, Fx0, y0) 
-        @assert y0 >= 0
+        #@assert y0 >= 0
         @timeit to "atomic pdf deriv" compute(main_pdf_deriv, x0, Fx0, y0)
     end
     function pdf(x0, Fx0, y0)
-        @assert y0>=0
+        #@assert y0>=0
         return compute(main_pdf, x0, Fx0, y0) 
     end
     function cdf(x0, Fx0, y0)
-        @assert y0 >= 0
+        #@assert y0 >= 0
         return compute(main_cdf, x0, Fx0, y0)
     end
 

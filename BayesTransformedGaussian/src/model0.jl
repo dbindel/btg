@@ -221,7 +221,7 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
         (dpdf, pdf, cdf, cdf_jac_us, cdf_hess_us, q_fun, computeqmC) = comp_tdist(btg, θ, λ; validate = validate)
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
-        tgridcdf[I] = cdf
+        tgridcdf[I] = cdf 
         m = (x0, Fx0, y) -> computeqmC(x0, Fx0)[1]
         sigma = (x0, Fx0, y) -> ( (_, _, _, s) = computeqmC(x0, Fx0); s)
         tgridm[I] = m
@@ -246,9 +246,9 @@ end
     grid_augmented_hess = derivatives == true ? Array{Array{Real, 2}, ndims(weightsTensorGrid)}(undef, size(weightsTensorGrid)) : nothing #stores hessians
     view_augmented_hess = derivatives == true ? generate_view(grid_augmented_hess, nt1, nt2, nl2, quadType) : nothing
 
-    function evalgrid!(f, view, x0, Fx0...)
+    function evalgrid!(f, view, x0, Fx0, y0)
         for I in R
-            view[I] = (res = f[I](x0, Fx0...); 
+            view[I] = (res = f[I](x0, Fx0, y0); 
             #@info "size of res", size(res);
             length(res)==1 ? res[1] : ( size(res, 1) == size(res, 2) && size(res, 1) > 1 ?  res : res[:] )) #unboxes scalar, flattens vector, keeps 2D array the same
         end

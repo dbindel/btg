@@ -13,9 +13,6 @@ s = ArgParseSettings()
     "--test"
         help = "test or not"
         action = :store_true
-    "--single"
-        help = "use single length scale or not"
-        action = :store_true 
     "--sparse"   
         help = "use SparseGrid or not"
         action = :store_true
@@ -31,61 +28,67 @@ s = ArgParseSettings()
     "--logGP"
         help = "test log-GP model"
         action = :store_true
-    "--posc"
-        help = "another option with an argument"
+    "--p"
+        help = "degree of covariate function"
         arg_type = Int
-        default = 7
+        default = 1
     "--singletest"
         help = "write log to single test"
         action = :store_true
     "--ntrain"
-        help = "another option with an argument"
+        help = "number of training points"
         arg_type = Int
-        default = 200
+        default = 20
     "--ntest"
-        help = "another option with an argument"
+        help = "number of testing points"
         arg_type = Int
-        default = 5
-    "--quadtype"
-        help = "quadrature type for theta"
+        default = 401
+    "--noiselevel"
+        help = "noise level in observation"
         arg_type = Int
         default = 1
 end
 parsed_args = parse_args(ARGS, s)
-# load abalone data
-df = DataFrame(CSV.File("../datasets/abalone.csv"))
-data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
-target = convert(Array, df[:, 9]) #age
-# shuffle data
-randseed = 1234; rng = MersenneTwister(randseed)
-ind_shuffle = randperm(rng, size(data, 1)) 
-data = data[ind_shuffle, :]
-target = target[ind_shuffle]
+
+function covariate_fun(x, p)
+    n = size(x, 1)
+    d = size(x, 2)
+    if p == 1
+        return ones(n, 1)
+    elseif p == 1 + d
+        return hcat(ones(n), x)
+    else
+        throw(ArgumentError("Only support constant or linear convariate."))
+    end
+end
+
+true_fun(x, s) = sin(x) + s*randn() + 3
+true_fun_noise(x) = max(true_fun(x, 1e-1), 0)^1/3
+true_fun_0(x) = true_fun(x, 0.)^1/3
+
 # training set
-id_train = 1:parsed_args["ntrain"]; posx = 1:7; posc = 1:parsed_args["posc"]
-n_train = length(id_train)
-x = data[id_train, posx] 
-Fx = data[id_train, posc] 
-y = float(target[id_train])
-ymax_train = maximum(y)
-y ./= ymax_train
+n_train = parsed_args["ntrain"]
+data = range(-pi, stop=pi, length=n_train)
+# data = 2pi .* rand(n_train) .- pi
+target = (sin.(data) .+ 0.1 * parsed_args["noiselevel"].* randn(n_train) .+ 3).^(1/3)
+x = reshape(data, n_train, 1)
+Fx = covariate_fun(x, parsed_args["p"])
+max_train = maximum(target)
+y = target ./ max_train
 trainingData0 = trainingData(x, Fx, y) 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
+# testing set 
+n_test = parsed_args["ntest"]
+x_test = range(-pi, stop=pi, length=n_test)
+x_test = reshape(x_test, n_test, 1)
+Fx_test = covariate_fun(x_test, parsed_args["p"])
+y_test_true = (sin.(x_test) .+ 3).^(1/3)
 
 #parameter setting
-if parsed_args["quadtype"] == 1
-    myquadtype = ["Gaussian", "Gaussian"]
-elseif parsed_args["quadtype"] == 2
-    myquadtype = ["SparseGrid", "Gaussian"]
-elseif parsed_args["quadtype"] == 3
-    myquadtype = ["SparseCarlo", "SparseCarlo"]
-else
-    myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
-end
+# myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+myquadtype = ["Gaussian", "Gaussian"]
 rangeλ = [-1.5 1.] 
-rangeθs = [500. 1000]
-rangeθm = repeat(rangeθs, d, 1)
-rangeθ = parsed_args["single"] ? rangeθs : rangeθm
+rangeθ = [0.111 25]
 # build btg model
 btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
 (pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
@@ -96,32 +99,31 @@ btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
 if parsed_args["test"]
     @info "Start Test"
     before = Dates.now()
-    id_test = 1001:(parsed_args["ntest"]+1000)
-    n_test = length(id_test)
-    id_fail = []
-    id_nonproper = []
-    x_test = data[id_test, posx]
-    Fx_test = data[id_test, posc]
-    y_test_true = target[id_test]
     count_test = 0
     error_abs = 0.
     error_sq = 0.
     nlpd = 0.
+    id_fail = []
+    id_nonproper = []
+    CI_set = zeros(n_test, 2)
+    median_set = zeros(n_test)
     for i in 1:n_test
         global error_abs, error_sq, nlpd, count_test
-        mod(i, 20) == 0 ? (@info i) : nothing
+        # mod(i, 20) == 0 ? (@info i) : nothing
         # @info "i" i
-        x_test_i = reshape(x_test[i, :], 1, length(posx))
-        Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
+        x_test_i = reshape(x_test[i, :], 1, d)
+        Fx_test_i = reshape(Fx_test[i, :], 1, p)
         try
             pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw)
             y_test_i_true = y_test_true[i]
-            median_test_i = ymax_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
+            median_test_i = max_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
             # @info "True, median " y_test_i_true, median_test_i
+            median_set[i] = median_test_i
             try 
-                CI_test_i = ymax_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
+                CI_test_i = max_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
                 count_test += (y_test_i_true >= CI_test_i[1])&&(y_test_i_true <= CI_test_i[2]) ? 1 : 0
                 # @info "CI" CI_test_i
+                CI_set[i, :] = CI_test_i
             catch err
                 append!(id_fail, i)
             end
@@ -140,11 +142,24 @@ if parsed_args["test"]
     after = Dates.now()
     elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 
+    # Plot
+    PyPlot.close("all") #close existing windows
+    PyPlot.plot(x_test, median_set, label = "BTG median")
+    PyPlot.plot(x_test, y_test_true, label = "true")
+    PyPlot.fill_between(dropdims(x_test; dims = 2), CI_set[:, 1], CI_set[:, 2], alpha = 0.3, label = "95% confidence interval")
+    PyPlot.scatter(x, target)
+    PyPlot.legend(fontsize=8)
+    PyPlot.grid()
+    PyPlot.title("BTG $myquadtype", fontsize=10)
+    PyPlot.savefig("Figure/exp_synthetic1_btg_$(n_train)_noise$(parsed_args["noiselevel"]).pdf")
+
+
     if parsed_args["GP"] 
+        @info "Start GP"
         global error_abs_GP, error_sq_GP, CI_test_GP, count_test_GP, nlpd_GP
         # training set
-        x = data[id_train, posx]' 
-        y = float(target[id_train])
+        x = reshape(x, 1, n_train) 
+        y = target
         # build and fit a GP
         mymean = MeanLin(zeros(d))
         # mymean = MeanZero() 
@@ -152,8 +167,7 @@ if parsed_args["test"]
         gp = GP(x, y, mymean, kern) 
         optimize!(gp)     
         # predict
-        x_test = data[id_test, posx]'
-        y_test_true = target[id_test]
+        x_test = reshape(x_test, 1, n_test)
         μ, σ² = predict_y(gp, x_test); stdv = sqrt.(σ²)
         error_GP = abs.(μ .- y_test_true)
         error_abs_GP = mean(error_GP)
@@ -161,12 +175,22 @@ if parsed_args["test"]
         CI_test_GP = hcat(-1.96.*stdv .+ μ, 1.96.*stdv .+ μ)
         count_test_GP = sum((y_test_true .>= CI_test_GP[:, 1]) .* (y_test_true .<= CI_test_GP[:,2]))/n_test
         nlpd_GP = -mean(log.(pdf.(Normal(), (y_test_true.-μ)./stdv)./stdv))
+        # Plot
+        PyPlot.close("all") #close existing windows
+        PyPlot.plot(dropdims(x_test; dims = 1), μ, label = "GP median")
+        PyPlot.scatter(x, target)
+        PyPlot.fill_between(dropdims(x_test; dims = 1), CI_test_GP[:, 1], CI_test_GP[:, 2], alpha = 0.3, label = "95% credibel interval")
+        PyPlot.legend(fontsize=8)
+        PyPlot.grid()
+        PyPlot.title("GP", fontsize=10)
+        PyPlot.savefig("Figure/exp_synthetic1_GP_$(n_train)_noise$(parsed_args["noiselevel"]).pdf")
     end
 
     if parsed_args["logGP"]
+        @info "Start logGP"
         global error_abs_logGP, error_sq_logGP, CI_test_logGP, count_test_logGP, nlpd_logGP
-        x = data[id_train, posx]' 
-        y = float(target[id_train])
+        x = reshape(x, 1, n_train) 
+        y = target
         trans = BoxCox()
         g_fixed(x) = trans(x, 0.); dg(x) = partialx(trans, x, 0.)
         invg(x) = inverse(trans, x, 0.)
@@ -178,8 +202,7 @@ if parsed_args["test"]
         loggp = GP(x, gy, mymean, kern) 
         optimize!(loggp) 
         # predict
-        x_test = data[id_test, posx]'
-        y_test_true = target[id_test]
+        x_test = reshape(x_test, 1, n_test)
         μ, σ² = predict_y(loggp, x_test); stdv = sqrt.(σ²)
         CI_test_logGP = invg.(hcat(-1.96.*stdv .+ μ, 1.96.*stdv .+ μ))
         count_test_logGP = sum((y_test_true .>= CI_test_logGP[:, 1]) .* (y_test_true .<= CI_test_logGP[:,2]))/n_test
@@ -188,13 +211,41 @@ if parsed_args["test"]
         error_abs_logGP = mean(error_logGP)
         error_sq_logGP = mean(error_logGP.^2)
         nlpd_logGP = -mean(log.( dg.(y_test_true) .* pdf.(Normal(), (g_fixed.(y_test_true).-μ)./stdv) ./stdv ))
+        # Plot
+        PyPlot.close("all") #close existing windows
+        # Plot
+        PyPlot.plot(dropdims(x_test; dims = 1), invg.(μ), label = "logGP median")
+        PyPlot.scatter(x, target)
+        PyPlot.fill_between(dropdims(x_test; dims = 1), CI_test_logGP[:, 1], CI_test_logGP[:, 2], alpha = 0.3, label = "95% credibel interval")
+        PyPlot.legend(fontsize=8)
+        PyPlot.grid()
+        PyPlot.title("logGP", fontsize=10)
+        PyPlot.savefig("Figure/exp_synthetic1_logGP_$(n_train)_noise$(parsed_args["noiselevel"]).pdf")
     end
+
+    # plot and Compare
+    x_test = reshape(x_test, n_test)
+    y_test_true = reshape(y_test_true, n_test)
+    median_set = reshape(median_set, n_test)
+    PyPlot.close("all") #close existing windows
+    PyPlot.scatter(x, target)
+    PyPlot.plot(x_test, y_test_true, label = "true")
+    PyPlot.plot(x_test, median_set, label = "BTG median")
+    PyPlot.fill_between(x_test, CI_set[:, 1], CI_set[:, 2], alpha = 0.3, label = "95% CI BTG")
+    PyPlot.fill_between(x_test, CI_test_GP[:, 1], CI_test_GP[:, 2], alpha = 0.3, label = "95% CI GP")
+    PyPlot.fill_between(x_test, CI_test_logGP[:, 1], CI_test_logGP[:, 2], alpha = 0.3, label = "95% CI logGP")
+    PyPlot.title("Compare BTG, GP and logGP", fontsize=10)
+    PyPlot.legend(fontsize=8)
+    PyPlot.grid()
+    PyPlot.savefig("Figure/exp_synthetic1_compare_$(n_train)_noise$(parsed_args["noiselevel"]).pdf")
+
+
 
     if parsed_args["singletest"]
         @info "Average time for single test: " elapsedmin/n_test
-        io1 = open("Exp_abalone_singletest.txt", "a")
-        write(io1, "\n$(Dates.now()), randseed: $randseed \n" )
-        write(io1, "Data set: Abalone   
+        io1 = open("Exp_exp_synthetic1_singletest.txt", "a")
+        write(io1, "\n$(Dates.now()) \n" )
+        write(io1, "Data set: exp_synthetic1   
             id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
         write(io1, "BTG model:  
             $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
@@ -208,12 +259,12 @@ if parsed_args["test"]
             BTG: Failed index in pdf computation:     $id_nonproper\n")
         close(io1)
     else # write results 
-        io1 = open("Exp_abalone_test.txt", "a") 
-        write(io1, "\n$(Dates.now()), randseed: $randseed \n" )
-        write(io1, "Data set: Abalone   
-            id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
+        io1 = open("Exp_exp_synthetic1_test.txt", "a") 
+        write(io1, "\n$(Dates.now()) \n" )
+        write(io1, "Data set: exp_synthetic1   
+            train size:  $n_train;  test size:  $n_test;  dimension: $d;   degree of covariate functions: $(parsed_args["p"])\n") 
         write(io1, "BTG model:  
-            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθ \n")
         if parsed_args["GP"] && parsed_args["logGP"]
             write(io1, "Compare test results: ")
             write(io1, "                               BTG               GP               logGP
@@ -222,7 +273,6 @@ if parsed_args["test"]
             mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
             mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
             Time cost by prediction: $elapsedmin
-            Time cost by single prediction: $(elapsedmin/n_test)
             BTG: Failed index in credible intervel:   $id_fail 
             BTG: Failed index in pdf computation:     $id_nonproper\n")
         else
@@ -232,7 +282,6 @@ if parsed_args["test"]
             mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
             mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))
             Time cost by prediction: $elapsedmin   
-            Time cost by single prediction: $(elapsedmin/n_test)
             Failed index in credible intervel:       $id_fail 
             BTG: Failed index in pdf computation:     $id_nonproper\n")
         end
@@ -331,9 +380,9 @@ if parsed_args["validate"]
     elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
 
     # save results
-    io2 = open("Exp_abalone_LOOCV.txt", "a") 
+    io2 = open("Exp_exp_synthetic1_LOOCV.txt", "a") 
     write(io2, "\n$(Dates.now()), randseed: $randseed \n" )
-    write(io2, "Data set: Abalone   
+    write(io2, "Data set: exp_synthetic1   
         id_train:  $id_train;   posx: $posx;   posc: $posc\n") 
     write(io2, "BTG model:  
         $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) 
@@ -373,7 +422,7 @@ if parsed_args["validate"]
     for ax in axs
         ax.label_outer()
     end
-    PyPlot.savefig("figure/exp_abalone_$(id_train[1])_$(id_train[2])_$(myquadtype[1])$(myquadtype[2])_posc$(posc[2])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
+    PyPlot.savefig("figure/exp_exp_synthetic1_$(id_train[1])_$(id_train[2])_$(myquadtype[1])$(myquadtype[2])_posc$(posc[2])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_rλ_$(Int(rangeλ[1]))_$(Int(rangeλ[2]))_$(parsed_args["fast"]).pdf")
 
 end
 

@@ -107,6 +107,8 @@ if parsed_args["test"]
     error_abs = 0.
     error_sq = 0.
     nlpd = 0.
+    error_abs_set = zeros(n_test)
+    nlpd_set = zeros(n_test)
     for i in 1:n_test
         global error_abs, error_sq, nlpd, count_test
         mod(i, 20) == 0 ? (@info i) : nothing
@@ -128,6 +130,8 @@ if parsed_args["test"]
             error_abs += abs(y_test_i_true - median_test_i)
             error_sq += (y_test_i_true - median_test_i)^2
             nlpd += log(pdf_test_i(y_test_i_true)) 
+            error_abs_set[i] = error_abs
+            nlpd_set[i] = nlpd
         # @info "Count, id_fail" count_test, id_fail
         catch err 
             append!(id_nonproper, i)
@@ -139,6 +143,16 @@ if parsed_args["test"]
     nlpd       /= -n_test - length(id_nonproper)
     after = Dates.now()
     elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
+
+    io = open("Exp_abalone_errorhist.txt", "a") 
+    write(io, "\n$(Dates.now()), randseed: $randseed \n")
+    write(io, "Data set: Abalone   
+    id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
+    write(io, "BTG model:  
+            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+    write(io, "Absolute error history \n $error_abs_set \n")
+    write(io, "Negative log predictive density history \n $nlpd_set \n")
+    close(io)
 
     if parsed_args["GP"] 
         global error_abs_GP, error_sq_GP, CI_test_GP, count_test_GP, nlpd_GP

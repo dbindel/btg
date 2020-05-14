@@ -4,51 +4,113 @@ using Roots
 using StatsFuns
 
 # import Statistics: median, pdf, cdf
+"pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support and check if pdf is proper"
+function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quantbound::Function) where T<:Float64
+    quantbound_fixed(p) = quantbound(x0, Fx0, p) 
+    pdf_fixed(y) = pdf(x0, Fx0, y)
+    cdf_fixed(y) = cdf(x0, Fx0, y)
+    dpdf_fixed(y) = dpdf(x0, Fx0, y)
+    support = [.1, 5.]
+    function support_comp!(pdf, support)
+      current = pdf(support[1])
+      for i in 1:5
+        next = pdf(support[1]/5)
+        if next < current
+          support[1] /= 10
+        else
+          break
+        end
+        current = next
+      end
+      while pdf(support[2]) > 1e-6 
+        support[2] *= 1.2
+      end
+      # should make sure CDF(support[2]) - CDF(support[1]) > .96 to make 95% CI possible
+      INT = cdf_fixed(support[2]) - cdf_fixed(support[1])
+      if INT < .96
+        @warn "pdf integral $INT"
+      end
+      return nothing
+    end
+    support_comp!(pdf_fixed, support)
+    return (pdf_fixed, cdf_fixed, dpdf_fixed, quantbound_fixed, support)
+end
+
+"wrap up all statistics computation"
+function summary_comp(pdf_fixed::Function, cdf_fixed::Function, dpdf_fixed::Function, quantbound_fixed::Function, support::Array{T,1};
+                       px = .5, confidence_level = .95) where T<:Float64
+    quant_p, error_quant = quantile(cdf_fixed, quantbound, support; p=px)
+    med, error_med = median(cdf_fixed, quantbound, support)
+    mod = mode(pdf_fixed, support)
+    CI_equal, error_CI_eq = credible_interval(cdf_fixed, quantbound, support; 
+                                                mode=:equal, wp = confidence_level)
+    # CI_narrow, error_CI_nr = credible_interval(cdf_fixed, quantbound, support;
+    #                                             mode=:narrow, wp = confidence_level)
+    quantileInfo = (level = px, value = quant_p, error = error_quant)
+    medianInfo = (value = med, error = error_med)
+    CIequalInfo = (equal = CI_equal, error = error_CI_eq)
+    # CInarrowInfo = (equal = CI_narrow, error = error_CI_nr)
+    CInarrowInfo = nothing
+    DistributionInfo = (quantile = quantileInfo, median = medianInfo, mode = mod, CIequal = CIequalInfo, CInarrow = CInarrowInfo)
+    return DistributionInfo
+end
+
 
 """
 Given pdf, cdf and maybe pdf_deriv, 
-compute median, quantile, mode, symmetric/narrowest credible intervel.
+compute median, quantile, mode, symmetric/narrowest credible interval.
 Warning: only for normalized values
 """
-function median(pdf, cdf, TmixInfo; pdf_deriv=nothing)
-    med = quantile(pdf, cdf, TmixInfo)
-    return med
+function median(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing) where T<:Float64
+    med, err = quantile(cdf, quantbound, support)
+    return med, err, bound
 end
 
-# function median2(pdf, cdf; pdf_deriv=nothing)
-#   med = quantile(pdf, cdf)
-#   return med
-# end
-
-function quantile(pdf, cdf, TmixInfo; pdf_deriv=nothing, p::R=.5) where R <: Real
-    x_ref = TmixInfo[1]
-    sigma_mix = TmixInfo[2]
-    v = TmixInfo[3]
-    initial_guess = sigma_mix * tdistinvcdf(v, p) + x_ref
-    quant = Roots.find_zero(y0 -> cdf(x0, Fx0, y0) - p, initial_guess) 
-    return quant
+function quantile(cdf::Function, quantbound::Function, support::Array{T,1}; pdf = nothing, pdf_deriv=nothing, p::T=.5) where T<:Float64
+    bound = support
+    # try 
+    #   bound = quantbound(p)
+    # catch err
+    # end
+    quant = fzero(y0 -> cdf(y0) - p, bound[1], bound[2]) 
+    err = abs(p-cdf(quant))/p
+    # status = err < 1e-5 ? 1 : 0
+    return quant, err, bound
 end
 
-function mode(pdf, cdf; pdf_deriv=nothing) 
+function mode(pdf::Function, support::Array{T,1}; cdf = nothing, pdf_deriv=nothing) where T<:Float64
     # maximize the pdf 
-    routine = optimize(x -> -pdf(x), 0., 5.) 
+    routine = optimize(x -> -pdf(x), support[1], support[2]) 
     mod = Optim.minimizer(routine)
     return mod
 end
 
-function credible_interval(pdf, cdf, TmixInfo; pdf_deriv=nothing, wp::R=.95, mode=:equal) where R <: Real
-    return credible_interval(pdf, cdf, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
+function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}; 
+                            pdf=nothing, pdf_deriv=nothing, wp::T=.95, mode=:equal) where T<:Float64
+    return credible_interval(cdf, quantbound, support, Val(mode); pdf_deriv=pdf_deriv, wp=wp)
 end
 
-function credible_interval(pdf, cdf, TmixInfo, ::Val{:equal}; pdf_deriv=nothing, wp::R=.95) where R <: Real
+function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}, ::Val{:equal};  
+                            pdf=nothing, pdf_deriv=nothing, wp::T=.95) where T<:Float64
     lower_qp = (1 - wp) / 2
     upper_qp = 1 - lower_qp
-    lower_quant = quantile(pdf, cdf, TmixInfo; p=lower_qp)
-    upper_quant = quantile(pdf, cdf, TmixInfo; p=upper_qp)
-    return [lower_quant, upper_quant]
+    lower_quant = lower_qp # random initialization
+    try 
+        lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1] 
+    catch err
+        wp = .9
+        lower_qp = (1 - wp) / 2
+        upper_qp = 1 - lower_qp
+        lower_quant = quantile(cdf, quantbound, support; p=lower_qp)[1] 
+        @warn "Can't compute 95% credible intervel, do $(Int(wp*100))% instead."
+    end
+    upper_quant = quantile(cdf, quantbound, support; p=upper_qp)[1]
+    err = abs(cdf(upper_quant) -  cdf(lower_quant) - wp)/wp
+    return [lower_quant, upper_quant], wp, err
 end
 
-function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing, wp::R=.95) where R <: Real
+function credible_interval(cdf::Function, quantbound::Function, support::Array{T,1}, ::Val{:narrow}; 
+                            pdf=nothing, pdf_deriv=nothing, wp::T=.95) where T<:Float64
   #= 
   Brief idea: bisection
     Suppose the target interval is [alpha*, beta*], i.e. integral of pdf on [alpha*, beta*] = wp
@@ -77,7 +139,7 @@ function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing
       e.g. integral_heightue, error = hquadrature(f, a, b) gives integral of f on [a,b] with some error
       we mostly use this to compute integral of pdf on [alpha, beta] for different alpha and beta
   =#
-   
+
  # helper functions
   #= 
   given a height l_height, find the two intersections s.t. pdf(α) = pdf(β) = l_height
@@ -90,13 +152,13 @@ function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing
   =#
   function find_αβ(l_height, α_intvl, β_intvl)
     # find α and β within ginve intervals α_intvl and β_intvl respectively
-    routine_α = optimize(x -> abs(pdf(x) - l_height), α_intvl[1], α_intvl[2], GoldenSection())
-    α = Optim.minimizer(routine_α)
-    routine_β = optimize(x -> abs(pdf(x) - l_height), β_intvl[1], β_intvl[2], GoldenSection())
-    β = Optim.minimizer(routine_β)
+    temp_fun(x) = pdf(x) - l_height
+    α = fzero(temp_fun,  α_intvl[1], α_intvl[2])
+    β = fzero(temp_fun,  β_intvl[1], β_intvl[2])
     int = hquadrature(x -> pdf(x), α, β)[1]
     return α, β, int
   end
+
 
   #= 
   Adjust the height in case initial choice of low/high is not proper 
@@ -116,7 +178,7 @@ function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing
     if MODE == "low"
         while int < wp
             l /= 2
-            α, β, int = find_αβ(l, [0, α], [β, bound])
+            α, β, int = find_αβ(l, [support[1], α], [β, support[2]])
         end
     else
         while int > wp
@@ -126,17 +188,16 @@ function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing
     end
     return l, α, β, int
   end
-
-  # assume we have the mode
-  mode_d = mode(pdf, cdf)
-  # z normalized to [0,1], so reasonably pdf(10) ~= 0
-  bound = 3*mode_d
-  l_height_low = 1e-3
-  α_low, β_low, int_low = find_αβ(l_height_low, [0, mode_d], [mode_d, bound])
+  mode_d = mode(pdf, cdf, support)
+  l_height_low = pdf(support[1]) 
+  α_low = support[1]
+  β_low = fzero(x -> pdf(x) - l_height_low,  mode_d, support[2])
+  int_low = hquadrature(x -> pdf(x), α_low, β_low)[1]
+  # α_low, β_low, int_low = find_αβ(l_height_low, [support[1], mode_d], [mode_d, support[2]])
   # adjust height if l low is not lower than l* (i.e. int < wp)
-  l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
-  l_height_high = pdf(mode_d) - 1e-6
-  α_high, β_high, int_high = find_αβ(l_height_high, [0, mode_d], [mode_d, bound])
+  # l_height_low, α_low, β_low, int_low = adjust(l_height_low, α_low, β_low, int_low, "low")
+  l_height_high = pdf(mode_d)*0.9
+  α_high, β_high, int_high = find_αβ(l_height_high, [α_low, mode_d], [mode_d, β_low])
   # adjust height if l_high is not higher than l* (i.e. int > wp)
   l_height_high, α_high, β_high, int_high = adjust(l_height_high, α_high, β_high, int_high, "high")
 
@@ -159,7 +220,9 @@ function credible_interval(pdf, cdf, TmixInfo, ::Val{:narrow}; pdf_deriv=nothing
   end
   N += 1
   end
-  return [α_mid, β_mid]
+  err1 = abs(cdf(β_mid) -  cdf(α_mid) - wp)/wp
+  err = max(err1, abs(pdf(α_mid)- pdf(β_mid))/abs(pdf(β_mid)))
+  return ([α_mid, β_mid], err)
 
  
 end

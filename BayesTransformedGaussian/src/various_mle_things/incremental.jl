@@ -75,7 +75,12 @@ logdet(R::IncrementalCholesky) = logdet(get_chol(R))
 
 isposdef(R::IncrementalCholesky) = R.info == 0
 
+<<<<<<< HEAD:BayesTransformedGaussian/src/various_mle_things/incremental.jl
 display(R::IncrementalCholesky) = display(get_chol(R))
+=======
+#lastindex(R::IncrementalCholesky{Float64}, t::Int64) = size(R)[1] #for doing R[2:end], for example
+
+>>>>>>> ba937b313d9c3c2b02f5f7b94cb76500e6ebbef6:BayesTransformedGaussian/src/bayesopt/incremental.jl
 
 #####
 ##### Growable Data Array

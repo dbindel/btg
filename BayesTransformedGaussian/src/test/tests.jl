@@ -20,6 +20,20 @@ include("../datastructs.jl")
     #@test invBoxCox(boxCox(2., -2), -2) ≈ 2.0 atol = 1e-15
 end
 
+@testset "BoxCox" begin
+    bc = BoxCox()
+    g = (x, λ) -> bc(x, λ)
+    dg = (x, λ) -> partialx(bc, x, λ)
+    dg2 = (x, λ) -> partialx(bc, x, λ)
+    g_fixed = x-> g(x, 1.5)
+    dg_fixed = x-> dg(x, 1.5) 
+    dg2_fixed = x-> dg2(x, 1.5) 
+    (_, _, _, pol) = checkDerivative(dg_fixed, dg2_fixed, 0.5, nothing, 8, 16, 10)
+    @test coeffs(pol)[end] ≈ 2 atol = 1e-1
+    (_, _, _, pol) = checkDerivative(g_fixed, dg_fixed, 0.5, nothing, 8, 16, 10)
+    @test coeffs(pol)[end] ≈ 2 atol = 1e-1
+end
+
 @testset "datastructs.jl" begin
     x = newExtensibleTrainingData(5, 2, 3)
     @test x.d == 2

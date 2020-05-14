@@ -1,0 +1,3 @@
+Important BTG notes:
+for kernel we assume k(s, s)= 1, where the kernel applied to the same location is 1
+This affects tdist approx line 71, where we don't update Eθ, because we assume its going to be the same (have value 1)

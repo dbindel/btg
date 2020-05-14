@@ -7,9 +7,9 @@ function data()
     abalone = CSV.File(open("abalone.csv"))
     abalone = DataFrame(abalone)
     X = Matrix(Matrix(abalone[1:200,2:8])')
-    y = Vector(abalone[1:200, 9])
+    y = Vector{Float64}(abalone[1:200, 9])
     f = Linear()
-    g = SumTanh()
+    g = Identity()
     k = Gaussian()
     d = data(f, X, y)
     return f, g, k, d
@@ -17,12 +17,12 @@ end
 
 function testfun()
     f, g, k, d = data()
-    unpack = x -> (x[1:5], x[6], x[7], x[8:9], x[10:11], x[12:13])
-    fg! = make_fg(unpack) do ℓ, ϵ, amp, α, β, c
-       ks = kernelsystem(f, k, g, d, Diagonal(ℓ), (amp,), ϵ, (α, β, c))
-       -logprob(ks, (α, β, c), 0)
+    unpack = x -> (x[1],)
+    fg! = make_fg(unpack) do ℓ
+       ks = kernelsystem(f, k, g, d, UniformScaling(ℓ), (1.0,), 1e-6, ())
+       -logprob(ks, (), 0)
     end
-    return Optim.optimize(Optim.only_fg!(fg!), rand(13), ConjugateGradient())
+    return Optim.optimize(Optim.only_fg!(fg!), rand(1), ConjugateGradient())
 end
 
 function datavanilla()

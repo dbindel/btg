@@ -1,4 +1,4 @@
-function optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300)
+function optimize_acqusition(cdf, cdf_gradient, lx, ux;  initial, maxiter = 300)
     #lx = [1, -5, -5]; ux = [3000.0, 5, 5] #box-constraints for optimization problem
     #make input an augmented vector [y, s]: label, location
     cdf_fixed(v) = cdf(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
@@ -32,7 +32,7 @@ function optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300)
     @NLconstraint(model, cdf_wrapper(au...) == 0.25)
 
     function single_optimization()
-        initval = init_constrained_pt(cdf_fixed, lx, ux; quantile = 0.25)
+        initval = init_constrained_pt(cdf_fixed, lx, ux; initial = initial, quantile = 0.25)
         set_start_value(au[1], initval[1])
         set_start_value(au[2], initval[2])
         set_start_value(au[3], initval[3])

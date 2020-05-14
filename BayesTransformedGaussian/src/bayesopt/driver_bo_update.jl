@@ -31,9 +31,10 @@ Fx = linear_polynomial_basis(x)
 train = extensible_trainingData(x, Fx, y) #training data triple: location, covariates, labels
 #rangeθ = reshape(select_single_theta_range(x), 1, 2) #rangetheta is auto-selected
 #rangeθ = [0.0001 1000]
-rangeθ = [10.0 300] 
+#rangeθ = [10.0 300] 
+rangeθ  = [50.0 60.0]
 @info "rangeθ", rangeθ 
-rangeλ = [-0.5 0.5] 
+rangeλ = [-1.0 0.2] 
 btg1 = btg(train, rangeθ, rangeλ);
  #get function handles for pdf, cdf, derivtives
 lx = [1, -5, -5]; ux = [3000.0, 5, 5] 
@@ -65,11 +66,13 @@ function BO(btg1::btg, f, n, lx, ux, min) #BO loop
     quant_hist = []
     #debug histories
     training_size_hist = []
+    argmin_hist = [x[argmin(getLabel(btg1.trainingData)):argmin(getLabel(btg1.trainingData)), :]]
 
     for i = 1:n #take 10 BO steps
         println("========================ITERATION: ", i)
         (_, cdf, _, cdf_gradient) = solve(btg1; derivatives = true);
-        (vstar, initval, quant_eval) = optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300);
+        #(vstar, initval, quant_eval) = optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300, initial = argmin_hist[end]);
+        (vstar, initval, quant_eval) = optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300, initial = []);
         s_star = reshape(vstar[2:end], 1, length(vstar[2:end]))
         push!(quant_hist, quant_eval)
         push!(init_hist, initval[2:end])
@@ -80,8 +83,10 @@ function BO(btg1::btg, f, n, lx, ux, min) #BO loop
         push!(f_hist, f_star)
         if f_star < min_hist[end]
             push!(min_hist, f_star)
+            push!(argmin_hist, s_star)
         else
             push!(min_hist, min_hist[end])
+            push!(argmin_hist, argmin_hist[end])
         end
         #@info "f_star", f_star
         updateBTG!(btg1, s_star, linear_polynomial_basis(s_star), [f_star]) #update with chosen point 
@@ -90,14 +95,4 @@ function BO(btg1::btg, f, n, lx, ux, min) #BO loop
 end    
 (x_hist, f_hist, min_hist, gp_hist, init_hist, quant_hist, training_size_hist) = BO(btg1, Himmelblau, 5, lx, ux, cur_min);
 
-    #(u_star, s_star) = optimize_acquisition(cdf, cdf_gradient, cdf_hessian)
-    #update BTG trainingData and trainingBuffers with new point (xstar, Fxstar, ystar)  #location, covariates, label
-    # update
-    #update!(btg, s_star, cov_fun(s_star), u_star
-    # - Σθ_inv_X, check  compute directly in O(n^2p)
-    # - choleskyΣθ, check compute directly, have cholesky factorization anyways 
-    # - choleskyXΣX, check compute directly
-    # - logdetΣθ    compute directly
-    # - logdetXΣX compute directly 
 
-#4.51690700362799, 3.011185163108001

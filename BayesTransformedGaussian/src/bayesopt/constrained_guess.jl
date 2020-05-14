@@ -7,8 +7,12 @@ finds y value for which lb < constr(y;s) < ub
 OUTPUT:
 augmented [y, s] vector of value and 
 """
-function init_constrained_pt(cdf_fixed, lx, ux; quantile = 0.25)
-    (_, loc) = sample_points( _ -> 1.0, lx[2:end], ux[2:end]; num = 1) #samples random location in box
+function init_constrained_pt(cdf_fixed, lx, ux; initial = [], quantile = 0.25)
+    if length(initial)!=0
+        loc = initial #use initial point 
+    else
+        (_, loc) = sample_points( _ -> 1.0, lx[2:end], ux[2:end]; num = 1) #samples random location in box
+    end
     #(_, loc) = sample( _ -> 1.0, lx[2:end], ux[2:end]; num = 1)
     cdf_y(y) = (arg = Base.vcat([y], reshape(loc, length(loc))); cdf_fixed(arg))
     #@info "loc" loc

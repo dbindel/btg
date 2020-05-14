@@ -34,7 +34,7 @@ s = ArgParseSettings()
     "--posc"
         help = "another option with an argument"
         arg_type = Int
-        default = 3
+        default = 7
     "--singletest"
         help = "write log to single test"
         action = :store_true
@@ -45,7 +45,11 @@ s = ArgParseSettings()
     "--ntest"
         help = "another option with an argument"
         arg_type = Int
-        default = 100
+        default = 5
+    "--quadtype"
+        help = "quadrature type for theta"
+        arg_type = Int
+        default = 1
 end
 parsed_args = parse_args(ARGS, s)
 # load abalone data
@@ -69,10 +73,17 @@ trainingData0 = trainingData(x, Fx, y)
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
 #parameter setting
-# myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
-myquadtype = ["Gaussian", "Gaussian"]
+if parsed_args["quadtype"] == 1
+    myquadtype = ["Gaussian", "Gaussian"]
+elseif parsed_args["quadtype"] == 2
+    myquadtype = ["SparseGrid", "Gaussian"]
+elseif parsed_args["quadtype"] == 3
+    myquadtype = ["SparseCarlo", "SparseCarlo"]
+else
+    myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
+end
 rangeλ = [-1.5 1.] 
-rangeθs = [10. 1000]
+rangeθs = [500. 1000]
 rangeθm = repeat(rangeθs, d, 1)
 rangeθ = parsed_args["single"] ? rangeθs : rangeθm
 # build btg model
@@ -96,9 +107,11 @@ if parsed_args["test"]
     error_abs = 0.
     error_sq = 0.
     nlpd = 0.
+    error_abs_set = zeros(n_test)
+    nlpd_set = zeros(n_test)
     for i in 1:n_test
         global error_abs, error_sq, nlpd, count_test
-        # mod(i, 20) == 0 ? (@info i) : nothing
+        mod(i, 20) == 0 ? (@info i) : nothing
         # @info "i" i
         x_test_i = reshape(x_test[i, :], 1, length(posx))
         Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
@@ -117,6 +130,8 @@ if parsed_args["test"]
             error_abs += abs(y_test_i_true - median_test_i)
             error_sq += (y_test_i_true - median_test_i)^2
             nlpd += log(pdf_test_i(y_test_i_true)) 
+            error_abs_set[i] = error_abs
+            nlpd_set[i] = nlpd
         # @info "Count, id_fail" count_test, id_fail
         catch err 
             append!(id_nonproper, i)
@@ -128,6 +143,16 @@ if parsed_args["test"]
     nlpd       /= -n_test - length(id_nonproper)
     after = Dates.now()
     elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
+
+    io = open("Exp_abalone_errorhist.txt", "a") 
+    write(io, "\n$(Dates.now()), randseed: $randseed \n")
+    write(io, "Data set: Abalone   
+    id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
+    write(io, "BTG model:  
+            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+    write(io, "Absolute error history \n $error_abs_set \n")
+    write(io, "Negative log predictive density history \n $nlpd_set \n")
+    close(io)
 
     if parsed_args["GP"] 
         global error_abs_GP, error_sq_GP, CI_test_GP, count_test_GP, nlpd_GP
@@ -211,6 +236,7 @@ if parsed_args["test"]
             mean squared error:                      $(@sprintf("%11.8f", error_sq))       $(@sprintf("%11.8f", error_sq_GP))       $(@sprintf("%11.8f", error_sq_logGP))   
             mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))       $(@sprintf("%11.8f", nlpd_GP))       $(@sprintf("%11.8f", nlpd_logGP))  
             Time cost by prediction: $elapsedmin
+            Time cost by single prediction: $(elapsedmin/n_test)
             BTG: Failed index in credible intervel:   $id_fail 
             BTG: Failed index in pdf computation:     $id_nonproper\n")
         else
@@ -220,6 +246,7 @@ if parsed_args["test"]
             mean squared error:                      $(@sprintf("%11.8f", error_sq)) 
             mean negative log predictive density:    $(@sprintf("%11.8f", nlpd))
             Time cost by prediction: $elapsedmin   
+            Time cost by single prediction: $(elapsedmin/n_test)
             Failed index in credible intervel:       $id_fail 
             BTG: Failed index in pdf computation:     $id_nonproper\n")
         end

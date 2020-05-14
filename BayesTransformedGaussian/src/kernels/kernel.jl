@@ -65,7 +65,7 @@ jitter: added to diagonal of kernel matrix to ensure positive-definiteness
 dims: 1 if data points are arranged row-wise and 2 if col-wise
 
 """
-function correlation(k::AbstractCorrelation, θ, x; jitter = 0, dims=1) 
+function correlation(k::AbstractCorrelation, θ, x; jitter = 1e-12, dims=1) 
     ret = Array{Float64}(undef, size(x, dims), size(x, dims))
     correlation!(ret, k, θ, x, jitter = jitter)
     return ret
@@ -85,7 +85,7 @@ function cross_correlation!(out, k::AbstractCorrelation, θ, x, y; dims = 1)
     return nothing
 end
 
-function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 0, dims=1)
+function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 1e-12, dims=1)
     x = reshape(x, size(x, 1), size(x, 2))
     dist = distance(k, θ)
     pairwise!(out, dist, x, dims=dims)

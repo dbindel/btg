@@ -132,7 +132,7 @@ function solve(btg::btg; validate = 0, derivatives = false)
     #println("validate in solve_btg is", validate)
     @assert typeof(derivatives) == Bool
     @assert typeof(validate) == Int64
-    @info "derivatives", derivatives
+    #@info "derivatives", derivatives
     if validate != 0 && derivatives == true
         println("Derivatives not supported in cross-validation (when validate flag > 0).")
         return

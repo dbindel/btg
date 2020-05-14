@@ -773,7 +773,6 @@ function posterior_theta(θ::Float64, λ::Float64, priorθ, priorλ, train::trai
     #return (Σθ\(Σθ_prime*(Σθ\X)), dQ(X))
     #return (dEXPR2, d2EXPR2)
     #return (main, dmain)
-
 end
   
 """

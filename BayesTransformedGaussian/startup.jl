@@ -16,6 +16,9 @@ Pkg.add("Distances")
 Pkg.add("LinearAlgebra")
 Pkg.add("FastGaussQuadrature")
 Pkg.add("SparseArrays")
+Pkg.add("JuMP")
+Pkg.add("Ipopt")
+
 
 #data analysis 
 Pkg.add("Plots") 
@@ -31,3 +34,5 @@ Pkg.add("TimerOutputs")
 Pkg.add("Cubature")
 Pkg.add("Optim")
 Pkg.add("NLSolversBase")
+
+

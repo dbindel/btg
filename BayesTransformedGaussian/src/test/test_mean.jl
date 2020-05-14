@@ -135,8 +135,8 @@ i=3
 #function isolate(i)
     (trainingdata_minus_i, x_i, Fx_i, z_i) = lootd(trainingData1, i);
     btg2 = btg(trainingdata_minus_i, rangeθ, rangeλ; quadtype = ["Gaussian", "Gaussian"]);
-    #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m, weightsTensorGrid)  = solve(btg2);
-    (pdf_minus_i, cdf_minus_i, dpdf_minus_i, _, _, _, tgridpdf, tgridcdf, tgridm, tgridsigma, weightsTensorGrid) = solve(btg2);
+    (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m, weightsTensorGrid)  = solve(btg2);
+    
 
     function func_grid_eval(funcgrid, x_i, Fx_i, y)
         g = similar(weightsTensorGrid)
@@ -146,6 +146,7 @@ i=3
         end
         return g
     end
+
     b1 = y -> pdf_minus_i(x_i, Fx_i, y);
     c1 = y -> cdf_minus_i(x_i, Fx_i, y);
     d1 = y->  func_grid_eval(tgridpdf, x_i, Fx_i, y);

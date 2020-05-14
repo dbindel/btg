@@ -14,12 +14,12 @@ end
 
 function testfun()
     X, y = data()
-    g = SumTanh()
+    g = DoNothing()
     k = Gaussian()
     mdl = Model(X, y, k, g, 1)
-    unpack = x -> (x[1:7], x[8], x[9], x[10:11], x[12:13], x[14:15])
-    fg! = make_fg(unpack) do ℓ, ϵ, amp, α, β, c
-       -logprob(mdl, Diagonal(ℓ), (amp,), ϵ, (α, β, c))
+    unpack = x -> @views (x[1], x[2], x[3])
+    fg! = make_fg(unpack) do ℓ, ϵ, amp
+       -logprob(mdl, UniformScaling(ℓ), (amp,), ϵ, ())
     end
-    return Optim.optimize(Optim.only_fg!(fg!), rand(15) / 5, LBFGS())
+    return Optim.optimize(Optim.only_fg!(fg!), rand(3) .+ 5, LBFGS())
 end

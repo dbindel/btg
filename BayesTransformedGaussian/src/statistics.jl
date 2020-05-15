@@ -10,11 +10,11 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
     pdf_fixed(y) = pdf(x0, Fx0, y)
     cdf_fixed(y) = cdf(x0, Fx0, y)
     dpdf_fixed(y) = dpdf(x0, Fx0, y)
-    support = [.1, 5.]
+    support = [1e-2, 5.]
     function support_comp!(pdf, support)
       current = pdf(support[1])
       for i in 1:5
-        next = pdf(support[1]/5)
+        next = pdf(support[1]/10)
         if next < current
           support[1] /= 10
         else
@@ -30,10 +30,10 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
       if INT < .96
         @warn "pdf integral $INT"
       end
-      return nothing
+      return INT
     end
-    support_comp!(pdf_fixed, support)
-    return (pdf_fixed, cdf_fixed, dpdf_fixed, quantbound_fixed, support)
+    INT = support_comp!(pdf_fixed, support)
+    return (pdf_fixed, cdf_fixed, dpdf_fixed, quantbound_fixed, support, INT)
 end
 
 "wrap up all statistics computation"

@@ -54,7 +54,7 @@ mutable struct btg
     debug_log::Any
     debug_log2::Any
     #weightsTensorGrid::Union{Array{T}, G} where T<:Float64 where G<:Nothing
-   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
+   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 12, num_MC = 400)
         @timeit to "assert statements, type-checking" begin
             @assert typeof(corr)<:AbstractCorrelation
             @assert typeof(priorθ)<:priorType
@@ -63,8 +63,8 @@ mutable struct btg
             @assert typeof(transform)<: NonlinearTransform
         end
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
-        @timeit to "nodesWeightsθ" nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 1000)
-        @timeit to "nodesWeightsλ" nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 1000)
+        @timeit to "nodesWeightsθ" nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = num_gq, num_MC = num_MC)
+        @timeit to "nodesWeightsλ" nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = num_gq, num_MC = num_MC)
         @timeit to "init λbuffer_dict" λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
         @timeit to "init train buffer dict" train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
         @timeit to "test_buffer_dict" test_buffer_dict =  init_empty_buffer_dict(nodesWeightsθ, train_buffer_dict, test_buffer) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances
@@ -132,7 +132,7 @@ function solve(btg::btg; validate = 0, derivatives = false)
     #println("validate in solve_btg is", validate)
     @assert typeof(derivatives) == Bool
     @assert typeof(validate) == Int64
-    @info "derivatives", derivatives
+    # @info "derivatives", derivatives
     if validate != 0 && derivatives == true
         println("Derivatives not supported in cross-validation (when validate flag > 0).")
         return
@@ -145,7 +145,7 @@ function solve(btg::btg; validate = 0, derivatives = false)
     end
     @timeit to "compute weights" weightTensorGrid = weight_comp(btg; validate = validate)
     #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
-    (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m)  = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
+    (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m) = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
 end
 
 """
@@ -222,8 +222,8 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
         tgridpdfderiv[I] = dpdf
         tgridpdf[I] = pdf
         tgridcdf[I] = cdf 
-        m = (x0, Fx0, y) -> computeqmC(x0, Fx0)[1]
-        sigma = (x0, Fx0, y) -> ( (_, _, _, s) = computeqmC(x0, Fx0); s)
+        m = (x0, Fx0) -> computeqmC(x0, Fx0)[1]
+        sigma = (x0, Fx0) -> ( (_, _, _, s) = computeqmC(x0, Fx0); s)
         tgridm[I] = m
         tgridsigma_m[I] = sigma
         tgridquantile[I] = q_fun # function of (x0, Fx0, q)
@@ -236,8 +236,8 @@ end
     grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = generate_view(grid_pdf_deriv, nt1, nt2, nl2, quadType)
     grid_pdf = similar(weightsTensorGrid); view_pdf = generate_view(grid_pdf, nt1, nt2, nl2, quadType)
     grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf, nt1, nt2, nl2, quadType)
-    # grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m, nt1, nt2, nl2, quadType)
-    # grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m, nt1, nt2, nl2, quadType)
+    grid_m = similar(weightsTensorGrid); view_m = generate_view(grid_m, nt1, nt2, nl2, quadType)
+    grid_sigma_m = similar(weightsTensorGrid); view_sigma_m = generate_view(grid_sigma_m, nt1, nt2, nl2, quadType)
     grid_quantile = similar(weightsTensorGrid); view_quantile = generate_view(grid_quantile, nt1, nt2, nl2, quadType)
 
     grid_augmented_deriv = derivatives == true ? Array{Array{Real, 1}, ndims(weightsTensorGrid)}(undef, size(weightsTensorGrid)) : nothing #stores jacobians
@@ -246,9 +246,9 @@ end
     grid_augmented_hess = derivatives == true ? Array{Array{Real, 2}, ndims(weightsTensorGrid)}(undef, size(weightsTensorGrid)) : nothing #stores hessians
     view_augmented_hess = derivatives == true ? generate_view(grid_augmented_hess, nt1, nt2, nl2, quadType) : nothing
 
-    function evalgrid!(f, view, x0, Fx0, y0)
+    function evalgrid!(f, view, x0, Fx0...)
         for I in R
-            view[I] = (res = f[I](x0, Fx0, y0); 
+            view[I] = (res = f[I](x0, Fx0...); 
             #@info "size of res", size(res);
             length(res)==1 ? res[1] : ( size(res, 1) == size(res, 2) && size(res, 1) > 1 ?  res : res[:] )) #unboxes scalar, flattens vector, keeps 2D array the same
         end
@@ -258,8 +258,8 @@ end
     evalgrid_dpdf!(x0, Fx0, y0) = evalgrid!(tgridpdfderiv, view_pdf_deriv, x0, Fx0, y0)
     evalgrid_pdf!(x0, Fx0, y0) = evalgrid!(tgridpdf, view_pdf, x0, Fx0, y0)
     evalgrid_cdf!(x0, Fx0, y0) = evalgrid!(tgridcdf, view_cdf, x0, Fx0, y0)
-    # evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
-    # evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
+    evalgrid_m!(x0, Fx0) = evalgrid!(tgridm, view_m, x0, Fx0)
+    evalgrid_sigma_m!(x0, Fx0) = evalgrid!(tgridsigma_m, view_sigma_m, x0, Fx0)
     evalgrid_quantile!(x0, Fx0, q) = evalgrid!(tgridquantile, view_quantile, x0, Fx0, q)
     evalgrid_augmented_deriv!(x0, Fx0, y0) = evalgrid!(tgridcdf_augmented_deriv, view_augmented_deriv, x0, Fx0, y0)
     evalgrid_augmented_hess!(x0, Fx0, y0) = evalgrid!(tgridcdf_augmented_hess, view_augmented_hess, x0, Fx0, y0)

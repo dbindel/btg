@@ -54,7 +54,7 @@ mutable struct btg
     debug_log::Any
     debug_log2::Any
     #weightsTensorGrid::Union{Array{T}, G} where T<:Float64 where G<:Nothing
-   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox())
+   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 12, num_mc = 1000)
         @timeit to "assert statements, type-checking" begin
             @assert typeof(corr)<:AbstractCorrelation
             @assert typeof(priorθ)<:priorType
@@ -63,8 +63,8 @@ mutable struct btg
             @assert typeof(transform)<: NonlinearTransform
         end
         @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
-        @timeit to "nodesWeightsθ" nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = 12, num_MC = 1000)
-        @timeit to "nodesWeightsλ" nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = 12, num_MC = 1000)
+        @timeit to "nodesWeightsθ" nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = num_gq, num_MC = num_mc)
+        @timeit to "nodesWeightsλ" nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = num_gq, num_MC = num_mc)
         @timeit to "init λbuffer_dict" λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
         @timeit to "init train buffer dict" train_buffer_dict = init_train_buffer_dict(nodesWeightsθ, trainingData, corr, quadtype[1]) #gets initialized upon initialization of btg object
         @timeit to "test_buffer_dict" test_buffer_dict =  init_empty_buffer_dict(nodesWeightsθ, train_buffer_dict, test_buffer) #dict of empty test_buffers, empty for now because we need testingData info supplied by function call to compute cross-covariances

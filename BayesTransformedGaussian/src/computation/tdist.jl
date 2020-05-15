@@ -1,6 +1,6 @@
 #include("../model0.jl")
 include("../computation/buffers0.jl")
-include("../bayesopt/kernel.jl")
+include("../kernels/kernel.jl")
 using Cubature
 using TimerOutputs
 

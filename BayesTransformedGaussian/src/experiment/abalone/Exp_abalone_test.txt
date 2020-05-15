@@ -45,3 +45,18 @@ BTG test results:
             Time cost by single prediction: 0.07268056342461442
             Failed index in credible intervel:       Any[] 
             BTG: Failed index in pdf computation:     Any[]
+
+2020-05-15T16:20:25.152, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  rangeλ: [-1.5 0.5];   rangeθ: [1000.0 3500.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.93000000     
+            mean absolute error:                      1.42069837   
+            mean squared error:                       3.45736068 
+            mean negative log predictive density:    -0.75664818
+            Time cost by prediction: 12.95035   
+            Time cost by single prediction: 0.1295035
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]

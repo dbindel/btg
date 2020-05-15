@@ -46,11 +46,19 @@ s = ArgParseSettings()
     "--ntest"
         help = "another option with an argument"
         arg_type = Int
-        default = 3167
+        default = 3177
     "--quadtype"
         help = "quadrature type for theta"
         arg_type = Int
         default = 1
+    "--num_gq"
+        help = "number of quadrature nodes in gaussian quadrature"
+        arg_type = Int
+        default = 12
+    "--yshift"
+        help = "shift normalized label"
+        arg_type = Float64
+        default = 0.
 end
 parsed_args = parse_args(ARGS, s)
 # load abalone data
@@ -72,6 +80,9 @@ Fx = data[id_train, posc]
 y = float(target[id_train])
 ymax_train = maximum(y)
 y ./= ymax_train
+yshift = parsed_args["yshift"]
+@assert yshift >= 0 "Shift of y should be positive"
+y .+= yshift
 trainingData0 = trainingData(x, Fx, y) 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
@@ -85,12 +96,12 @@ elseif parsed_args["quadtype"] == 3
 else
     myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
 end
-rangeλ = [-1.5 0.5] 
+rangeλ = yshift == 0. ? [-1.5 0.5] : [-1, 2]
 rangeθs = [1000. 3500]
 rangeθm = repeat(rangeθs, d, 1)
 rangeθ = parsed_args["single"] ? rangeθs : rangeθm
 # build btg model
-btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype)
+btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype, num_gq = 18)
 # (pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
 (pdf0_raw, cdf0_raw, dpdf0_raw, _, _, quantInfo0_raw, _, _, tgridm, tgridsigma_m, weightsTensorGrid) = solve(btg0)
 ####################################
@@ -119,13 +130,13 @@ if parsed_args["test"]
         # @info "i" i
         x_test_i = reshape(x_test[i, :], 1, length(posx))
         Fx_test_i = reshape(Fx_test[i, :], 1, length(posc))
-        pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i, int_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw)
+        pdf_test_i, cdf_test_i, dpdf_test_i, quantbound_test_i, support_test_i, int_i = pre_process(x_test_i, Fx_test_i, pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw; yshift = yshift)
         y_test_i_true = y_test_true[i]
         try
-            median_test_i = ymax_train * quantile(cdf_test_i, quantbound_test_i, support_test_i)[1]
+            median_test_i = ymax_train * (quantile(cdf_test_i, quantbound_test_i, support_test_i)[1] - yshift)
             # @info "True, median " y_test_i_true, median_test_i
             try 
-                CI_test_i = ymax_train .* credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1]
+                CI_test_i = ymax_train .* (credible_interval(cdf_test_i, quantbound_test_i, support_test_i; mode=:equal, wp=.95)[1] .- yshift)
                 count_test += (y_test_i_true >= CI_test_i[1])&&(y_test_i_true <= CI_test_i[2]) ? 1 : 0
                 # @info "CI" CI_test_i
             catch err
@@ -133,8 +144,8 @@ if parsed_args["test"]
                 # plot 
                 ygrid_i = pdf_test_i.(xgrid)
                 PyPlot.plot(xgrid, ygrid_i)
-                PyPlot.vlines(y_test_i_true/ymax_train, 0, pdf_test_i(y_test_i_true/ymax_train), label = "true", colors = "r" )
-                PyPlot.vlines(median_test_i/ymax_train, 0, pdf_test_i(median_test_i/ymax_train), label = "median", colors = "b" )
+                PyPlot.vlines((y_test_i_true/ymax_train + yshift) , 0, pdf_test_i(y_test_i_true/ymax_train + yshift), label = "true", colors = "r" )
+                PyPlot.vlines((median_test_i/ymax_train + yshift), 0, pdf_test_i(median_test_i/ymax_train + yshift), label = "median", colors = "b" )
                 PyPlot.title("failed CI id: $i, cdf(0) = $(cdf_test_i(1e-6))")
                 PyPlot.savefig("exp_abalone_failedCI_$(n_train)_$(myquadtype[1])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_failedID_$i.pdf")
 
@@ -156,16 +167,16 @@ if parsed_args["test"]
             end
             error_abs += abs(y_test_i_true - median_test_i)
             error_sq += (y_test_i_true - median_test_i)^2
-            nlpd += log(pdf_test_i(y_test_i_true/ymax_train)) 
+            nlpd += log(pdf_test_i(y_test_i_true/ymax_train + yshift)) 
             error_abs_set[i] = abs(y_test_i_true - median_test_i)
-            nlpd_set[i] = log(pdf_test_i(y_test_i_true/ymax_train)) 
+            nlpd_set[i] = log(pdf_test_i(y_test_i_true/ymax_train + yshift)) 
         # @info "Count, id_fail" count_test, id_fail
         catch err 
             append!(id_nonproper, i)
             # plot 
             ygrid_i = pdf_test_i.(xgrid) # for plotting
             PyPlot.plot(xgrid, ygrid_i)
-            PyPlot.vlines(y_test_i_true/ymax_train, 0, pdf_test_i(y_test_i_true/ymax_train), label = "true", colors = "b" )
+            PyPlot.vlines(y_test_i_true/ymax_train + yshift, 0, pdf_test_i(y_test_i_true/ymax_train + yshift), label = "true", colors = "b" )
             PyPlot.title("failed  id: $i, cdf(0) = $(cdf_test_i(1e-6))")
             PyPlot.savefig("exp_abalone_failedpdf_$(n_train)_$(myquadtype[1])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_failedID_$i.pdf")
 
@@ -260,7 +271,7 @@ if parsed_args["test"]
         write(io1, "Data set: Abalone   
             id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
         write(io1, "BTG model:  
-            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+            $myquadtype  $(parsed_args["num_gq"]) nodes;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
         write(io1, "BTG test results: 
             credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_test))     
             mean absolute error:                     $(@sprintf("%11.8f", error_abs))   
@@ -276,7 +287,7 @@ if parsed_args["test"]
         write(io1, "Data set: Abalone   
             id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
         write(io1, "BTG model:  
-            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+            $myquadtype  $(parsed_args["num_gq"]) nodes;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
         if parsed_args["GP"] && parsed_args["logGP"]
             write(io1, "Compare test results: ")
             write(io1, "                               BTG               GP               logGP
@@ -362,7 +373,7 @@ if parsed_args["validate"]
         end
         try
             x_i = x[i:i, :]; Fx_i = Fx[i:i, :]
-            pdf_val_i, cdf_val_i, dpdf_val_i, quantbound_val_i, support_val_i = pre_process(x_i, Fx_i, pdf_val_i_raw, cdf_val_i_raw, dpdf_val_i_raw, quantInfo_val_i_raw)   
+            pdf_val_i, cdf_val_i, dpdf_val_i, quantbound_val_i, support_val_i = pre_process(x_i, Fx_i, pdf_val_i_raw, cdf_val_i_raw, dpdf_val_i_raw, quantInfo_val_i_raw; yshift = yshift)   
             median_val_i = quantile(cdf_val_i, quantbound_val_i, support_val_i)[1]
             y_val_i_true = getLabel(btg0.trainingData)[i]
             pdf_ytrue_i = pdf_val_i(y_val_i_true)
@@ -398,7 +409,7 @@ if parsed_args["validate"]
     write(io2, "Data set: Abalone   
         id_train:  $id_train;   posx: $posx;   posc: $posc\n") 
     write(io2, "BTG model:  
-        $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) 
+        $myquadtype  $(parsed_args["num_gq"]) nodes;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) 
         Fast LOOCV: $(parsed_args["fast"]) \n")
     write(io2, "LOOCV on training set results: 
     credible intervel accuracy percentage:   $(@sprintf("%11.8f", count_val))     

@@ -3,12 +3,12 @@ using PyPlot
 using Plots
 #using ProfileView
 
-include("../btg.jl")
-include("../datasets/load_abalone.jl")
+include("../../btg.jl")
+include("../../datasets/load_abalone.jl")
 
 #ind = 350:370
 #ind = 3300:3359
-ind = 3300:3500
+ind = 3300:3320
 #posx = 1:3 #
 #posx = [1;4]
 posx = 1:7
@@ -25,9 +25,8 @@ trainingData1 = trainingData(x, Fx, y) #training data used for testing various f
 d = getDimension(trainingData1); n = getNumPts(trainingData1); p = getCovDimension(trainingData1)
 Fx0 = reshape(data[pind, posc], 1, length(posc))
 x0 = reshape(data[pind, posx], 1, length(posx)) 
-#rangeθ = [100.0 200]
-#rangeθ = [100.0 200]
-rangeθ = select_single_theta_range(x)
+rangeθ = [100.0 200]
+#rangeθ = [500.0 1500]
 rangeλ = [-1 1.0] #we will always used 1 range scale for lambda
 btg1 = btg(trainingData1, rangeθ, rangeλ; quadtype = ["Gaussian", "Gaussian"])
 #θ1 = btg1.nodesWeightsθ.nodes[1, 6] #pick some theta value which doubles as quadrature node
@@ -40,7 +39,6 @@ PyPlot.close("all") #close existing windows
 #(pdf, cdf, dpdf) = solve(btg1; validate = i) #do LOOCV this time around
 #a1 = y-> pdf(x0, Fx0, y)
 
-println("recommended theta range:", select_single_theta_range(x))
 
 """
 leave-one-out-training-data
@@ -121,7 +119,7 @@ function test_LOOCV(btg1::btg, m::Int64, n::Int64; fast)
     end
 end
 
-if false
+if true
     test_LOOCV(btg1, 4, 5; fast = false);
 end
 
@@ -175,11 +173,11 @@ Fx0_cur = btg2.testingData.Fx0;
 theta_cur = btg2.nodesWeightsθ.nodes[1];
 lambda_cur = btg2.nodesWeightsλ.nodes[1];
 #computation by hand
-Σθ_cur = correlation(Gaussian(), theta_cur, trainingdata_minus_i.x; jitter = 1e-8);
+Σθ_cur = correlation(Gaussian(), theta_cur, getPosition(trainingdata_minus_i); jitter = 1e-8);
 Σθ_inv_X_cur = Σθ_cur\trainingdata_minus_i.Fx;
-Bθ_cur = cross_correlation(Gaussian(), theta_cur, x0_cur, trainingdata_minus_i.x);
-Fx_cur = trainingdata_minus_i.Fx;
-glz_cur = copy((trainingdata_minus_i.y));
+Bθ_cur = cross_correlation(Gaussian(), theta_cur, x0_cur, getPosition(trainingdata_minus_i));
+Fx_cur = getCovariates(trainingdata_minus_i);
+glz_cur = copy((getLabel(trainingdata_minus_i)));
 for i = 1:length(glz_cur)
     glz_cur[i] = btg2.g(glz_cur[i], lambda_cur);
 end
@@ -188,9 +186,9 @@ H_theta_cur = Fx_i - Bθ_cur*(Σθ_cur\Fx_cur);
 m_cur = Bθ_cur*(Σθ_cur\glz_cur) + H_theta_cur*beta_hat_cur
 
 #how sigma theta is computed in code
-m=200;
+m=20;
 Σθ = Array{Float64}(undef, 1000, 1000);
-Σθ[1:m, 1:m] = correlation(Gaussian(), theta_cur, trainingdata_minus_i.x[1:m, :]; jitter = 1e-8);
+Σθ[1:m, 1:m] = correlation(Gaussian(), theta_cur, getPosition(trainingdata_minus_i)[1:m, :]; jitter = 1e-8);
 choleskyΣθ = incremental_cholesky!(Σθ, m);
 
 #stuff computed using btg code

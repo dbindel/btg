@@ -120,29 +120,64 @@ function run_func(n)
     return x, vstars, init_val_cdf, init_vals
 end
 
-if true
+if false
     (res, vstars, init_val_cdf, init_vals) = run_func(4);
     vcdfplot_sequence(vstars; res = res, upper = 2000) #shows cdfs at points we converged to
 end
 
-### check derivatives after the fact
+wait_for_key(prompt) = (print(stdout, prompt); read(stdin, 1); nothing)
 
-#for i = 1:length(vstars)
-#    check
-#end
+if false #sanity check
+    Plots.plot()
+    Plots.scatter(x[:, 1], x[:, 2])
+    wait_for_key("Observe the sampled points. Press any key to continue.") 
 
-#(_, _, plt1, pol) = checkDerivative(cdf_fixed, cdf_gradient_fixed, vstars[1],  nothing, 4, 8)
+    Plots.plot()
+    func1 = x -> cdf([5.0 5.0], [1 5.0  5.0], x);
+    plt!(func1, 1, 2000);
+    println("25% quantile: ", fzero(x -> func1(x)-0.5, (1, 2000)))
+    wait_for_key("CDF is large mean as expected. Press any key to continue.") 
 
-for i = 1:10 #take 10 BO steps
-    #(u_star, s_star) = optimize_acquisition(cdf, cdf_gradient, cdf_hessian)
-    #update BTG trainingData and trainingBuffers with new point (xstar, Fxstar, ystar)  #location, covariates, label
-    # update
-    #update!(btg, s_star, cov_fun(s_star), u_star
-    # - Σθ_inv_X, check  compute directly in O(n^2p)
-    # - choleskyΣθ, check compute directly, have cholesky factorization anyways 
-    # - choleskyXΣX, check compute directly
-    # - logdetΣθ    compute directly
-    # - logdetXΣX compute directly 
-    # 
+    func2 = x -> cdf([4 5], [1 4.0  5.0], x);
+    Plots.plot()
+    plt(func2, 1, 2000);
+    println("25% quantile: ", fzero(x -> func2(x)-0.5, (1, 2000)))
+    wait_for_key("CDF should be small. Press any key to continue.") 
+
+    func3 = x -> cdf([4 -2], [1 4.0  -2], x);
+    Plots.plot()
+    plt(func3, 1, 2000);
+    println("25% quantile: ", fzero(x -> func3(x)-0.5, (1, 2000)))
+    wait_for_key("CDF should be small. Press any key to continue.") 
+
+    #fzero(func)
+
 end
-#4.51690700362799, 3.011185163108001
+
+
+if true #sanity check
+    Plots.plot()
+    Plots.scatter(x[:, 1], x[:, 2])
+
+    Plots.plot()
+    func1 = x -> cdf([5.0 5.0], [1 5.0  5.0], x);
+    plt!(func1, 1, 2000);
+    println("50% quantile: ", fzero(x -> func1(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([5, 5]))
+
+    func2 = x -> cdf([4 5], [1 4.0  5.0], x);
+    plt(func2, 1, 2000);
+    println("50% quantile: ", fzero(x -> func2(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([4, 5]))
+
+    func3 = x -> cdf([4 -2], [1 4.0  -2], x);
+    plt(func3, 1, 2000);
+    println("50% quantile: ", fzero(x -> func3(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([4, -2]))
+
+    func4 = x -> cdf([5 2.5], [1 5  2.5], x);
+    plt(func4, 1, 2000);
+    println("50% quantile: ", fzero(x -> func4(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([5, 2.5]))
+    #fzero(func)
+end

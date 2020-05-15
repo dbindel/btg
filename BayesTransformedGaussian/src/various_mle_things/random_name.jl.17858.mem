@@ -1,0 +1,75 @@
+        - using Distributions
+        - using Random
+        - using LinearAlgebra
+        - 
+        - abstract type AbstractCorrelation end
+        - 
+        - @inline function correlation(k, θ, X, Y)
+        -     D = distance(k, θ, X, Y)
+        -     K = (x -> k(θ, x)).(D)
+        -     return K
+        - end
+        - @inline function correlation(k, θ, X)
+        -     D = distance(k, θ, X, X)
+        -     K = (x -> k(θ, x)).(D)
+        -     return K ./ K[1]
+        - end
+        - 
+        - sqeuclidean(X, Y) = sqeuclidean(X, Y, 1.0)
+        - sqeuclidean(X, Y, ℓ::Real) = sqeuclidean(X, Y, fill(ℓ, size(X, 1), 1))
+        - function sqeuclidean(X, Y, ℓ::AbstractArray)
+     1104     Xℓ, Yℓ = X ./ ℓ, Y ./ ℓ
+     6528     return  -2 .* (Xℓ' * Yℓ) .+ reshape(diag(Xℓ' * Xℓ), size(X, 2), 1) .+ reshape(diag(Yℓ' * Yℓ), 1, size(Y, 2))
+        - end
+        - 
+        - struct Gaussian <: AbstractCorrelation
+        0     jitter::Float64
+        - end
+        - Gaussian() = Gaussian(0)
+        - distance(::Gaussian, θ, X, Y) = sqeuclidean(X, Y, θ)
+        - (::Gaussian)(_, τ) = exp(-τ)
+        - 
+        - abstract type AbstractTransform end
+        - 
+        0 struct BoxCox <: AbstractTransform end
+        - 
+        - (::BoxCox)(λ, y) = λ == 0 ? log(y) : expm1(log(y) * λ) / λ
+        - log_partial_λ(::BoxCox, λ, y) = (λ - 1) * log(y)
+        - 
+        - abstract type AbstractCovariate end
+        - 
+        0 struct Linear <: AbstractCovariate end
+        - (::Linear)(Y) = [ones(1, size(Y, 2)); Y]
+        - 
+        - log_jacobian(g, λ, y) = sum(x -> log_partial_λ(g, x, λ), y)
+        - 
+        - @inline function reduced_shur(Ku, Kux, Kx, W)
+        -     return 
+        - end
+        - 
+        - function logprob(k, g, f, U, X, yu, yx)
+        0     Fu = f(U)
+        0     W = Fu \ f(X)
+        -     h = let W = W, k = k, U = U, X = X, g = g, yu = yu, yx = yx, Fu = Fu
+     2256         (θ, λ) -> logprob(k, θ, g, λ, U, Fu, X, W, yu, yx)
+        -     end
+        0     return h
+        - end
+        - function logprob(k, θ, g, λ, U, Fu, X, W, yu, yx)
+        0     p, m = size(W)
+  8000080     zeros(1000,1000)
+      416     Ku = correlation(k, θ, U)
+      432     Kux = correlation(k, θ, U, X)
+     1888     Kx = correlation(k, θ, X)
+      672     B = Kux .- Ku * W
+     2688     rKx = Kx .- W' * B .- Kux' * W
+      112     zu = (x -> g(λ, x)).(yu)
+      160     zx = (x -> g(λ, x)).(yx)
+      320     z = zx .- W' * zu
+        0     c = rKx \ z
+        0     lnJλ = log_jacobian(g, λ, yu) + log_jacobian(g, λ, yx)
+     1056     lnDet = 2 * logabsdet(Fu)[1] + logdet(rKx)
+        0     lnQ = log(dot(z, c))
+        0     return m / (m + p) * lnJλ - m / 2 * lnQ - 0.5 * lnDet
+        - end
+        - 

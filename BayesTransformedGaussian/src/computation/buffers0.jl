@@ -36,16 +36,19 @@ mutable struct train_buffer
     θ::Union{Array{T, 1}, T} where T<:Real
     L_inv_X::Union{Array{Float64, 2}, Nothing}
     function train_buffer(θ::Union{Array{T, 1}, T} where T<:Real, train::AbstractTrainingData, corr::AbstractCorrelation = Gaussian())
-        x = train.x
-        Fx = train.Fx
-        n = train.n
+        #x = train.x
+        #Fx = train.Fx
+        #n = train.n
+        x = getPosition(train)
+        Fx = getCovariates(train)
+        n = getNumPts(train)
         capacity = typeof(train)<: extensible_trainingData ? train.capacity : n #if not extensible training type, then set size of buffer to be number of data points
         @timeit to "Σθ" begin
             Σθ = Array{Float64}(undef, capacity, capacity)
             if length(θ)>1
-                Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
+                Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-12) #tell correlation there is single length scale
             else
-                Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-8) #tell correlation there is single length scale
+                Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-12) #tell correlation there is single length scale
             end
             choleskyΣθ = incremental_cholesky!(Σθ, n)
         end
@@ -56,7 +59,17 @@ mutable struct train_buffer
         #qr_Σθ_inv_X = qr(L_inv_X)
         qr_Σθ_inv_X = nothing #we don't use the qr factorization right now
         Σθ_inv_X = choleskyΣθ\Fx
-        @timeit to "choleskyXΣX" choleskyXΣX = cholesky(Hermitian(Fx'*(Σθ_inv_X))) #regular cholesky because we don't need to extend this factorization
+        #@info "Fx'*(Σθ_inv_X)", Fx'*(Σθ_inv_X)
+        #try
+
+        XΣ_inv_X = Hermitian(Fx'*(Σθ_inv_X))
+        #@info minimum(eigvals(XΣ_inv_X))
+        @assert issymmetric(XΣ_inv_X)
+        @assert isposdef(XΣ_inv_X)
+        choleskyXΣX = cholesky(XΣ_inv_X) #regular cholesky because we don't need to extend this factorization
+        #catch e
+        #    @info "Hermitian(Fx'*(Σθ_inv_X))", Hermitian(Fx'*(Σθ_inv_X))
+        #end
         new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, logdet(choleskyΣθ), logdet(choleskyXΣX), capacity, n, corr, θ, L_inv_X)
     end
 end
@@ -111,6 +124,7 @@ mutable struct θλbuffer
 end
 
 
+
 """
 Stores transformed data
 """
@@ -122,6 +136,47 @@ mutable struct λbuffer
     function λbuffer(λ, gλz, logjacval, dgλz)
         return new(λ, gλz, logjacval, dgλz)
     end
+end
+
+
+
+"""
+update λbuffer with single new y-observation
+"""
+function update!(λbuffer::λbuffer, y_new::Union{A, B} where A<:Real where B<:Array{H, 1} where H<:Real, g::NonlinearTransform)
+    if typeof(y_new)<:Array{T, 1} where T<:Real && length(y_new)==1
+        y_new = y_new[1]
+    end
+    λ = λbuffer.λ;
+    #@info "partialx", typeof(partialx)
+    dg = x-> partialx(g, x, λ)   #fix lambda
+    push!(λbuffer.gλz, g(y_new, λ))
+    dgy_new = dg(y_new)
+    λbuffer.logjacval = λbuffer.logjacval + log(abs(dgy_new))
+    push!(λbuffer.dgλz, dgy_new)
+end
+
+"""
+Updates θλbuffer
+Must have already updated train_buffer, lambda_buffer, and train_data before calling this function
+"""
+function update!(θλbuffer::θλbuffer, cur_λbuffer::λbuffer, train_buffer::train_buffer, train_data::AbstractTrainingData)
+    #(_, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX) = unpack(train_buffer)
+    #L_inv_X = cur_train_buf.L_inv_X
+    (λ, gλz, logjacval) = unpack(cur_λbuffer)
+    Σθ_inv_X = train_buffer.Σθ_inv_X
+    choleskyXΣX = train_buffer.choleskyXΣX
+    choleskyΣθ = train_buffer.choleskyΣθ
+    Fx = getCovariates(train_data)
+    @timeit to "Σθ_inv_y" Σθ_inv_y = choleskyΣθ\gλz
+    #Σθ_inv_y = (choleskyΣθ \ gλz) #O(n^2)
+    @timeit to "βhat" βhat = choleskyXΣX\(Fx'*Σθ_inv_y)  #O
+    #qtilde = (expr = gλz-Fx*βhat; expr'*(choleskyΣθ\expr))
+    @timeit to "qtilde" qtilde =  gλz'*Σθ_inv_y  - 2*gλz'*Σθ_inv_X*βhat + βhat'*Fx'*Σθ_inv_X*βhat #O(np) checks out b/c qtilde = norm(remainder)^2
+    #remainder = L_inv_y - L_inv_X*βhat
+    θλbuffer.qtilde = qtilde
+    θλbuffer.βhat = βhat
+    θλbuffer.Σθ_inv_y = Σθ_inv_y
 end
 
 """
@@ -496,34 +551,60 @@ end
     #L_inv_X::Array{Float64, 2}
 
 """
-Updates training buffer with testing buffer
-NOTE: trainingData field of btg must be updated before train_buffer is updated
-For now 
-- Σθ is not updated, because we never actually use it...
- - qr_Σθ_inv_X not never updated
+Updates training buffer with new training data
 - 
-
 """
-function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData)  #use incremental cholesky to update training train_buffer
-    @assert typeof(x0)<:Array{T, 2} where T<:Real
-    @assert typeof(Fx0)<:Array{T, 2} where T<:Real
-    @assert typeof(y0)<:Array{T, 1} where T<:Real 
+function update!(train_buffer::train_buffer, trainingData::AbstractTrainingData)  #use incremental cholesky to update training train_buffer
+    
     @assert train_buffer.n < trainingData.n #train_train_buffer must be "older" than trainingData
     k = trainingData.n - train_buffer.n  #typically going to be 1
     @assert k == 1 #we only work with single-point updates for now 
     A12, A2 = extend(train_buffer.choleskyΣθ, k) #two view objects 
+
+    #peel off "new" values from already updated trainingData
+    x_new = getPosition(trainingData)[end:end, :]
+    Fx_new = getCovariates(trainingData)[end:end, :]
+    y_new = getLabel(trainingData)[end]
+
+    Bθ_new = cross_correlation(Gaussian(), train_buffer.θ, x_new, getPosition(trainingData)[1:end-1, :])
+    Eθ_new = [1]
+
     #A12 = cross_correlation(train_buffer.k(), train_buffer.θ, trainingData.x[1:end-k], trainingData.x[end-k+1:end])
     #A2 = correlation(train_buffer.k(), train_buffer.θ, trainingData.x[end-k+1:end]) #Σθ should get updated automatically, but only upper triangular portion
-    A12 .= test_buffer.Bθ' #mutates choleskyΣθ
-    A2 .= test_buffer.Eθ #mutates choleskyΣθ
+    A12 .= Bθ_new' #mutates choleskyΣθ
+    A2 .= Eθ_new #mutates choleskyΣθ
     update!(train_buffer.choleskyΣθ, k) #extends Cholesky decomposition -- this is where the action happens
-    train_buffer.Σθ_inv_X = train_buffer.choleskyΣθ\trainingData.Fx
-    train_buffer.choleskyXΣX = cholesky(trainingData.Fx' * train_buffer.Σθ_inv_X)
+    
+    train_Fx = getCovariates(trainingData)
+    train_buffer.Σθ_inv_X = train_buffer.choleskyΣθ\train_Fx #potential repeated computations
+    train_buffer.choleskyXΣX = cholesky(Hermitian(train_Fx' * train_buffer.Σθ_inv_X))
     train_buffer.logdetΣθ = logdet(train_buffer.choleskyΣθ)
     train_buffer.logdetXΣX = logdet(train_buffer.choleskyXΣX)
-    train_buffer.n .+= k #number of incorporated points
+    train_buffer.n += k #number of incorporated points
+    @assert train_buffer.n == trainingData.n #invariant 
     return nothing 
 end
+
+# function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingData::AbstractTrainingData)  #use incremental cholesky to update training train_buffer
+#     @assert typeof(x0)<:Array{T, 2} where T<:Real
+#     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
+#     @assert typeof(y0)<:Array{T, 1} where T<:Real 
+#     @assert train_buffer.n < trainingData.n #train_train_buffer must be "older" than trainingData
+#     k = trainingData.n - train_buffer.n  #typically going to be 1
+#     @assert k == 1 #we only work with single-point updates for now 
+#     A12, A2 = extend(train_buffer.choleskyΣθ, k) #two view objects 
+#     #A12 = cross_correlation(train_buffer.k(), train_buffer.θ, trainingData.x[1:end-k], trainingData.x[end-k+1:end])
+#     #A2 = correlation(train_buffer.k(), train_buffer.θ, trainingData.x[end-k+1:end]) #Σθ should get updated automatically, but only upper triangular portion
+#     A12 .= test_buffer.Bθ' #mutates choleskyΣθ
+#     A2 .= test_buffer.Eθ #mutates choleskyΣθ
+#     update!(train_buffer.choleskyΣθ, k) #extends Cholesky decomposition -- this is where the action happens
+#     train_buffer.Σθ_inv_X = train_buffer.choleskyΣθ\trainingData.Fx
+#     train_buffer.choleskyXΣX = cholesky(trainingData.Fx' * train_buffer.Σθ_inv_X)
+#     train_buffer.logdetΣθ = logdet(train_buffer.choleskyΣθ)
+#     train_buffer.logdetXΣX = logdet(train_buffer.choleskyXΣX)
+#     train_buffer.n .+= k #number of incorporated points
+#     return nothing 
+# end
 
 function refresh_buffer(buffer::Union{test_buffer, jac_buffer})
     buffer.update_bit = true
@@ -551,10 +632,11 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
         @info "test", testingData
     end
     function update_me()
-        @timeit to "Eθ" test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0; jitter = 0)  
-        @timeit to "Bθ" Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, trainingData.x)  
+        @timeit to "Eθ" test_buffer.Eθ = correlation(train_buffer.k, train_buffer.θ, testingData.x0)  
+        @timeit to "Bθ" Bθ = cross_correlation(train_buffer.k, train_buffer.θ, testingData.x0, getPosition(trainingData))  
         @assert size(Bθ, 2)>= size(Bθ, 1) #row vector, as in the paper
         test_buffer.Bθ = Bθ
+        #@info "test_buffer.Bθ'", test_buffer.Bθ'
         @timeit to "ΣθinvBθ" test_buffer.ΣθinvBθ = train_buffer.choleskyΣθ\test_buffer.Bθ'
         @timeit to "Dθ" test_buffer.Dθ = test_buffer.Eθ - test_buffer.Bθ*test_buffer.ΣθinvBθ
         #println("shape of Dtheta: ", size(test_buffer.Dθ ))
@@ -582,7 +664,7 @@ end
 """
 Update jac_buffer
 """
-function update!(jac_buffer::jac_buffer, test_data::testingData, train_data::trainingData, test_buffer::test_buffer, train_buffer::train_buffer)
+function update!(jac_buffer::jac_buffer, test_data::testingData, train_data::AbstractTrainingData, test_buffer::test_buffer, train_buffer::train_buffer)
     function update_me()
         x0 = test_data.x0
         θ = test_buffer.θ

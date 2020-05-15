@@ -15,7 +15,7 @@ Random.seed!(8);
 #####
 
 Himmelblau(x) = (x[1]^2 + x[2] -11)^2 + (x[1]+x[2]^2-7)^2 #function to optimize
-y, x = sample_points(Himmelblau, [-5, -5], [5, 5]; num = 100) #burn-in points which are used as training data in GP
+y, x = sample_points(Himmelblau, [-6, -6], [6, 6]; num = 30) #burn-in points which are used as training data in GP
 x = vcat(x, [5 5])
 y = vcat(y, 890)
 x = vcat(x, [-4.999 4.999])
@@ -36,9 +36,9 @@ Fx = linear_polynomial_basis(x)
 train = extensible_trainingData(x, Fx, y) 
 #rangeθ = reshape(select_single_theta_range(x), 1, 2) #rangetheta is auto-selected
 #rangeθ = [0.0001 1000]
-rangeθ = [300.0 1500] 
+rangeθ = [0.1 100] 
 @info "rangeθ", rangeθ 
-rangeλ = [-1.0 1.0] 
+rangeλ = [-3.0 3] 
 btg1 = btg(train, rangeθ, rangeλ);
 (pdf, cdf, dpdf, cdf_gradient, cdf_hessian) = solve(btg1; derivatives = true) #get function handles for pdf, cdf, derivtives
 
@@ -48,7 +48,7 @@ btg1 = btg(train, rangeθ, rangeλ);
 
 println("defining acquisition function...")
 #lx = [1, -5, -5]; ux = [3000.0, 5, 5] #box-constraints for optimization problem
-lx = [1, -5, -5]; ux = [3000.0, 5, 5] #box-constraints for optimization problem
+lx = [1, -6, -6]; ux = [3000.0, 6, 6] #box-constraints for optimization problem
 #make input an augmented vector [y, s]: label, location
 cdf_fixed(v) = cdf(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
 cdf_gradient_fixed(v) = cdf_gradient(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
@@ -120,29 +120,51 @@ function run_func(n)
     return x, vstars, init_val_cdf, init_vals
 end
 
-if true
+if false
     (res, vstars, init_val_cdf, init_vals) = run_func(4);
     vcdfplot_sequence(vstars; res = res, upper = 2000) #shows cdfs at points we converged to
 end
 
-### check derivatives after the fact
 
-#for i = 1:length(vstars)
-#    check
-#end
+if false #sanity check
+    Plots.plot()
+    Plots.scatter(x[:, 1], x[:, 2])
 
-#(_, _, plt1, pol) = checkDerivative(cdf_fixed, cdf_gradient_fixed, vstars[1],  nothing, 4, 8)
+    Plots.plot()
+    func1 = x -> cdf([5.0 5.0], [1 5.0  5.0], x);
+    plt!(func1, 1, 2000);
+    println("50% quantile: ", fzero(x -> func1(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([5, 5]))
 
-for i = 1:10 #take 10 BO steps
-    #(u_star, s_star) = optimize_acquisition(cdf, cdf_gradient, cdf_hessian)
-    #update BTG trainingData and trainingBuffers with new point (xstar, Fxstar, ystar)  #location, covariates, label
-    # update
-    #update!(btg, s_star, cov_fun(s_star), u_star
-    # - Σθ_inv_X, check  compute directly in O(n^2p)
-    # - choleskyΣθ, check compute directly, have cholesky factorization anyways 
-    # - choleskyXΣX, check compute directly
-    # - logdetΣθ    compute directly
-    # - logdetXΣX compute directly 
-    # 
+    func2 = x -> cdf([4 5], [1 4.0  5.0], x);
+    plt(func2, 1, 2000);
+    println("50% quantile: ", fzero(x -> func2(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([4, 5]))
+
+    func3 = x -> cdf([4 -2], [1 4.0  -2], x);
+    plt(func3, 1, 2000);
+    println("50% quantile: ", fzero(x -> func3(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([4, -2]))
+
+    func4 = x -> cdf([5 2.5], [1 5  2.5], x);
+    plt(func4, 1, 2000);
+    println("50% quantile: ", fzero(x -> func4(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau([5, 2.5]))
+    #fzero(func)
 end
-#4.51690700362799, 3.011185163108001
+
+#
+# look at macroscopic trends, could give insight in how to tune theta_range and lambda_range
+# 
+#
+y_test, x_test = sample_points(Himmelblau, [-6, -6], [6, 6]; num = 10)
+Plots.plot()
+for i = 1:length(y_test)
+    func = x -> cdf(x_test[i:i, :], linear_polynomial_basis(x_test[i:i, :]), x);
+    plt!(func, 1, 2000);
+    println("50% quantile: ", fzero(x -> func(x)-0.5, (1, 2000)))
+    println("actual: ", Himmelblau(x_test[i:i, :]))
+    println("-----------------------------------------------")
+end
+
+

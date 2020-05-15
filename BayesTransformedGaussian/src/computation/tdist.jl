@@ -485,7 +485,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     end
 
     #function intermediates(x0, Bθ, Hθ, Σθ_inv_X, choleskyXΣX, ΣθinvBθ)
-    function intermediates(jac_buffer::jac_buffer, test_data::testingData, train_data::trainingData, test_buffer::test_buffer, train_buffer::train_buffer, θλbuffer::θλbuffer)
+    function intermediates(jac_buffer::jac_buffer, test_data::testingData, train_data::AbstractTrainingData, test_buffer::test_buffer, train_buffer::train_buffer, θλbuffer::θλbuffer)
         update!(jac_buffer, test_data, train_data, test_buffer, train_buffer) #attemot to update jac_buffer
         (jacC, jacB, jacH, jacD) = unpack(jac_buffer)
         Σθ_inv_y = θλbuffer.Σθ_inv_y

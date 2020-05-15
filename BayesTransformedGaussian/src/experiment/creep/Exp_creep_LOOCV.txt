@@ -1,0 +1,15 @@
+
+2020-05-11T18:06:40.337, randseed: 1234 
+Data set: creep
+        id_train:  1:800;   posx: 1:30;   posc: 1:30
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 0.5];   rangeθ: [1000.0 3500.0] (single length-scale: true) 
+        Fast LOOCV: false 
+LOOCV on training set results: 
+    credible intervel accuracy percentage:    0.94625000     
+    mean absolute error:                     30.76519996   
+    mean squared error:                      1704.13967734 
+    mean negative log predictive density:    -1.21892354
+    Time validation took: 51.32918   
+    Failed index in credible intervel:       Any[] 
+    BTG: Failed index in pdf computation:     Any[]

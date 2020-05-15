@@ -166,7 +166,12 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     end
     function main_cdf(y0, t, m, qC)
         #@assert y0 >= 0
-        @timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
+        # condition tdistcdf on assumption that data is positive
+        if true
+            temp = Distributions.cdf.(t, g(y0, λ))
+            return temp / (1 - Distributions.cdf.(t, g(0,  λ)))
+        end
+        #@timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
     end
     function main_pdf_deriv_helper(y0, t, m, qC)
         #@assert y0 >= 0 

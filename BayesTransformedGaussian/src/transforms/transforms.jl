@@ -52,3 +52,6 @@ struct ShiftedBoxCox <:NonlinearTransform end
 partialx(::ShiftedBoxCox, x, λ) =  λ[1]==0 ? float(x+1).^(-1) : float(x+1).^(λ[1] .-1)
 partialxx(::ShiftedBoxCox, x, λ) = λ[1]==0 ? - float(x+1).^(- 2) : (λ[1] .- 1) * float(x+1) .^ (λ[1] .- 2)
 
+struct YeoJohnson <:NonlinearTransform end
+
+#(::YeoJohnson, x, λ) = 

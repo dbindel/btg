@@ -142,3 +142,16 @@ BayesTransformedGaussian/src/experiment/creep/log_exp_creep_rand12_r3.txt
 BayesTransformedGaussian/src/experiment/creep/log_exp_creep_rand13_r3.txt
 BayesTransformedGaussian/src/experiment/creep/log_exp_creep_rand321_r3.txt
 BayesTransformedGaussian/src/experiment/abalone/error analysis.ipynb
+BayesTransformedGaussian/src/experiment/ailerons/test_ailerons.ipynb
+BayesTransformedGaussian/src/experiment/creep/test_creep.ipynb
+BayesTransformedGaussian/src/experiment/creep/log_exp_creep_range1.txt
+BayesTransformedGaussian/src/experiment/creep/log_exp_creep_range2.txt
+BayesTransformedGaussian/src/experiment/creep/log_exp_creep_range3.txt
+BayesTransformedGaussian/src/experiment/creep/log_exp_creep_range4.txt
+BayesTransformedGaussian/src/experiment/creep/log_exp_creep_range5.txt
+BayesTransformedGaussian/src/experiment/abalone/log_exp_abalone_range1.txt
+BayesTransformedGaussian/src/experiment/abalone/log_exp_abalone_range2.txt
+BayesTransformedGaussian/src/experiment/abalone/log_exp_abalone_range3.txt
+BayesTransformedGaussian/src/experiment/abalone/log_exp_abalone_range4.txt
+BayesTransformedGaussian/src/experiment/set_goodrange.txt
+BayesTransformedGaussian/src/experiment/ailerons/log_exp_aileron_range1.txt

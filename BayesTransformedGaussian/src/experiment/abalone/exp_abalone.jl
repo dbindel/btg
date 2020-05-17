@@ -1,13 +1,6 @@
 using Dates
 using ArgParse
-using Printf
-using Random
-using GaussianProcesses
-using Cubature
 
-# before_all = Dates.now()
-
-include("../../btg.jl")
 s = ArgParseSettings()
 # The defaut setting: --test: multiple length scale, QMC
 @add_arg_table! s begin
@@ -59,8 +52,29 @@ s = ArgParseSettings()
         help = "shift normalized label"
         arg_type = Float64
         default = 0.
+    "--rangetheta"
+        help = "rangeθ"
+        arg_type = Float64
+        nargs = 2
+        default = [3000., 5000.]
+    "--rangelambda"
+        help = "rangeλ"
+        arg_type = Float64
+        nargs = 2
+        default = [-1., 1.]
 end
 parsed_args = parse_args(ARGS, s)
+
+using Printf
+using Random
+using GaussianProcesses
+using Cubature
+
+# before_all = Dates.now()
+
+include("../../btg.jl")
+
+
 # load abalone data
 df = DataFrame(CSV.File("../../datasets/abalone.csv", header = 0))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
@@ -96,12 +110,14 @@ elseif parsed_args["quadtype"] == 3
 else
     myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
 end
-rangeλ = yshift == 0. ? [-1.5 0.5] : [-1, 2]
-rangeθs = [1000. 3500]
+rangeλ = reshape(convert(Array{Float64, 1}, parsed_args["rangelambda"]), 1, 2)
+rangeθs = reshape(convert(Array{Float64, 1}, parsed_args["rangetheta"]), 1, 2)
+@assert size(rangeλ) == (1, 2)
+@assert size(rangeθs) == (1, 2)
 rangeθm = repeat(rangeθs, d, 1)
 rangeθ = parsed_args["single"] ? rangeθs : rangeθm
 # build btg model
-btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype, num_gq = 18)
+btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype, num_gq = parsed_args["num_gq"])
 # (pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
 (pdf0_raw, cdf0_raw, dpdf0_raw, _, _, quantInfo0_raw, _, _, tgridm, tgridsigma_m, weightsTensorGrid) = solve(btg0)
 ####################################
@@ -159,7 +175,7 @@ if parsed_args["test"]
                 write(io, "Data set: Abalone   
                 id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
                 write(io, "BTG model:  
-                        $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+                        $myquadtype   $(parsed_args["num_gq"]);  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
                 write(io, "Failed ID in CI computation: $i,  cdf(1e-6) = $(cdf_test_i(1e-6))\n")
                 write(io, "WeightsGrid \n $weightsTensorGrid \n")
                 write(io, "mgrid \n $mgrid \n")
@@ -190,7 +206,7 @@ if parsed_args["test"]
             write(io, "Data set: Abalone   
             id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
             write(io, "BTG model:  
-                    $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+                    $myquadtype   $(parsed_args["num_gq"]);  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
             write(io, "ID of improper pdf: $i    integral of pdf: $int_i \n")
             write(io, "WeightsGrid \n $weightsTensorGrid \n")
             write(io, "mgrid \n $mgrid \n")
@@ -209,7 +225,7 @@ if parsed_args["test"]
     write(io, "Data set: Abalone   
     id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
     write(io, "BTG model:  
-            $myquadtype  ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+            $myquadtype   $(parsed_args["num_gq"]) ;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
     write(io, "Absolute error history \n $error_abs_set \n")
     write(io, "Negative log predictive density history \n $nlpd_set \n")
     close(io)
@@ -446,7 +462,7 @@ if parsed_args["validate"]
     for ax in axs
         ax.label_outer()
     end
-    PyPlot.savefig("exp_abalone_$(n_train)_$(myquadtype[1])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_$(parsed_args["fast"]).pdf")
+    PyPlot.savefig("exp_abalone_$(n_train)_$(myquadtype[1])_ $(parsed_args["num_gq"])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_$(parsed_args["fast"]).pdf")
 
 end 
 

@@ -1,0 +1,15 @@
+
+2020-05-17T02:59:04.923, randseed: 1234 
+Data set: ailerons   
+            id_train:  1:1000;  id_test:  1001:1100;   posx: 1:40;   posc: 1:12
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  rangeλ: [-1.5 1.0];   rangeθ: [100.0 1000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.96000000     
+            mean absolute error:                      0.00028979   
+            mean squared error:                       0.00000018 
+            mean negative log predictive density:    -0.86679816
+            Time cost by prediction: 9.32078   
+            Time cost by single prediction: 0.0932078
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]

@@ -239,3 +239,123 @@ Compare test results:                                BTG               GP       
             Time cost by single prediction: 0.05180929699842022
             BTG: Failed index in credible intervel:   Any[] 
             BTG: Failed index in pdf computation:     Any[]
+
+2020-05-16T00:01:19.737, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-1.5 1.0];   rangeθ: [500.0 2000.0] (single length-scale: true) 
+Compare test results:                                BTG               GP               logGP
+            credible intervel accuracy percentage:    0.95023697        0.95655608        0.93838863 
+            mean absolute error:                     30.70785088       158.70537125       31.98588736  
+            mean squared error:                      1775.66178101       33953.24091627       1857.71695752   
+            mean negative log predictive density:    -1.22682707        6.63532094        5.05818271  
+            Time cost by prediction: 71.82898
+            Time cost by single prediction: 0.05673695102685624
+            BTG: Failed index in credible intervel:   Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-16T00:14:38.642, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   20;  rangeλ: [-1.5 1.0];   rangeθ: [500.0 2000.0] (single length-scale: true) 
+Compare test results:                                BTG               GP               logGP
+            credible intervel accuracy percentage:    0.94865719        0.95655608        0.93838863 
+            mean absolute error:                     30.75190175       158.70537125       31.98588736  
+            mean squared error:                      1758.89463628       33953.24091627       1857.71695752   
+            mean negative log predictive density:    -1.22674448        6.63532094        5.05818271  
+            Time cost by prediction: 141.56937
+            Time cost by single prediction: 0.11182414691943127
+            BTG: Failed index in credible intervel:   Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-16T17:07:11.868, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-0.5 0.5];   rangeθ: [100.0 4000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.94786730     
+            mean absolute error:                     30.76550138   
+            mean squared error:                      1758.16862228 
+            mean negative log predictive density:    -1.22772118
+            Time cost by prediction: 65.12365   
+            Time cost by single prediction: 0.05144048183254344
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-16T18:14:36.175, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-1.5 0.5];   rangeθ: [100.0 4000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.94865719     
+            mean absolute error:                     30.73752298   
+            mean squared error:                      1761.15415357 
+            mean negative log predictive density:    -1.22838020
+            Time cost by prediction: 65.76225   
+            Time cost by single prediction: 0.05194490521327014
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-16T19:26:12.01, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-0.5 0.5];   rangeθ: [500.0 3000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.94786730     
+            mean absolute error:                     30.76639476   
+            mean squared error:                      1758.25617990 
+            mean negative log predictive density:    -1.22765559
+            Time cost by prediction: 69.8181   
+            Time cost by single prediction: 0.05514857819905213
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-17T04:01:36.939, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-0.5 0.5];   rangeθ: [100.0 4000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.94786730     
+            mean absolute error:                     30.76550138   
+            mean squared error:                      1758.16862228 
+            mean negative log predictive density:    -1.22772118
+            Time cost by prediction: 72.63377   
+            Time cost by single prediction: 0.05737264612954186
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-17T05:16:52.624, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-1.5 0.5];   rangeθ: [100.0 4000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.94865719     
+            mean absolute error:                     30.73752298   
+            mean squared error:                      1761.15415357 
+            mean negative log predictive density:    -1.22838020
+            Time cost by prediction: 73.53242   
+            Time cost by single prediction: 0.058082480252764614
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-17T06:33:21.309, randseed: 1234 
+Data set: creep
+            id_train:  1:800;  id_test:  801:2066;   posx: 1:30;   posc: 1:30
+BTG model:  
+            ["Gaussian", "Gaussian"]   12;  rangeλ: [-0.5 0.5];   rangeθ: [500.0 3000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.94786730     
+            mean absolute error:                     30.76639476   
+            mean squared error:                      1758.25617990 
+            mean negative log predictive density:    -1.22765559
+            Time cost by prediction: 74.76572   
+            Time cost by single prediction: 0.05905665086887836
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]

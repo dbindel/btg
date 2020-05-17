@@ -165,8 +165,14 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         # condition tdistpdf on assumption that data is positive
         if true
             temp = Distributions.pdf.(t, g(y0, λ)) * jac(y0)
-            a = Distributions.cdf.(t, g(0, λ))
-            return temp/(1 - a)
+            if λ > 0 # g(0) finite, truncated from left
+                a = Distributions.cdf.(t, -1/λ)
+                temp = temp/(1 - a)
+            elseif λ < 0 # g(+inf) finite, truncated from right
+                a = Distributions.cdf.(t, -1/λ)
+                temp = temp/a
+            end
+            # return temp
         end
         # @timeit to "atomic pdf eval" Distributions.pdf.(t, g(y0, λ)) * jac(y0)
     end
@@ -175,8 +181,15 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         # condition tdistcdf on assumption that data is positive
         if true
             temp = Distributions.cdf.(t, g(y0, λ))
-            a = Distributions.cdf.(t, g(0, λ))
-            return (temp-a)/(1 - a)
+            if λ > 0 # g(0) finite, truncated from left
+                a = Distributions.cdf.(t, -1/λ)
+                temp = (temp-a)/(1 - a)
+            elseif λ < 0 # g(+inf) finite, truncated from right
+                a = Distributions.cdf.(t, -1/λ)
+                temp = temp/a
+            end
+            return temp
+            # return temp
         end
         #@timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
     end

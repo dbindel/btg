@@ -1,6 +1,6 @@
 #include("../model0.jl")
 include("../computation/buffers0.jl")
-include("../bayesopt/kernel.jl")
+include("../kernels/kernel.jl")
 using Cubature
 using TimerOutputs
 
@@ -162,11 +162,36 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
     
     function main_pdf(y0, t, m, qC)
         #@assert y0 >= 0
-        @timeit to "atomic pdf eval" Distributions.pdf.(t, g(y0, λ)) * jac(y0)
+        # condition tdistpdf on assumption that data is positive
+        if true
+            temp = Distributions.pdf.(t, g(y0, λ)) * jac(y0)
+            if λ > 0 # g(0) finite, truncated from left
+                a = Distributions.cdf.(t, -1/λ)
+                temp = temp/(1 - a)
+            elseif λ < 0 # g(+inf) finite, truncated from right
+                a = Distributions.cdf.(t, -1/λ)
+                temp = temp/a
+            end
+            # return temp
+        end
+        # @timeit to "atomic pdf eval" Distributions.pdf.(t, g(y0, λ)) * jac(y0)
     end
     function main_cdf(y0, t, m, qC)
         #@assert y0 >= 0
-        @timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
+        # condition tdistcdf on assumption that data is positive
+        if true
+            temp = Distributions.cdf.(t, g(y0, λ))
+            if λ > 0 # g(0) finite, truncated from left
+                a = Distributions.cdf.(t, -1/λ)
+                temp = (temp-a)/(1 - a)
+            elseif λ < 0 # g(+inf) finite, truncated from right
+                a = Distributions.cdf.(t, -1/λ)
+                temp = temp/a
+            end
+            return temp
+            # return temp
+        end
+        #@timeit to "atomic cdf eval" return Distributions.cdf.(t, g(y0, λ))
     end
     function main_pdf_deriv_helper(y0, t, m, qC)
         #@assert y0 >= 0 

@@ -49,7 +49,7 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 # load abalone data
-df = DataFrame(CSV.File("../datasets/abalone.csv"))
+df = DataFrame(CSV.File("../datasets/abalone.csv", header = 0))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
 # shuffle data
@@ -119,9 +119,9 @@ if parsed_args["test"]
             end
             error_abs += abs(y_test_i_true - median_test_i)
             error_sq += (y_test_i_true - median_test_i)^2
-            nlpd += log(pdf_test_i(y_test_i_true)) 
-            error_abs_set[i] = error_abs
-            nlpd_set[i] = nlpd
+            nlpd += log(pdf_test_i(y_test_i_true/ymax_train)) 
+            error_abs_set[i] =  abs(y_test_i_true - median_test_i)
+            nlpd_set[i] = log(pdf_test_i(y_test_i_true/ymax_train)) 
         # @info "Count, id_fail" count_test, id_fail
         catch err 
             append!(id_nonproper, i)

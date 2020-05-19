@@ -1,0 +1,14 @@
+2020-05-11T21:19:21.829, randseed: 1234 
+Data set: Abalone   
+        id_train:  1:1000;   posx: 1:7;   posc: 1:7
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 0.5];   rangeθ: [1000.0 3500.0] (single length-scale: true) 
+        Fast LOOCV: false 
+LOOCV on training set results: 
+    credible intervel accuracy percentage:    0.92900000     
+    mean absolute error:                      1.77316043   
+    mean squared error:                       6.40427702 
+    mean negative log predictive density:    -0.86315462
+    Time validation took: 90.48878   
+    Failed index in credible intervel:       Any[] 
+    BTG: Failed index in pdf computation:     Any[]

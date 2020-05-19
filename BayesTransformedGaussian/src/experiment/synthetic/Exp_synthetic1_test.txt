@@ -1,0 +1,1604 @@
+2020-05-11T23:46:05.88 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.1, 2.0];  rangeθ: [0.250, 100.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.87531172        1.00000000        1.00000000 
+        mean absolute error:                      0.00238368        0.00132369        0.00132558  
+        mean squared error:                       0.00000923        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.16988095       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.43022
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:05:49.124 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00198487        0.00132369        0.00132558  
+        mean squared error:                       0.00000532        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39462104       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.31748
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:12:16.092 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00400034        0.00269893        0.00272260  
+        mean squared error:                       0.00002162        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69622402       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.57012
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:18:15.912 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.00604755        0.00474139        0.00463656  
+        mean squared error:                       0.00004945        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28520302       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.2744
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:24:20.167 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.00812828        0.00602544        0.00608401  
+        mean squared error:                       0.00008939        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99177408       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.35643
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:30:21.483 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.01024160        0.00723782        0.00739686  
+        mean squared error:                       0.00014204        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76280623       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.30948
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:36:22.221 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92518703        1.00000000        1.00000000 
+        mean absolute error:                      0.00199144        0.00132369        0.00132558  
+        mean squared error:                       0.00000546        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39473108       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.29078
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:42:42.74 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92518703        1.00000000        1.00000000 
+        mean absolute error:                      0.00401539        0.00269893        0.00272260  
+        mean squared error:                       0.00002220        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69689054       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.62688
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:48:43.627 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00607247        0.00474139        0.00463656  
+        mean squared error:                       0.00005077        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28642393       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.301
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T00:54:45.782 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00816417        0.00602544        0.00608401  
+        mean squared error:                       0.00009178        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99354270       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.29605
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T01:00:49.958 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.01029098        0.00723782        0.00739686  
+        mean squared error:                       0.00014584        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76511166       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.32773
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T01:07:00.727 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00198456        0.00132369        0.00132558  
+        mean squared error:                       0.00000534        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39656636       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.43623
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T01:13:08.985 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00399986        0.00269893        0.00272260  
+        mean squared error:                       0.00002171        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69834484       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.4078
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T01:19:06.568 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00604777        0.00474139        0.00463656  
+        mean squared error:                       0.00004966        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28749641       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.22362
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T01:25:25.014 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.00812931        0.00602544        0.00608401  
+        mean squared error:                       0.00008978        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99423637       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.58047
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T01:31:33.81 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.01024457        0.00723782        0.00739686  
+        mean squared error:                       0.00014267        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76543265       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.4273
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:10:29.491 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163679        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57936908       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.46247
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:18:42.533 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00198505        0.00132369        0.00132558  
+        mean squared error:                       0.00000532        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39599342       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.24032
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:25:08.283 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00400070        0.00269893        0.00272260  
+        mean squared error:                       0.00002162        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69769992       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.51302
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:31:26.918 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00604808        0.00474139        0.00463656  
+        mean squared error:                       0.00004945        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28677900       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.41283
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:37:54.254 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.00812900        0.00602544        0.00608401  
+        mean squared error:                       0.00008939        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99344529       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.55347
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:43:58.937 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.01024255        0.00723782        0.00739686  
+        mean squared error:                       0.00014205        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76456665       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.36563
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:50:01.655 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92768080        1.00000000        1.00000000 
+        mean absolute error:                      0.00199130        0.00132369        0.00132558  
+        mean squared error:                       0.00000546        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39565672       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.34977
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T02:56:41.312 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92768080        1.00000000        1.00000000 
+        mean absolute error:                      0.00401512        0.00269893        0.00272260  
+        mean squared error:                       0.00002220        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69790200       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.73572
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:03:24.82 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92518703        1.00000000        1.00000000 
+        mean absolute error:                      0.00607212        0.00474139        0.00463656  
+        mean squared error:                       0.00005078        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28751800       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.79227
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:09:26.894 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00816310        0.00602544        0.00608401  
+        mean squared error:                       0.00009180        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99471482       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.33233
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:15:26.489 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.01028974        0.00723782        0.00739686  
+        mean squared error:                       0.00014587        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76635623       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.29128
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:21:49.826 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00198498        0.00132369        0.00132558  
+        mean squared error:                       0.00000534        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39776344       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.47915
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:27:52.88 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00400072        0.00269893        0.00272260  
+        mean squared error:                       0.00002171        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69963671       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.33763
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:33:57.521 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00604891        0.00474139        0.00463656  
+        mean squared error:                       0.00004966        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28887959       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.37665
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:40:04.57 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00813094        0.00602544        0.00608401  
+        mean squared error:                       0.00008978        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99570614       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.38375
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:46:18.594 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.01024658        0.00723782        0.00739686  
+        mean squared error:                       0.00014268        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76698318       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.40582
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:52:19.769 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163679        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57936908       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.29695
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T03:58:45.824 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00329413        0.00382085        0.00379418  
+        mean squared error:                       0.00002041        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.89152982       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.5308
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:05:34.164 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00497272        0.00518826        0.00522121  
+        mean squared error:                       0.00004593        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.49056060       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.87355
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:11:37.174 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00667366        0.00654452        0.00662566  
+        mean squared error:                       0.00008175        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.20665883       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.3206
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:18:09.314 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00839646        0.00790343        0.00802902  
+        mean squared error:                       0.00012801        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98708159       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.61342
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:24:26.606 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00163707        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.56437753       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.38178
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:30:30.852 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00329606        0.00382085        0.00379418  
+        mean squared error:                       0.00002040        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.87674781       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.35628
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:36:27.82 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00497743        0.00518826        0.00522121  
+        mean squared error:                       0.00004590        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.47598068       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.25545
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:42:50.077 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00668213        0.00654452        0.00662566  
+        mean squared error:                       0.00008170        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.19227353       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.4496
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:49:14.215 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00840963        0.00790343        0.00802902  
+        mean squared error:                       0.00012792        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.97288070       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.69193
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T04:55:36.777 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163267        0.00199963        0.00198952  
+        mean squared error:                       0.00000510        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57479717       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.55015
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:01:41.911 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00328644        0.00382085        0.00379418  
+        mean squared error:                       0.00002039        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.88698356       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.349
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:08:02.18 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00496179        0.00518826        0.00522121  
+        mean squared error:                       0.00004588        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.48603881       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.59013
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:14:05.59 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00666017        0.00654452        0.00662566  
+        mean squared error:                       0.00008166        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.20216137       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.35268
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:20:08.444 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00838118        0.00790343        0.00802902  
+        mean squared error:                       0.00012788        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98260763       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.35178
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:26:34.947 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163610        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57687147       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.50675
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:33:08.262 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00329287        0.00382085        0.00379418  
+        mean squared error:                       0.00002041        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.88903203       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.63362
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:39:39.713 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00497097        0.00518826        0.00522121  
+        mean squared error:                       0.00004593        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.48806411       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.81443
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:45:34.653 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00667160        0.00654452        0.00662566  
+        mean squared error:                       0.00008174        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.20416388       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.2139
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:52:09.174 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00839423        0.00790343        0.00802902  
+        mean squared error:                       0.00012800        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98458740       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.65305
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T05:58:37.721 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00163821        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.56193378       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.56467
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:05:00.632 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00329843        0.00382085        0.00379418  
+        mean squared error:                       0.00002041        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.87430093       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.46208
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:11:40.745 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00498119        0.00518826        0.00522121  
+        mean squared error:                       0.00004592        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.47353228       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.74078
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:18:05.711 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00668729        0.00654452        0.00662566  
+        mean squared error:                       0.00008173        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.18982375       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.51377
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:24:22.855 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99251870        1.00000000        1.00000000 
+        mean absolute error:                      0.00841641        0.00790343        0.00802902  
+        mean squared error:                       0.00012797        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.97042868       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.45602
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:30:36.156 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00163263        0.00199963        0.00198952  
+        mean squared error:                       0.00000510        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57240287       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.48253
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:36:39.588 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00328646        0.00382085        0.00379418  
+        mean squared error:                       0.00002039        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.88458850       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.31013
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:42:38.356 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00496196        0.00518826        0.00522121  
+        mean squared error:                       0.00004588        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.48364435       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.28677
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:48:42.534 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00666059        0.00654452        0.00662566  
+        mean squared error:                       0.00008166        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.19976758       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.37017
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T06:55:08.909 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00838195        0.00790343        0.00802902  
+        mean squared error:                       0.00012789        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98021356       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.52962
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T13:47:17.832 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00198505        0.00132369        0.00132558  
+        mean squared error:                       0.00000532        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39599342       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.2046
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T13:53:14.061 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00400070        0.00269893        0.00272260  
+        mean squared error:                       0.00002162        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69769992       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.23858
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T13:59:08.386 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.00604808        0.00474139        0.00463656  
+        mean squared error:                       0.00004945        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28677900       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.20867
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:05:03.014 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.00812900        0.00602544        0.00608401  
+        mean squared error:                       0.00008939        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99344529       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.19325
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:11:25.358 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.91770574        1.00000000        1.00000000 
+        mean absolute error:                      0.01024255        0.00723782        0.00739686  
+        mean squared error:                       0.00014205        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76456665       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.48568
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:17:30.81 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92768080        1.00000000        1.00000000 
+        mean absolute error:                      0.00199130        0.00132369        0.00132558  
+        mean squared error:                       0.00000546        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39565672       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.39095
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:23:33.171 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92768080        1.00000000        1.00000000 
+        mean absolute error:                      0.00401512        0.00269893        0.00272260  
+        mean squared error:                       0.00002220        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69790200       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.34293
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:29:27.071 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92518703        1.00000000        1.00000000 
+        mean absolute error:                      0.00607212        0.00474139        0.00463656  
+        mean squared error:                       0.00005078        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28751800       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.20093
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:35:25.332 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00816310        0.00602544        0.00608401  
+        mean squared error:                       0.00009180        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99471482       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.27273
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:41:49.637 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.01028974        0.00723782        0.00739686  
+        mean squared error:                       0.00014587        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76635623       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.50425
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:48:06.423 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00198498        0.00132369        0.00132558  
+        mean squared error:                       0.00000534        0.00000231        0.00000239   
+        mean negative log predictive density:    -5.39776344       -3.99458900       -3.98840071  
+        Time cost by prediction: 4.38815
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T14:54:09.366 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00400072        0.00269893        0.00272260  
+        mean squared error:                       0.00002171        0.00000997        0.00001031   
+        mean negative log predictive density:    -4.69963671       -3.29754702       -3.29116781  
+        Time cost by prediction: 4.30747
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:00:15.312 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00604891        0.00474139        0.00463656  
+        mean squared error:                       0.00004966        0.00003051        0.00002919   
+        mean negative log predictive density:    -4.28887959       -2.87478072       -2.87335694  
+        Time cost by prediction: 4.3802
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:06:17.05 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92269327        1.00000000        1.00000000 
+        mean absolute error:                      0.00813094        0.00602544        0.00608401  
+        mean squared error:                       0.00008978        0.00004904        0.00005037   
+        mean negative log predictive density:    -3.99570614       -2.59543397       -2.58844750  
+        Time cost by prediction: 4.33828
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:12:18.507 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 1234;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.92019950        1.00000000        1.00000000 
+        mean absolute error:                      0.01024658        0.00723782        0.00739686  
+        mean squared error:                       0.00014268        0.00007083        0.00007476   
+        mean negative log predictive density:    -3.76698318       -2.37775455       -2.36817938  
+        Time cost by prediction: 4.33263
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:18:34.796 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163679        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57936908       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.369
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:24:57.491 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00329413        0.00382085        0.00379418  
+        mean squared error:                       0.00002041        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.89152982       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.47955
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:31:22.479 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00497272        0.00518826        0.00522121  
+        mean squared error:                       0.00004593        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.49056060       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.50877
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:37:23.781 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00667366        0.00654452        0.00662566  
+        mean squared error:                       0.00008175        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.20665883       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.31583
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:43:20.44 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00839646        0.00790343        0.00802902  
+        mean squared error:                       0.00012801        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98708159       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.25472
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:49:14.458 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00163707        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.56437753       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.19453
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T15:55:34.307 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00329606        0.00382085        0.00379418  
+        mean squared error:                       0.00002040        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.87674781       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.4346
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:01:53.575 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00497743        0.00518826        0.00522121  
+        mean squared error:                       0.00004590        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.47598068       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.41257
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:08:03.173 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00668213        0.00654452        0.00662566  
+        mean squared error:                       0.00008170        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.19227353       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.45877
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:14:03.463 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00840963        0.00790343        0.00802902  
+        mean squared error:                       0.00012792        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.97288070       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.28073
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:20:03.738 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163267        0.00199963        0.00198952  
+        mean squared error:                       0.00000510        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57479717       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.28423
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:26:05.736 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00328644        0.00382085        0.00379418  
+        mean squared error:                       0.00002039        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.88698356       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.32433
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:32:19.889 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00496179        0.00518826        0.00522121  
+        mean squared error:                       0.00004588        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.48603881       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.35072
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:38:38.916 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00666017        0.00654452        0.00662566  
+        mean squared error:                       0.00008166        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.20216137       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.40563
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:44:40.419 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 1 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00838118        0.00790343        0.00802902  
+        mean squared error:                       0.00012788        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98260763       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.32248
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:50:33.654 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98503741        1.00000000        1.00000000 
+        mean absolute error:                      0.00163610        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57687147       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.17878
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T16:56:26.578 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00329287        0.00382085        0.00379418  
+        mean squared error:                       0.00002041        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.88903203       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.17453
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:02:23.156 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00497097        0.00518826        0.00522121  
+        mean squared error:                       0.00004593        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.48806411       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.2374
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:08:23.32 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00667160        0.00654452        0.00662566  
+        mean squared error:                       0.00008174        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.20416388       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.30302
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:14:37.927 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.5, 2.0];  rangeθ: [0.250, 4.000] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00839423        0.00790343        0.00802902  
+        mean squared error:                       0.00012800        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98458740       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.52663
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:20:41.965 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00163821        0.00199963        0.00198952  
+        mean squared error:                       0.00000511        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.56193378       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.3618
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:26:37.63 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00329843        0.00382085        0.00379418  
+        mean squared error:                       0.00002041        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.87430093       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.20635
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:32:43.847 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00498119        0.00518826        0.00522121  
+        mean squared error:                       0.00004592        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.47353228       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.38747
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:38:48.69 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00668729        0.00654452        0.00662566  
+        mean squared error:                       0.00008173        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.18982375       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.35563
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:44:56.078 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.3, 2.0];  rangeθ: [0.250, 11.111] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99251870        1.00000000        1.00000000 
+        mean absolute error:                      0.00841641        0.00790343        0.00802902  
+        mean squared error:                       0.00012797        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.97042868       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.39457
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:50:52.933 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.1 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00163263        0.00199963        0.00198952  
+        mean squared error:                       0.00000510        0.00000706        0.00000694   
+        mean negative log predictive density:    -5.57240287       -3.83849861       -3.83801385  
+        Time cost by prediction: 4.21863
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T17:56:47.562 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.2 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00328646        0.00382085        0.00379418  
+        mean squared error:                       0.00002039        0.00002454        0.00002339   
+        mean negative log predictive density:    -4.88458850       -3.15821172       -3.15865514  
+        Time cost by prediction: 4.2001
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T18:02:43.438 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.30000000000000004 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.98753117        1.00000000        1.00000000 
+        mean absolute error:                      0.00496196        0.00518826        0.00522121  
+        mean squared error:                       0.00004588        0.00003974        0.00003902   
+        mean negative log predictive density:    -4.48364435       -2.76736675       -2.76451043  
+        Time cost by prediction: 4.21737
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T18:08:44.168 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.4 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00666059        0.00654452        0.00662566  
+        mean squared error:                       0.00008166        0.00005911        0.00005880   
+        mean negative log predictive density:    -4.19976758       -2.48349634       -2.47892803  
+        Time cost by prediction: 4.29792
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]
+
+2020-05-12T18:14:43.058 
+Data set: exp_synthetic1   
+        train size:  101;  test size:  401;  dimension: 1;   degree of covariate functions: 2 
+        randseed: 123;    noise level in training data: 0.5 
+BTG model:  
+        ["Gaussian", "Gaussian"]  ;  rangeλ: [-1.5 1.0];  lengthscale: [0.4, 2.0];  rangeθ: [0.250, 6.250] 
+Compare test results:                                BTG               GP               logGP
+        credible intervel accuracy percentage:    0.99002494        1.00000000        1.00000000 
+        mean absolute error:                      0.00838195        0.00790343        0.00802902  
+        mean squared error:                       0.00012789        0.00008302        0.00008328   
+        mean negative log predictive density:    -3.98021356       -2.26088449       -2.25485912  
+        Time cost by prediction: 4.2674
+        BTG: Failed index in credible intervel:   Any[] 
+        BTG: Failed index in pdf computation:     Any[]

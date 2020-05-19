@@ -1,5 +1,5 @@
 using LinearAlgebra
-include("../bayesopt/incremental.jl")
+include("../various_mle_things/incremental.jl")
 
 """
 Computes remainder and minimizer for lsq problem min_x |hat(A)x-hat(b)|_2^2 where

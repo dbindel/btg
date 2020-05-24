@@ -5,7 +5,7 @@ using StatsFuns
 
 # import Statistics: median, pdf, cdf
 "pre-process pdf and cdf, given fixed pdf and cdf at x0, compute estimated support and check if pdf is proper"
-function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quantbound::Function) where T<:Float64
+function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Function, dpdf::Function, quantbound::Function; yshift = 0.) where T<:Float64
     quantbound_fixed(p) = quantbound(x0, Fx0, p) 
     pdf_fixed(y) = pdf(x0, Fx0, y)
     cdf_fixed(y) = cdf(x0, Fx0, y)
@@ -25,6 +25,7 @@ function pre_process(x0::Array{T,2}, Fx0::Array{T,2}, pdf::Function, cdf::Functi
       while pdf(support[2]) > 1e-6 
         support[2] *= 1.2
       end
+      support[2] += yshift
       # should make sure CDF(support[2]) - CDF(support[1]) > .96 to make 95% CI possible
       INT = cdf_fixed(support[2]) - cdf_fixed(support[1])
       if INT < .96

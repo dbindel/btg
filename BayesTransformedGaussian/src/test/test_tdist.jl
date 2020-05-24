@@ -13,7 +13,7 @@ include("../validation/loocv.jl")
 include("../quadrature/quadrature.jl")                                             
 include("../transforms/transforms.jl")                                             
 include("../priors/priors.jl")                                                     
-include("../bayesopt/incremental.jl")                                              
+include("../various_mle_things/incremental.jl")                                              
 include("../kernels/kernel.jl")                                                    
 include("../datastructs.jl")                                                       
 include("../computation/buffers0.jl") #datastruct, kernel, incremental, quadrature 

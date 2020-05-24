@@ -1,4 +1,4 @@
-include("../bayesopt/incremental.jl")
+include("../various_mle_things/incremental.jl")
 
 function unitvec(n, i)
     v = zeros(n, 1)

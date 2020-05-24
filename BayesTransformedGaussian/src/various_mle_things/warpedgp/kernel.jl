@@ -19,6 +19,7 @@ function display(l::LengthScale)
     display(l.Dx)
     return nothing
 end
+
 function lengthscale(dist, p, M, X)
     U = M \ X[:, 1:p]
     X′ = M \ X[:, p+1:end]

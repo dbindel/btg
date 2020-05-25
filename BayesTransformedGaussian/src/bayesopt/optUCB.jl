@@ -1,4 +1,4 @@
-function optimize_acqusition(cdf, cdf_gradient, lx, ux;  initial, maxiter = 300)
+function optimize_acqusition(cdf, cdf_gradient, lx, ux;  initial, maxiter = 300, quant = 0.25)
     #lx = [1, -5, -5]; ux = [3000.0, 5, 5] #box-constraints for optimization problem
     #make input an augmented vector [y, s]: label, location
     cdf_fixed(v) = cdf(v[2:end], linear_polynomial_basis(v[2:end]), v[1])
@@ -28,11 +28,11 @@ function optimize_acqusition(cdf, cdf_gradient, lx, ux;  initial, maxiter = 300)
 
     @variable(model, lx[i] <= au[i=1:3] <= ux[i])
     #@variable(model, au)
-    @NLobjective(model, Min, fun(au...))
-    @NLconstraint(model, cdf_wrapper(au...) == 0.25)
+    @NLobjective(model, Max, fun(au...))
+    @NLconstraint(model, cdf_wrapper(au...) == quant)
 
     function single_optimization()
-        initval = init_constrained_pt(cdf_fixed, lx, ux; initial = initial, quantile = 0.25)
+        initval = init_constrained_pt(cdf_fixed, lx, ux; initial = initial, quantile = quant)
         set_start_value(au[1], initval[1])
         set_start_value(au[2], initval[2])
         set_start_value(au[3], initval[3])
@@ -52,8 +52,10 @@ function optimize_acqusition(cdf, cdf_gradient, lx, ux;  initial, maxiter = 300)
     vstar = undef
     initval = undef
     while count <=10 #max 
-        global (vstar, initval) = single_optimization()
-        if (abs(cdf_fixed(vstar) - 0.25) <= 0.1)
+        (vstar_cur, cur_initval) = single_optimization()
+        initval = cur_initval
+        vstar = vstar_cur
+        if (abs(cdf_fixed(vstar) - quant) <= 0.05)
             break        
         end
         count = count + 1;
@@ -61,7 +63,7 @@ function optimize_acqusition(cdf, cdf_gradient, lx, ux;  initial, maxiter = 300)
     if count >= 2
         @warn "number restarts is", count
     end
-    if (abs(cdf_fixed(vstar) - 0.25) > 0.1)
+    if (abs(cdf_fixed(vstar) - quant) > 0.05)
         error("Optimization step did not converge")
     end
     return vstar, initval, cdf_fixed(vstar)

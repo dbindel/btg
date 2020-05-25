@@ -3,7 +3,7 @@ using LinearAlgebra
 
 include("../datastructs.jl")
 include("../kernels/kernel.jl")
-include("../various_mle_things/incremental.jl")
+include("../bayesopt/incremental.jl")
 include("../quadrature/quadrature.jl")
 include("../transforms/transforms.jl")
 

@@ -34,5 +34,9 @@ Pkg.add("TimerOutputs")
 Pkg.add("Cubature")
 Pkg.add("Optim")
 Pkg.add("NLSolversBase")
+Pkg.add("Roots")
+Pkg.add("GaussianProcesses")
 
+#tools
+Pkg.add("ArgParse")
 

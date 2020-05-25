@@ -2,6 +2,7 @@ include("../btg.jl")
 include("constrained_guess.jl")
 include("sample.jl")
 include("../computation/finitedifference.jl")
+include("visualize.jl")
 
 using Plots
 using Random

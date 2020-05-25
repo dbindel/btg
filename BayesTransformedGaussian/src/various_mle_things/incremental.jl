@@ -75,10 +75,7 @@ logdet(R::IncrementalCholesky) = logdet(get_chol(R))
 
 isposdef(R::IncrementalCholesky) = R.info == 0
 
-<<<<<<< HEAD
-=======
 display(R::IncrementalCholesky) = display(get_chol(R))
->>>>>>> 196fa7bfeb5c074bc59d0810880b51f7f1dd5a62
 #lastindex(R::IncrementalCholesky{Float64}, t::Int64) = size(R)[1] #for doing R[2:end], for example
 
 

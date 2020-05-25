@@ -9,7 +9,7 @@ Random.seed!(8);
 ##### Define optimization problem, initialize GP with burn-in points, initialize btg parameters
 #####
 Himmelblau(x) = (x[1]^2 + x[2] -11)^2 + (x[1]+x[2]^2-7)^2 #function to optimize
-y, x = sample_points(Himmelblau, [-5, -5], [5, 5]; num = 5) #burn-in points which are used as training data in GP
+y, x = sample_points(Himmelblau, [-5, -5], [5, 5]; num = 10) #burn-in points which are used as training data in GP
 x = vcat(x, [5 5])
 y = vcat(y, 890)
 x = vcat(x, [-4.999 4.999])
@@ -32,9 +32,9 @@ train = extensible_trainingData(x, Fx, y) #training data triple: location, covar
 #rangeθ = reshape(select_single_theta_range(x), 1, 2) #rangetheta is auto-selected
 #rangeθ = [0.0001 1000]
 #rangeθ = [10.0 300] 
-rangeθ  = [50.0 60.0]
+rangeθ  = [50.0 1000.0]
 @info "rangeθ", rangeθ 
-rangeλ = [-1.0 0.2] 
+rangeλ = [-1.0 1] 
 btg1 = btg(train, rangeθ, rangeλ);
  #get function handles for pdf, cdf, derivtives
 lx = [1, -5, -5]; ux = [3000.0, 5, 5] 
@@ -70,9 +70,9 @@ function BO(btg1::btg, f, n, lx, ux, min) #BO loop
 
     for i = 1:n #take 10 BO steps
         println("========================ITERATION: ", i)
-        (_, cdf, _, cdf_gradient) = solve(btg1; derivatives = true);
+        (_, cur_cdf, _, cdf_gradient) = solve(btg1; derivatives = true);
         #(vstar, initval, quant_eval) = optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300, initial = argmin_hist[end]);
-        (vstar, initval, quant_eval) = optimize_acqusition(cdf, cdf_gradient, lx, ux; maxiter = 300, initial = []);
+        (vstar, initval, quant_eval) = optimize_acqusition(cur_cdf, cdf_gradient, lx, ux; maxiter = 300, initial = [], quant = 0.5);
         s_star = reshape(vstar[2:end], 1, length(vstar[2:end]))
         push!(quant_hist, quant_eval)
         push!(init_hist, initval[2:end])
@@ -96,3 +96,4 @@ end
 (x_hist, f_hist, min_hist, gp_hist, init_hist, quant_hist, training_size_hist) = BO(btg1, Himmelblau, 5, lx, ux, cur_min);
 
 
+include("analyze.jl")

@@ -29,14 +29,14 @@ end
 valid_update(R::IncrementalCholesky, k) = 0 <= R.n + k <= size(R.R, 1)
 
 # extend is deprecated in favor of view_next
-extend(R::IncrementalCholesky, k) = view_next(sd, k)
+extend(R::IncrementalCholesky, k) = view_next(R, k)
 function view_next(R::IncrementalCholesky, k)
     valid_update(R, k) || throw(ErrorException("Size cannot exceed capacity"))
     return @views R.R[1:R.n, R.n+1:R.n+k], R.R[R.n+1:R.n+k, R.n+1:R.n+k]
 end
 
 # update! is depracated in favor of compute_next!
-update!(R::IncrementalCholesky, k) = compute_next!(sd, k)
+update!(R::IncrementalCholesky, k) = compute_next!(R, k)
 function compute_next!(R::IncrementalCholesky, k; check=true)
     valid_update(R, k) || throw(ErrorException("Size cannot exceed capacity"))
     @views A12, A2 = R.R[1:R.n, R.n+1:R.n+k], R.R[R.n+1:R.n+k, R.n+1:R.n+k]
@@ -51,7 +51,7 @@ function compute_next!(R::IncrementalCholesky, k; check=true)
 end
 
 # remove! is depracated in favor of remove_last!
-remove!(R::IncrementalCholesky, k) = remove_last!(sd, k)
+remove!(R::IncrementalCholesky, k) = remove_last!(R, k)
 function remove_last!(R::IncrementalCholesky, k)
     valid_update(R, -k) || throw(ErrorException("Size cannot be negative"))
     R.n -= k

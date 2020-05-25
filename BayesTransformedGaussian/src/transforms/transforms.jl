@@ -5,8 +5,6 @@ Family of nonlinear transformation parametrized by λ that defaults to Box Cox.
 N.B. We assume in derivatives.jl that the nonlinear transformation f is monotonic increasing. 
 """
 
-
-
 @doc raw"""
     BoxCox(λ::Real)
 
@@ -44,7 +42,6 @@ partialλλ(::BoxCox, x, λ) = (λ[1]==0 ? 0 : float(x).^λ[1] .* (Base.log.(x)^
                             (2 * x.^λ[1] .* Base.log.(x))/λ[1]^2 + 2*(float(x).^λ[1] - 1)/λ[1]^3)
 partialxλ(::BoxCox, x, λ) = λ[1]==0 ? 0 : float(x).^(λ[1] -1) .* Base.log.(x)
 inverse(::BoxCox, x, λ) = λ[1]==0 ? Base.exp.(x) : Base.exp.(Base.log.(λ[1].*x.+1)./λ[1])
-
 
 struct ShiftedBoxCox <:NonlinearTransform end 
 (::ShiftedBoxCox)(x, λ::Union{Array{T, 1}, T} where T<:Real) = (@assert (typeof(λ) <:Array{T} where T<:Real && size(λ, 2)==1) || (typeof(λ)<:Real); 

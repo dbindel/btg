@@ -4,7 +4,7 @@ using CSV, DataFrames
 include("model.jl")
 
 function data()
-    abalone = CSV.File(open("abalone.csv"))
+    abalone = CSV.File(open("warpedgp/abalone.csv"))
     abalone = DataFrame(abalone)
     X = Matrix(Matrix(abalone[1:200,2:8])')
     y = Vector{Float64}(abalone[1:200, 9])
@@ -26,7 +26,7 @@ function testfun()
 end
 
 function datavanilla()
-    abalone = CSV.File(open("abalone.csv"))
+    abalone = CSV.File(open("warpedgp/abalone.csv"))
     abalone = DataFrame(abalone)
     X = Matrix(Matrix(abalone[1:200,2:6])')
     y = Vector(abalone[1:200, 7])

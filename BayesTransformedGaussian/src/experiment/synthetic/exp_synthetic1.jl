@@ -47,11 +47,11 @@ s = ArgParseSettings()
     "--lmin"
         help = "minimal length scale"
         arg_type = Float64
-        default = 0.1
+        default = 0.5
     "--lmax"
         help = "maximum length scale"
         arg_type = Float64
-        default = 0.1    
+        default = 2.  
     "--randseed"
         help = "noise level in observation"
         arg_type = Int

@@ -13,3 +13,18 @@ BTG test results:
             Time cost by single prediction: 0.0932078
             Failed index in credible intervel:       Any[] 
             BTG: Failed index in pdf computation:     Any[]
+
+2020-05-18T00:26:28.586, randseed: 1234 
+Data set: ailerons   
+            id_train:  1:1000;  id_test:  1001:7154;   posx: 1:40;   posc: 1:12
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  rangeλ: [-1.5 1.0];   rangeθ: [100.0 1000.0] (single length-scale: true) 
+Compare test results:                                BTG               GP               logGP
+            credible intervel accuracy percentage:    0.94507637        0.94816380        0.94848879 
+            mean absolute error:                      0.00029749        0.00014073        0.00012304  
+            mean squared error:                       0.00000018        0.00000004        0.00000003   
+            mean negative log predictive density:    -0.77295945       -7.15606801       -7.40820561  
+            Time cost by prediction: 538.7867
+            Time cost by single prediction: 0.08755064998375041
+            BTG: Failed index in credible intervel:   Any[] 
+            BTG: Failed index in pdf computation:     Any[]

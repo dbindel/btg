@@ -93,6 +93,7 @@ x_test = range(-pi, stop=pi, length=n_test)
 x_test = reshape(x_test, n_test, 1)
 Fx_test = covariate_fun(x_test, parsed_args["p"])
 y_test_true = (sin.(x_test) .+ 10).^(1/3)
+elapsedmin = 0
 
 #parameter setting
 # myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
@@ -148,25 +149,25 @@ if parsed_args["test"]
         catch err 
             append!(id_nonproper, i)
         end
+        count_test /= n_test - length(id_fail) - length(id_nonproper)
+        error_abs  /= n_test - length(id_nonproper)
+        error_sq   /= n_test - length(id_nonproper)
+        nlpd       /= -n_test - length(id_nonproper)
+        after = Dates.now()
+        elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
+    
+        # Plot
+        PyPlot.close("all") #close existing windows
+        PyPlot.plot(x_test, median_set, label = "BTG median")
+        PyPlot.plot(x_test, y_test_true, label = "true")
+        PyPlot.fill_between(dropdims(x_test; dims = 2), CI_set[:, 1], CI_set[:, 2], alpha = 0.3, label = "95% confidence interval")
+        PyPlot.scatter(x, target, s = 10, c = "k", marker = "*")
+        PyPlot.legend(fontsize=8)
+        PyPlot.grid()
+        PyPlot.title("BTG $myquadtype", fontsize=10)
+        PyPlot.savefig("exp_synthetic1_btg_range_$(Int(10*lmin))_$(Int(10*lmax))_noise$(parsed_args["noiselevel"])_randseed_$(randseed)_p$(parsed_args["p"]).pdf")
     end
-    count_test /= n_test - length(id_fail) - length(id_nonproper)
-    error_abs  /= n_test - length(id_nonproper)
-    error_sq   /= n_test - length(id_nonproper)
-    nlpd       /= -n_test - length(id_nonproper)
-    after = Dates.now()
-    elapsedmin = round(((after - before) / Millisecond(1000))/60, digits=5)
-
-    # Plot
-    PyPlot.close("all") #close existing windows
-    PyPlot.plot(x_test, median_set, label = "BTG median")
-    PyPlot.plot(x_test, y_test_true, label = "true")
-    PyPlot.fill_between(dropdims(x_test; dims = 2), CI_set[:, 1], CI_set[:, 2], alpha = 0.3, label = "95% confidence interval")
-    PyPlot.scatter(x, target, s = 10, c = "k", marker = "*")
-    PyPlot.legend(fontsize=8)
-    PyPlot.grid()
-    PyPlot.title("BTG $myquadtype", fontsize=10)
-    PyPlot.savefig("exp_synthetic1_btg_range_$(Int(10*lmin))_$(Int(10*lmax))_noise$(parsed_args["noiselevel"])_randseed_$(randseed)_p$(parsed_args["p"]).pdf")
-
+   
 
     if parsed_args["GP"] 
         @info "Start GP"
@@ -236,28 +237,32 @@ if parsed_args["test"]
         # PyPlot.savefig("exp_synthetic1_logGP_range_$(Int(10*lmin))_$(Int(10*lmax))_noise$(parsed_args["noiselevel"]).pdf")
     end
 
-    # plot and Compare
-    x_test = reshape(x_test, n_test)
-    y_test_true = reshape(y_test_true, n_test)
-    median_set = reshape(median_set, n_test)
-    PyPlot.close("all") #close existing windows
-    PyPlot.scatter(x, target, s = 10, c = "k", marker = "*")
-    PyPlot.plot(x_test, y_test_true, label = "true")
-    PyPlot.plot(x_test, median_set, label = "BTG median")
-    # PyPlot.fill_between(x_test, CI_set[:, 1], CI_set[:, 2], alpha = 0.3, label = "95% CI BTG")
-    # PyPlot.fill_between(x_test, CI_test_GP[:, 1], CI_test_GP[:, 2], alpha = 0.3, label = "95% CI GP")
-    # PyPlot.fill_between(x_test, CI_test_logGP[:, 1], CI_test_logGP[:, 2], alpha = 0.3, label = "95% CI logGP")
-    PyPlot.plot(x_test, CI_set[:, 1], "b-", label = "95% CI BTG")
-    PyPlot.plot(x_test, CI_set[:, 2], "b-")
-    PyPlot.plot(x_test, CI_test_GP[:, 1], "k:", label = "95% CI GP")
-    PyPlot.plot(x_test, CI_test_GP[:, 2], "k:")
-    PyPlot.plot(x_test, CI_test_logGP[:, 1], "c-.", label = "95% CI logGP")
-    PyPlot.plot(x_test, CI_test_logGP[:, 2], "c-.")
-    PyPlot.title("Compare BTG, GP and logGP", fontsize=10)
-    PyPlot.legend(fontsize=8)
-    PyPlot.grid()
-    PyPlot.savefig("exp_synthetic1_compare_range_$(Int(10*lmin))_$(Int(10*lmax))_noise$(parsed_args["noiselevel"])_randseed_$(randseed)_p$(parsed_args["p"]).pdf")
-
+    # plot and Compare - full comparison between btg, GP, and logGP
+    if parsed_args["GP"] && parsed_args["logGP"] && parsed_args["test"]
+        x_test = reshape(x_test, n_test)
+        y_test_true = reshape(y_test_true, n_test)
+        median_set = reshape(median_set, n_test)
+        PyPlot.close("all") #close existing windows
+        PyPlot.scatter(x, target, s = 10, c = "k", marker = "*")
+        PyPlot.plot(x_test, y_test_true, label = "true")
+        PyPlot.plot(x_test, median_set, label = "BTG median")
+        # PyPlot.fill_between(x_test, CI_set[:, 1], CI_set[:, 2], alpha = 0.3, label = "95% CI BTG")
+        # PyPlot.fill_between(x_test, CI_test_GP[:, 1], CI_test_GP[:, 2], alpha = 0.3, label = "95% CI GP")
+        # PyPlot.fill_between(x_test, CI_test_logGP[:, 1], CI_test_logGP[:, 2], alpha = 0.3, label = "95% CI logGP")
+        PyPlot.plot(x_test, CI_set[:, 1], "b-", label = "95% CI BTG")
+        PyPlot.plot(x_test, CI_set[:, 2], "b-")
+        
+        PyPlot.plot(x_test, CI_test_GP[:, 1], "k:", label = "95% CI GP")
+        PyPlot.plot(x_test, CI_test_GP[:, 2], "k:")
+        
+        PyPlot.plot(x_test, CI_test_logGP[:, 1], "c-.", label = "95% CI logGP")
+        PyPlot.plot(x_test, CI_test_logGP[:, 2], "c-.")
+        
+        PyPlot.title("Compare BTG, GP and logGP", fontsize=10)
+        PyPlot.legend(fontsize=8)
+        PyPlot.grid()
+        PyPlot.savefig("exp_synthetic1_compare_range_$(Int(10*lmin))_$(Int(10*lmax))_noise$(parsed_args["noiselevel"])_randseed_$(randseed)_p$(parsed_args["p"]).pdf")
+    end
 
     io1 = open("Exp_synthetic1_test.txt", "a") 
     write(io1, "\n$(Dates.now()) \n" )

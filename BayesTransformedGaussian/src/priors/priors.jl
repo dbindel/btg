@@ -9,14 +9,18 @@ struct Uniform <:priorType
     lengths::Array{Real, 1}
     function Uniform(range) #inner constructor allows one to enforce constraints
         @assert typeof(range)<:Union{Array{T, 2}, Array{T, 1}} where T<:Real
-        @assert prod(range[:, 2]- range[:, 1] .> 0) #ranges must be valid
-        lengths = range[:, 2] - range[:, 1]
-        if typeof(range)<:Array{Real, 1}
-            range = reshape(range, 1, 2)
-            return new(range, 1, lengths)
-        else 
-            @assert Base.size(range, 2) == 2
-            return new(range, Base.size(range, 1), lengths)
+        if length(range) > 1 
+            @assert prod(range[:, 2]- range[:, 1] .> 0) #ranges must be valid
+            lengths = range[:, 2] - range[:, 1]
+            if typeof(range)<:Array{Real, 1}
+                range = reshape(range, 1, 2)
+                return new(range, 1, lengths)
+            else 
+                @assert Base.size(range, 2) == 2
+                return new(range, Base.size(range, 1), lengths)
+            end
+        else
+            return new(range, Base.size(range, 1), ones(size(range, 1)))
         end
     end
 end
@@ -25,7 +29,7 @@ getRange(u::Uniform) = u.range #internal range array
 getNum(u::Uniform) = u.d #number of dimensions of interal range array
 getLength(u::Uniform) = u.lengths
 logProb(u::Uniform, x) = (@assert length(x) == u.d; l = getLength(u); -sum(log.(l)))#density function
-prob(u::Uniform, x) = (@assert length(x) == u.d; l = getLength(u); 1/prob(l))#density function
+prob(u::Uniform, x) = (@assert length(x) == u.d; l = getLength(u); 1/prod(l))#density function
 
 
 partialx(u::Uniform, x) = 0

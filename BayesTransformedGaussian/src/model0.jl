@@ -144,6 +144,7 @@ function solve(btg::btg; validate = 0, derivatives = false)
         init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
     end
     @timeit to "compute weights" weightTensorGrid = weight_comp(btg; validate = validate)
+    @info "weightTensorGrid", weightTensorGrid
     #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
     (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m)  = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
 end

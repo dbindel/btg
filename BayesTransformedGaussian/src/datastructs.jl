@@ -69,7 +69,15 @@ getNumPts(td::AbstractTrainingData) = td.n
 unpack(t::trainingData) = (t.x, t.Fx, t.y, t.d, t.n, t.p)
 unpack(t::extensible_trainingData) = (t.x[1:t.n, :], t.Fx[1:t.n, :], t.y[1:t.n], t.d, t.n, t.p)
 
-
+function print(data::AbstractTrainingData)
+    println("\n ##############  TRAINING DATA")
+    println("=============== Position ===============")
+    display(getPosition(data)')
+    println("=============== Covariates ===============")
+    display(getCovariates(data)')
+    println("=============== Label =============== ")
+    display(getLabel(data)')
+end
 
 """
 Represents a set of testing data. Currently supports single-point prediction.

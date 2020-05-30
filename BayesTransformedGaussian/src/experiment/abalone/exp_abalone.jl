@@ -56,12 +56,20 @@ s = ArgParseSettings()
         help = "rangeθ"
         arg_type = Float64
         nargs = 2
-        default = [3000., 5000.]
+        default = [3000., 6000.]
     "--rangelambda"
         help = "rangeλ"
         arg_type = Float64
         nargs = 2
-        default = [-1., 1.]
+        default = [-1., 2.]
+    "--transform"
+        help = "specify the nonlinear transform"
+        arg_type = String
+        default = "BoxCox"
+    "--randseed"
+        help = "random seed"
+        arg_type = Int
+        default = 1234
 end
 parsed_args = parse_args(ARGS, s)
 
@@ -74,7 +82,6 @@ using Cubature
 
 include("../../btg.jl")
 
-
 # load abalone data
 df = DataFrame(CSV.File("../../datasets/abalone.csv", header = 0))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
@@ -82,15 +89,24 @@ target = convert(Array, df[:, 9]) #age
 ntrain_size = 1000
 feature_size = 7
 # shuffle data
-randseed = 1234; rng = MersenneTwister(randseed)
+randseed = parsed_args["randseed"]; rng = MersenneTwister(randseed)
 ind_shuffle = randperm(rng, size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
 # training set
-id_train = 1:parsed_args["ntrain"]; posx = 1:feature_size; posc = 1:parsed_args["posc"]
+id_train = 1:parsed_args["ntrain"]
 n_train = length(id_train)
-x = data[id_train, posx] 
-Fx = data[id_train, posc] 
+posx = 1:feature_size
+x = data[id_train, posx]
+if parsed_args["posc"] > 0
+    posc = 1:parsed_args["posc"]
+    Fx = data[id_train, posc] 
+elseif parsed_args["posc"] == 0
+    posc = 0
+    Fx = ones(n_train, 1)
+else
+    throw(ArgumentError("Number of covariates not well-defined."))
+end
 y = float(target[id_train])
 ymax_train = maximum(y)
 y ./= ymax_train
@@ -110,6 +126,17 @@ elseif parsed_args["quadtype"] == 3
 else
     myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
 end
+
+if parsed_args["transform"] == "BoxCox"
+    mytrans = BoxCox() 
+elseif parsed_args["transform"] == "IdentityTransform"
+    mytrans = IdentityTransform()
+elseif parsed_args["transform"] == "ShiftedBoxCox"
+    mytrans = ShiftedBoxCox()
+else 
+    throw(ArgumentError("Transform type not supported."))
+end
+
 rangeλ = reshape(convert(Array{Float64, 1}, parsed_args["rangelambda"]), 1, 2)
 rangeθs = reshape(convert(Array{Float64, 1}, parsed_args["rangetheta"]), 1, 2)
 @assert size(rangeλ) == (1, 2)
@@ -117,7 +144,7 @@ rangeθs = reshape(convert(Array{Float64, 1}, parsed_args["rangetheta"]), 1, 2)
 rangeθm = repeat(rangeθs, d, 1)
 rangeθ = parsed_args["single"] ? rangeθs : rangeθm
 # build btg model
-btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype, num_gq = parsed_args["num_gq"])
+btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype, num_gq = parsed_args["num_gq"], transform = mytrans, priorθ = inverseUniform(rangeθ))
 # (pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
 (pdf0_raw, cdf0_raw, dpdf0_raw, _, _, quantInfo0_raw, _, _, tgridm, tgridsigma_m, weightsTensorGrid) = solve(btg0)
 ####################################
@@ -131,7 +158,15 @@ if parsed_args["test"]
     id_fail = []
     id_nonproper = []
     x_test = data[id_test, posx]
-    Fx_test = data[id_test, posc]
+    if parsed_args["posc"] > 0
+        posc = 1:parsed_args["posc"]
+        Fx_test = data[id_test, posc] 
+    elseif parsed_args["posc"] == 0
+        posc = 0
+        Fx_test = ones(n_test, 1)
+    else
+        throw(ArgumentError("Number of covariates not well-defined."))
+    end
     y_test_true = target[id_test]
     count_test = 0
     error_abs = 0.
@@ -165,21 +200,21 @@ if parsed_args["test"]
                 PyPlot.title("failed CI id: $i, cdf(0) = $(cdf_test_i(1e-6))")
                 PyPlot.savefig("exp_abalone_failedCI_$(n_train)_$(myquadtype[1])_rθ_$(Int(rangeθs[1]))_$(Int(rangeθs[2]))_failedID_$i.pdf")
 
-                mgrid = similar(weightsTensorGrid)
-                R = CartesianIndices(weightsTensorGrid)
-                for I in R
-                    mgrid[I] = tgridm[I](x_test_i, Fx_test_i)
-                end
-                io = open("Exp_abalone_failedCI.txt", "a") 
-                write(io, "\n$(Dates.now()), randseed: $randseed \n")
-                write(io, "Data set: Abalone   
-                id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
-                write(io, "BTG model:  
-                        $myquadtype   $(parsed_args["num_gq"]);  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
-                write(io, "Failed ID in CI computation: $i,  cdf(1e-6) = $(cdf_test_i(1e-6))\n")
-                write(io, "WeightsGrid \n $weightsTensorGrid \n")
-                write(io, "mgrid \n $mgrid \n")
-                close(io)
+                # mgrid = similar(weightsTensorGrid)
+                # R = CartesianIndices(weightsTensorGrid)
+                # for I in R
+                #     mgrid[I] = tgridm[I](x_test_i, Fx_test_i)
+                # end
+                # io = open("Exp_abalone_failedCI.txt", "a") 
+                # write(io, "\n$(Dates.now()), randseed: $randseed \n")
+                # write(io, "Data set: Abalone   
+                # id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
+                # write(io, "BTG model:  
+                #         $myquadtype   $(parsed_args["num_gq"]);  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+                # write(io, "Failed ID in CI computation: $i,  cdf(1e-6) = $(cdf_test_i(1e-6))\n")
+                # write(io, "WeightsGrid \n $weightsTensorGrid \n")
+                # write(io, "mgrid \n $mgrid \n")
+                # close(io)
             end
             error_abs += abs(y_test_i_true - median_test_i)
             error_sq += (y_test_i_true - median_test_i)^2
@@ -303,7 +338,8 @@ if parsed_args["test"]
         write(io1, "Data set: Abalone   
             id_train:  $id_train;  id_test:  $id_test;   posx: $posx;   posc: $posc\n") 
         write(io1, "BTG model:  
-            $myquadtype  $(parsed_args["num_gq"]) nodes;  rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
+            $myquadtype  $(parsed_args["num_gq"]) nodes;  transform: $(parsed_args["transform"]);  
+            rangeλ: $rangeλ;   rangeθ: $rangeθs (single length-scale: $(parsed_args["single"])) \n")
         if parsed_args["GP"] && parsed_args["logGP"]
             write(io1, "Compare test results: ")
             write(io1, "                               BTG               GP               logGP
@@ -328,8 +364,6 @@ if parsed_args["test"]
         end
         close(io1)
     end
-
-
 end
 
 ####################################

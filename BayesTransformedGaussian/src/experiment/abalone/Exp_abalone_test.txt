@@ -150,3 +150,99 @@ BTG test results:
             Time cost by single prediction: 0.08471751652502361
             Failed index in credible intervel:       Any[] 
             BTG: Failed index in pdf computation:     Any[]
+
+2020-05-27T16:00:24.076, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:1100;   posx: 1:7;   posc: 1:7
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  transform: IdentityTransform;  
+            rangeλ: [-1.5 1.0];   rangeθ: [3000.0 6000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.97000000     
+            mean absolute error:                      1.43727748   
+            mean squared error:                       3.34587117 
+            mean negative log predictive density:    -1.10588914
+            Time cost by prediction: 9.00668   
+            Time cost by single prediction: 0.09006679999999999
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-27T19:41:46.844, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:4177;   posx: 1:7;   posc: 1:7
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  transform: BoxCox;  
+            rangeλ: [-1.5 1.0];   rangeθ: [3000.0 6000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.92791942     
+            mean absolute error:                      1.82969925   
+            mean squared error:                       6.75967410 
+            mean negative log predictive density:    -0.80249106
+            Time cost by prediction: 265.42888   
+            Time cost by single prediction: 0.08354701920050361
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-27T21:17:34.514, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:4177;   posx: 1:7;   posc: 1:7
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  transform: IdentityTransform;  
+            rangeλ: [-1.5 1.0];   rangeθ: [3000.0 6000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.92598425     
+            mean absolute error:                      1.64916588   
+            mean squared error:                       5.34411446 
+            mean negative log predictive density:    -0.95282393
+            Time cost by prediction: 243.78257   
+            Time cost by single prediction: 0.07673357570034624
+            Failed index in credible intervel:       Any[196, 2591] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-28T01:54:57.858, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:4177;   posx: 1:7;   posc: 0
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  transform: BoxCox;  
+            rangeλ: [-1.5 1.0];   rangeθ: [3000.0 6000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.92508656     
+            mean absolute error:                      1.95385232   
+            mean squared error:                       7.85127257 
+            mean negative log predictive density:    -0.77275476
+            Time cost by prediction: 253.59522   
+            Time cost by single prediction: 0.07982222851746931
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-28T01:55:59.084, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:4177;   posx: 1:7;   posc: 0
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  transform: IdentityTransform;  
+            rangeλ: [-1.5 1.0];   rangeθ: [3000.0 6000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.92351275     
+            mean absolute error:                      1.96706324   
+            mean squared error:                       7.54418166 
+            mean negative log predictive density:    -0.75190117
+            Time cost by prediction: 240.0678   
+            Time cost by single prediction: 0.0755643059490085
+            Failed index in credible intervel:       Any[] 
+            BTG: Failed index in pdf computation:     Any[]
+
+2020-05-28T15:25:15.75, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:1000;  id_test:  1001:4177;   posx: 1:7;   posc: 1:7
+BTG model:  
+            ["Gaussian", "Gaussian"]  12 nodes;  transform: IdentityTransform;  
+            rangeλ: [-1.5 1.0];   rangeθ: [3000.0 6000.0] (single length-scale: true) 
+BTG test results: 
+            credible intervel accuracy percentage:    0.92598425     
+            mean absolute error:                      1.64916588   
+            mean squared error:                       5.34411446 
+            mean negative log predictive density:    -0.95282393
+            Time cost by prediction: 243.15928   
+            Time cost by single prediction: 0.0765373874724583
+            Failed index in credible intervel:       Any[196, 2591] 
+            BTG: Failed index in pdf computation:     Any[]

@@ -402,7 +402,7 @@ function init_λbuffer_dict(nw::nodesWeights, train::AbstractTrainingData, nt:: 
         dgλvals = Array{Float64, 2}(undef, length(z), nl2)
         for i = 1:nl2
             gλvals[:, i] = lmbda(nw.nodes[i])
-            dgλvals[:, i] = prime(nw.nodes[i])
+            dgλvals[:, i] .= prime(nw.nodes[i])
         end
         logjacvals = zeros(1, nl2)  #compute exponents of Jac(z)^(1-p/n)
         for i = 1:nl2
@@ -410,15 +410,16 @@ function init_λbuffer_dict(nw::nodesWeights, train::AbstractTrainingData, nt:: 
         end
         return gλvals, logjacvals, dgλvals
     end
-    @timeit to "gλvals, logjacvals, dgλvals" gλvals, logjacvals, dgλvals = jac_comp(btg)
-    @timeit to "build λbuffer_dict" begin
+    gλvals, logjacvals, dgλvals = jac_comp(btg)
+    # @timeit to "gλvals, logjacvals, dgλvals" gλvals, logjacvals, dgλvals = jac_comp(btg)
+    # @timeit to "build λbuffer_dict" begin
     λbuffer_dict = Dict{Real, λbuffer}()
     for i = 1:size(gλvals, 2)
         cur_node = nw.nodes[i]
         @assert typeof(cur_node) <: Real #lambda is always real
         push!(λbuffer_dict, cur_node => λbuffer(cur_node, gλvals[:, i], logjacvals[i], dgλvals[:, i]))
     end
-    end
+    # end
     return λbuffer_dict
 end
 

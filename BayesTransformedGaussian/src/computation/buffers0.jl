@@ -48,6 +48,7 @@ mutable struct train_buffer
             if length(θ)>1
                 Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-12) #tell correlation there is single length scale
             else
+                @info "buffers0 51: x[1:n, :]", x[1:n, :]
                 Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-12) #tell correlation there is single length scale
             end
             choleskyΣθ = incremental_cholesky!(Σθ, n)
@@ -56,14 +57,9 @@ mutable struct train_buffer
         #U = get_chol(choleskyΣθ).U
         #L_inv_X = L\Fx
         L_inv_X = nothing #not used for now
-        #qr_Σθ_inv_X = qr(L_inv_X)
         qr_Σθ_inv_X = nothing #we don't use the qr factorization right now
         Σθ_inv_X = choleskyΣθ\Fx
-        #@info "Fx'*(Σθ_inv_X)", Fx'*(Σθ_inv_X)
-        #try
-
         XΣ_inv_X = Hermitian(Fx'*(Σθ_inv_X))
-        #@info minimum(eigvals(XΣ_inv_X))
         @assert issymmetric(XΣ_inv_X)
         @assert isposdef(XΣ_inv_X)
         choleskyXΣX = cholesky(XΣ_inv_X) #regular cholesky because we don't need to extend this factorization
@@ -72,6 +68,28 @@ mutable struct train_buffer
         #end
         new(Σθ, Σθ_inv_X, qr_Σθ_inv_X, choleskyΣθ, choleskyXΣX, logdet(choleskyΣθ), logdet(choleskyXΣX), capacity, n, corr, θ, L_inv_X)
     end
+end
+
+function print(b::train_buffer)
+    println("\n ############## TRAIN_BUFFER: ", b.θ)
+    p = size(b.Σθ_inv_X, 2)
+    println("=============== Size of kernel system ===============")
+    display(b.n)
+    if n>100
+        @warn "Attempting to display large kernel system of size: ", n
+    end
+    println("=============== Kernel Matrix ===============")
+    display(inv(b.choleskyΣθ\Matrix(I, n, n)))
+    println("=============== Correlation type ===============")
+    display( b.k)
+    println("============== Σθ_inv_X =============== ")
+    display(b.Σθ_inv_X')
+    println(" =============== choleskyXΣX =============== ")
+    display(inv(b.choleskyXΣX\Matrix(I, p, p)))
+    println("=============== logdetΣθ =============== ")
+    display(b.logdetΣθ)
+    println("=============== logdetXΣX =============== ")
+    display(b.logdetXΣX)
 end
 
 """
@@ -123,7 +141,15 @@ mutable struct θλbuffer
     end 
 end
 
-
+function print(b::θλbuffer)
+    println("\n ##############  θλ BUFFER: ", (b.θ, b.λ))
+    println("=============== βhat ===============")
+    display(b.βhat')
+    println("=============== qtilde ===============")
+    display(b.qtilde)
+    println("=============== Σθ_inv_y=============== ")
+    display(b.Σθ_inv_y')
+end
 
 """
 Stores transformed data
@@ -137,7 +163,15 @@ mutable struct λbuffer
         return new(λ, gλz, logjacval, dgλz)
     end
 end
-
+function print(b::λbuffer)
+    println("\n ############## λ BUFFER: ", b.λ)
+    println("=============== gλz ===============")
+    display(b.gλz')
+    println("=============== logjacval ===============")
+    display(b.logjacval)
+    println("=============== dgλz=============== ")
+    display(b.dgλz')
+end
 
 
 """
@@ -644,6 +678,9 @@ function update!(train_buffer::train_buffer, test_buffer::test_buffer, trainingD
         #println("shape of Btheta: ", size(test_buffer.Bθ ))
         #println("shape of Fx0: " , size(testingData.Fx0))
         #println("shape of train_buffer.Σθ_inv_X", size(train_buffer.Σθ_inv_X))
+        #@info "buffers0 646: Fx0" testingData.Fx0
+        #@info "buffers0 646: Bθ" test_buffer.Bθ
+        #@info "buffers0 646: Σθ_inv_X" (train_buffer.Σθ_inv_X) 
         @timeit to "Hθ" test_buffer.Hθ = testingData.Fx0 - test_buffer.Bθ*(train_buffer.Σθ_inv_X) 
         @timeit to "Cθ" test_buffer.Cθ = test_buffer.Dθ + test_buffer.Hθ*(train_buffer.choleskyXΣX\test_buffer.Hθ') 
         test_buffer.θ = train_buffer.θ

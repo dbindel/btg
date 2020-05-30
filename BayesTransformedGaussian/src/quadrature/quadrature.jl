@@ -20,55 +20,66 @@ struct nodesWeights
     nodes::Array{Float64, 2}
     weights::Array{Float64, 2}
     d::Int64 #number of dimensions/length scales
-    num::Int64 #number of quadrature nodes
+    num::Int64 #number of quadrature nodes (1 corresponds to mle estimate)
     #nodesWeights() = new([1 2; 3 4], [ 1 2 ; 3 4], 4, 4)
     function nodesWeights(paramtype::String, ranges::Array{Float64, 2}, ranges2::Array{Float64, 2}, quadtype::String = "Gaussian"; num_pts = 12, num_MC = 200)
             d = size(ranges, 1); d2 = size(ranges2, 1)
-            if quadtype == "Gaussian"
-                N = Array{Float64, 2}(undef, d, num_pts)
-                W = Array{Float64, 2}(undef, d, num_pts)
-                nodes, weights = gausslegendre(num_pts)
-                for i = 1:size(ranges, 1)
-                    N[i, :], W[i, :] = affineTransform(nodes, weights, ranges[i, :])
-                end
-            elseif quadtype == "MonteCarlo"
-                num_pts = num_MC 
-                N = Array{Float64, 2}(undef, d, num_pts)
-                W = ones(1, num_pts)
-                for i = 1:size(ranges, 1)
-                    N[i, :] = rand(Distributions.Uniform(ranges[i, 1], ranges[i, 2]), num_pts)
-                end
-            elseif quadtype == "QuasiMonteCarlo"
-                num_pts = num_MC
-                s = SobolSeq(ranges[:,1], ranges[:,2])
-                N = hcat([next!(s) for i = 1:num_pts]...)
-                W = ones(1, num_pts)
-            elseif quadtype == "SparseGrid"
-                level = d < 7 ? 10-d : 4
-                grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d)_l$(level).asc", ',', Float64)
-                num_pts = size(grids, 1)
-                W = reshape(grids[:, end], 1, num_pts)
-                # affine trans
-                start = @view ranges[:, 1]; length = @views ranges[:, 2] .- start
-                N = Diagonal(length) * (@view grids[:, 1:end-1])'  
-                N = broadcast(+, N, start) 
-                # W .*= reduce(*, length) -- for high dimen case, this reduce(*, length) could be large, so ignore the constant factor
-            elseif quadtype == "SparseCarlo" 
-                level = (d+d2) < 7 ? 10-(d+d2) : 4
-                grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d+d2)_l$(level).asc", ',', Float64)
-                num_pts = size(grids, 1)
-                W = reshape(grids[:, end], 1, num_pts)
-                start = @view ranges[:, 1]; length = @views ranges[:, 2] .- start
-                if paramtype == "θ"
-                    N = Diagonal(length) * (@view grids[:, 1:d])'  
+            if size(ranges, 2) != 1 #do quadrature if ranges are specified
+                if quadtype == "Gaussian"
+                    N = Array{Float64, 2}(undef, d, num_pts)
+                    W = Array{Float64, 2}(undef, d, num_pts)
+                    nodes, weights = gausslegendre(num_pts)
+                    for i = 1:size(ranges, 1)
+                        N[i, :], W[i, :] = affineTransform(nodes, weights, ranges[i, :])
+                    end 
+                elseif quadtype == "MonteCarlo"
+                    num_pts = num_MC 
+                    N = Array{Float64, 2}(undef, d, num_pts)
+                    W = ones(1, num_pts)
+                    for i = 1:size(ranges, 1)
+                        N[i, :] = rand(Distributions.Uniform(ranges[i, 1], ranges[i, 2]), num_pts)
+                    end
+                elseif quadtype == "QuasiMonteCarlo"
+                    num_pts = num_MC
+                    s = SobolSeq(ranges[:,1], ranges[:,2])
+                    N = hcat([next!(s) for i = 1:num_pts]...)
+                    W = ones(1, num_pts)
+                elseif quadtype == "SparseGrid"
+                    level = d < 7 ? 10-d : 4
+                    grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d)_l$(level).asc", ',', Float64)
+                    num_pts = size(grids, 1)
+                    W = reshape(grids[:, end], 1, num_pts)
+                    # affine trans
+                    start = @view ranges[:, 1]; length = @views ranges[:, 2] .- start
+                    N = Diagonal(length) * (@view grids[:, 1:end-1])'  
                     N = broadcast(+, N, start) 
-                else
-                    N = Diagonal(length) * (@view grids[:, d2+1:end-1])'  
-                    N = broadcast(+, N, start) 
-                    W[:, :] .= 1
+                    # W .*= reduce(*, length) -- for high dimen case, this reduce(*, length) could be large, so ignore the constant factor
+                elseif quadtype == "SparseCarlo" 
+                    level = (d+d2) < 7 ? 10-(d+d2) : 4
+                    grids = readdlm("../quadrature/quadratureData/GQU/GQU_d$(d+d2)_l$(level).asc", ',', Float64)
+                    num_pts = size(grids, 1)
+                    W = reshape(grids[:, end], 1, num_pts)
+                    start = @view ranges[:, 1]; length = @views ranges[:, 2] .- start
+                    if paramtype == "θ"
+                        N = Diagonal(length) * (@view grids[:, 1:d])'  
+                        N = broadcast(+, N, start) 
+                    else
+                        N = Diagonal(length) * (@view grids[:, d2+1:end-1])'  
+                        N = broadcast(+, N, start) 
+                        W[:, :] .= 1
+                    end
+                else 
+                    throw(ArgumentError("Quadrature type not supported. Choices are \"Gaussian\", \"MonteCarlo\", \"QuasiMonteCarlo\", \"SparseGrid\" and \"SparseCarlo\""))
                 end
-            else 
-                throw(ArgumentError("Quadrature type not supported. Choices are \"Gaussian\", \"MonteCarlo\", \"QuasiMonteCarlo\", \"SparseGrid\" and \"SparseCarlo\""))
+            else #case where there is a single theta and single lambda
+                N = Array{Float64, 2}(undef, d, 1) #preallocate space
+                W = Array{Float64, 2}(undef, d, 1)
+                for i = 1:d
+                    N[i] = ranges[i]
+                    W[i] = 1
+                end
+                num_pts = 1 #num_pts is used later on in a for loop header, so it's important we get it right
+                return new(N, W, d, num_pts) 
             end
             return new(N, W, d, num_pts)
     end    

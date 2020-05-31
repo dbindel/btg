@@ -125,7 +125,8 @@ function update!(e:: AbstractTestingData, x0, Fx0)
     try
         @assert typeof(x0)<:Array{T, 2} where T<:Real
     catch e
-        @warn "x0", x0
+        @warn "update x0 value is not 2-D array"
+        #@warn "x0", x0
     end
     @assert typeof(Fx0)<:Array{T, 2} where T<:Real
     @assert size(x0, 1) == size(Fx0, 1)

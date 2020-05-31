@@ -1,3 +1,4 @@
+
 abstract type priorType end
 
 """
@@ -30,7 +31,6 @@ getNum(u::Uniform) = u.d #number of dimensions of interal range array
 getLengths(u::Uniform) = u.lengths
 logProb(u::Uniform, x) = (@assert length(x) == u.d; l = getLengths(u); -sum(log.(l)))#density function
 prob(u::Uniform, x) = (@assert length(x) == u.d; l = getLengths(u); 1/prod(l))#density function
-
 partialx(u::Uniform, x) = 0
 
 """
@@ -56,10 +56,17 @@ struct inverseUniform<:priorType
         end   
     end
 end
-getLengths(u::inverseUniform) = u.lengths
-
+getLengths(u::inverseUniform) = u.lengths 
 prob(u::inverseUniform, x) = (@assert length(x) == u.d; l = getLengths(u); prod([1/x[i]^2 * 1 / (l[i]) for i=1:u.d]))
 logProb(u::inverseUniform, x) = (@assert length(x) == u.d; l = getLengths(u); sum([-2*log(x[i]) - log(l[i]) for i=1:u.d])  )#density function
 
 #partialx(u::inverseUniform) = -2/x^3 * 1/(u.range[2]-u.range[1])
 
+#struct univariateExponential <:priorType
+#    range::Array
+#    stdev::Float64
+#    mean::Float64
+#    function univariateExponential(range)
+#        
+#    end
+#end

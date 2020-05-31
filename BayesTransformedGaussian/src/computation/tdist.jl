@@ -115,7 +115,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
             #@info Hθ
             #@info βhat
         end
-        gλz = btg.λbuffer_dict[λ].λ
+        #gλz = btg.λbuffer_dict[λ].λ
         sigma = sqrt(qtilde[1]*Cθ[1]/(n-p))
         return m[1], qtilde[1], Cθ[1], sigma, βhat, Dθ, expr2, validate,λ, BθΣθinvBθ, Eθ
     end
@@ -551,5 +551,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         return invg(quant_tdist, λ)
     end
     #return (pdf_deriv, pdf, cdf, cdf_prime_loc, m, Ex2, q_fun)
+
+
     return (pdf_deriv, pdf, cdf, cdf_grad_us, cdf_hess_us, q_fun, compute_qmC)
 end

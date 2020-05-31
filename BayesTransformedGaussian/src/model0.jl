@@ -54,7 +54,7 @@ mutable struct btg
     debug_log::Any
     debug_log2::Any
     #weightsTensorGrid::Union{Array{T}, G} where T<:Float64 where G<:Nothing
-   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 12, num_mc = 1000)
+   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 16, num_mc = 1000)
         @timeit to "assert statements, type-checking" begin
             @assert typeof(corr)<:AbstractCorrelation
             @assert typeof(priorθ)<:priorType

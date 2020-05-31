@@ -85,7 +85,7 @@ function cross_correlation!(out, k::AbstractCorrelation, θ, x, y; dims = 1)
     return nothing
 end
 
-function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 1e-12, dims=1)
+function correlation!(out, k::AbstractCorrelation, θ, x; jitter = 1e-6, dims=1)
     x = reshape(x, size(x, 1), size(x, 2))
     dist = distance(k, θ)
     pairwise!(out, dist, x, dims=dims)
@@ -118,10 +118,12 @@ const SqExponential = RBF
 #WARNING: these two functions are purely meant to be used in conjunction with (k::AbstractCorrelation)(x::Array, y::Array, θ)
 #These are not standalone functions!
 (::Gaussian)(τ::Real, θ::Real) = exp(- τ * θ / 2) 
-(::Gaussian)(τ::Real, ::AbstractVector) = exp(- τ / 2) #theta already taken into account in computation of tau
+(::Gaussian)(τ::Real, ::Union{AbstractVector, Array{T}} where T) = exp(- τ / 2) #theta already taken into account in computation of tau
+
+
 
 distance(::Gaussian, θ::Real) = SqEuclidean()
-distance(::Gaussian, θ::AbstractVector) = WeightedSqEuclidean(θ)
+distance(::Gaussian, θ::Union{AbstractVector, Array{T}} where T) = size(θ, 2)>1 ? WeightedSqEuclidean(reshape(θ, length(θ))) : WeightedSqEuclidean(θ)
 
 """
 currently derivative is only implemented for single length scale

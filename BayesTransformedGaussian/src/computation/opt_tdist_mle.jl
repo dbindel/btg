@@ -11,7 +11,11 @@ using Ipopt
 btg0 = load_synthetic_btg();
 
 function ft(theta...) 
-    return tdist_mle(btg0, [theta...], 0.1)
+    return tdist_mle(btg0, [theta...], 1.0)
+end
+
+function gt(lambda) 
+    return tdist_mle(btg0, reshape([500.0], 1, 1), lambda)
 end
 #nlp = tdist_mle(btg0, [5.0], 0.1)
 #println("\n############# nlp is")

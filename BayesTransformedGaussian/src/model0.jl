@@ -54,7 +54,7 @@ mutable struct btg
     debug_log::Any
     debug_log2::Any
     #weightsTensorGrid::Union{Array{T}, G} where T<:Float64 where G<:Nothing
-   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 16, num_mc = 1000)
+   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 12, num_mc = 1000)
         @timeit to "assert statements, type-checking" begin
             @assert typeof(corr)<:AbstractCorrelation
             @assert typeof(priorθ)<:priorType
@@ -144,7 +144,8 @@ function solve(btg::btg; validate = 0, derivatives = false)
         init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
     end
     @timeit to "compute weights" weightTensorGrid = weight_comp(btg; validate = validate)
-    @info "weightTensorGrid", weightTensorGrid
+    println("\n weightTensorGrid")
+    display(weightTensorGrid)
     #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
     (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m)  = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
 end

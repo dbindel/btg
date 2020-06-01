@@ -8,14 +8,10 @@ using GaussianProcesses
 
 include("../../btg.jl")
 path = "../../datasets/"
-include(path * "load_unrate.jl")
-include(path * "load_unrate_full.jl")
+include(path * "load_bitcoin.jl")
 
-data, label = unrate_full(path)
+data, label = bitcoin(path)
 
-
-#data, label = unrate(path)
-data, label = unrate_full(path)
 max_label = maximum(label)
 label = label ./ max_label
 
@@ -27,10 +23,11 @@ xs = xs/maximum(data)
 ###
 ##
 parsed_args = Dict()
-push!(parsed_args, "randseed" => 1234)
+#push!(parsed_args, "randseed" => 1234)
+push!(parsed_args, "randseed" => 120)
 push!(parsed_args, "lmax" => 0.3)
 push!(parsed_args, "lmin" => 0.2)
-push!(parsed_args, "percent_train" => 0.2)
+push!(parsed_args, "percent_train" => 0.1)
 push!(parsed_args, "p" => 1)
 
 randseed = parsed_args["randseed"]; rng = MersenneTwister(randseed)
@@ -89,17 +86,17 @@ elapsedmin = 0
 # myquadtype = parsed_args["sparse"] ? ["SparseCarlo", "SparseCarlo"] : ["QuasiMonteCarlo", "QuasiMonteCarlo"]
 myquadtype = ["Gaussian", "Gaussian"]
 #rangeλ = [-3.0 3] 
-#rangeλ = reshape([-0.2], 1, 1)
-rangeλ = reshape([-0.2 0.2], 1, 2)
+rangeλ = reshape([-0.2], 1, 1)
+#rangeλ = reshape([-0.3 -0.1], 1, 2)
 lmin = parsed_args["lmin"]
 lmax = parsed_args["lmax"]
 #rangeθ = [1/lmax^2 1/lmin^2]
-rangeθ = reshape([50.0 150.0], 1, 2)
+rangeθ = reshape([300.0 450.0], 1, 2)
 @info "rangeθ, rangel:" rangeθ, [lmin lmax]
 # rangeθ = [0.111 25]   
 # build btg model
 
-function load_unrate_btg()
+function load_bitcoin_btg()
     return btg(trainingData0, rangeθ, rangeλ; priorθ = inverseUniform(rangeθ), quadtype = myquadtype)
 end
 

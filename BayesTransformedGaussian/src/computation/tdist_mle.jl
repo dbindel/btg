@@ -64,7 +64,7 @@ log(p(theta, lambda|z))
 function tdist_mle(btg::btg, theta, lambda)
     (x, Fx, y, _, n, p) = unpack(btg.trainingData) #unpack training data
     function Σθ(theta)
-        return correlation(btg.k, theta, getPosition(btg.trainingData); jitter = 0.0)
+        return correlation(btg.k, theta, getPosition(btg.trainingData); jitter = 1e-10)
     end
     g = btg.g 
     dg = (y, λ) -> partialx(btg.g, y, λ)

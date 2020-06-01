@@ -22,8 +22,33 @@ end
 ####################################
 ############### Test ###############
 ####################################
-if true
-    @info "Start Test"
+if true #regular GP Test
+    println("Start Vanilla GP Test")
+    x = x_train #reshape(x_train, length(x_train) ,1) 
+    y = y_train #reshape(y_train, length(y_train), 1)
+    # build and fit a GP
+    mymean = MeanLin(zeros(d))
+    # mymean = MeanZero() 
+    kern = SE(zeros(d),0.0) 
+    gp = GP(x, y, mymean, kern) 
+    optimize!(gp)     
+    # predict
+    μ, σ² = predict_y(gp, x_test); stdv = sqrt.(σ²)
+    error_GP = abs.(μ .- y_test)
+    error_abs_GP = mean(error_GP)
+    error_sq_GP = mean(error_GP.^2)
+    CI_test_GP = hcat(-1.96.*stdv .+ μ, 1.96.*stdv .+ μ)
+    count_test_GP = sum((y_test .>= CI_test_GP[:, 1]) .* (y_test .<= CI_test_GP[:,2]))/n_test
+    nlpd_GP = -mean(log.(pdf.(Normal(), (y_test.-μ)./stdv)./stdv))
+    println("MSE:")
+    display(error_sq_GP)
+    println("Conf interval accuracy:")
+    display(count_test_GP)
+end
+
+
+if false
+    @info "Start BTG Test"
     before = Dates.now()
     count_test = 0
     error_abs = 0.

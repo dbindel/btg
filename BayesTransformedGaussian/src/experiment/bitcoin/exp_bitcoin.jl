@@ -27,13 +27,14 @@ if true #regular GP Test
     x = x_train #reshape(x_train, length(x_train) ,1) 
     y = y_train #reshape(y_train, length(y_train), 1)
     # build and fit a GP
-    mymean = MeanLin(zeros(d))
+    #mymean = MeanLin(zeros(d))
+    mymean = MeanZero() 
     # mymean = MeanZero() 
-    kern = SE(zeros(d),0.0) 
+    kern = SE(0.0, 0.0) 
     gp = GP(x, y, mymean, kern) 
     optimize!(gp)     
     # predict
-    μ, σ² = predict_y(gp, x_test); stdv = sqrt.(σ²)
+    μ, σ² = predict_y(gp, dropdims(x_test, dims=2)); stdv = sqrt.(σ²)
     error_GP = abs.(μ .- y_test)
     error_abs_GP = mean(error_GP)
     error_sq_GP = mean(error_GP.^2)
@@ -46,8 +47,15 @@ if true #regular GP Test
     display(count_test_GP)
 end
 
+#
+# MSE:
+# 0.0017970008992554704
+# Conf interval accuracy:
+# 0.941033434650456
+#
+#
 
-if false
+if true
     @info "Start BTG Test"
     before = Dates.now()
     count_test = 0

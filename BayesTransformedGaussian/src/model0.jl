@@ -165,6 +165,11 @@ function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_dat
     #all the logic from create_btg_iterator used to be here
     R, weightsTensorGrid = get_btg_iterator(nwθ, nwλ, quadType)
     powerGrid = similar(weightsTensorGrid) #used to store exponents of qtilde, determinants, jacobians, etc.
+    qTensorGrid = similar(weightsTensorGrid)
+    detTensorGridΣθ = similar(weightsTensorGrid)
+    detTensorGridXΣX = similar(weightsTensorGrid)
+    jacTensorGrid = similar(weightsTensorGrid)
+    priorTensorGrid = similar(weightsTensorGrid)
     for I in R
         (r1, r2, t1, t2) = get_index_slices(nwθ,nwλ, quadType, I)
         t1 = length(t1)==1 ? t1[1] : t1
@@ -184,12 +189,34 @@ function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_dat
         detTensorGridXΣX_I = -0.5 * logdetXΣX
         jacTensorGrid_I = (1-p/n) * logjacval
         priorTensorGrid_I = logProb(btg.priorθ, t1) + logProb(btg.priorλ, t2)
-        powerGrid[I] = qTensorGrid_I + detTensorGridΣθ_I + detTensorGridXΣX_I + jacTensorGrid_I + priorTensorGrid_I #sum of exponents        
+        powerGrid[I] = qTensorGrid_I + detTensorGridΣθ_I + detTensorGridXΣX_I + jacTensorGrid_I + priorTensorGrid_I #sum of exponents              
+        #for testing purposes
+        qTensorGrid[I] = qTensorGrid_I
+        detTensorGridΣθ[I] = detTensorGridΣθ_I
+        detTensorGridXΣX[I] = detTensorGridXΣX_I
+        jacTensorGrid[I] = jacTensorGrid_I
+        priorTensorGrid[I] = priorTensorGrid_I
+
     end
     powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
     weightsTensorGrid = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? powerGrid : weightsTensorGrid .* powerGrid 
     weightsTensorGrid = weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
     #btg.weightsTensorGrid = weightsTensorGrid #store a copy of weights in BTG as well for debugging purposes
+    
+    #print grids to detect over-concentration
+    println("qTensorGrid")
+    display(qTensorGrid)
+    println("detTensorGridΣθ")
+    display(detTensorGridΣθ)
+    println("detTensorGridXΣX")
+    display(detTensorGridXΣX)
+    println("jacTensorGrid")
+    display(jacTensorGrid)
+    println("weightsTensorGrid")
+    display(weightsTensorGrid)
+    println("priorTensorGrid")
+    display(priorTensorGrid)
+
     return weightsTensorGrid
 end
 

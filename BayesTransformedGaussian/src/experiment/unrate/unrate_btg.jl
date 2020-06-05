@@ -30,7 +30,7 @@ parsed_args = Dict()
 push!(parsed_args, "randseed" => 1234)
 push!(parsed_args, "lmax" => 0.3)
 push!(parsed_args, "lmin" => 0.2)
-push!(parsed_args, "percent_train" => 0.2)
+push!(parsed_args, "percent_train" => 0.4)
 push!(parsed_args, "p" => 1)
 
 randseed = parsed_args["randseed"]; rng = MersenneTwister(randseed)
@@ -90,11 +90,16 @@ elapsedmin = 0
 myquadtype = ["Gaussian", "Gaussian"]
 #rangeλ = [-3.0 3] 
 #rangeλ = reshape([-0.2], 1, 1)
-rangeλ = reshape([-0.2 0.2], 1, 2)
+#rangeλ = reshape([-0.2 0.2], 1, 2) #compare to this
+#rangeλ = reshape([-0.2], 1, 1) #BETTER BY 0.5 PERCENT
+#rangeλ = reshape([-0.001], 1, 1) #compare above to this
+
+rangeλ = reshape([-5.0 5.0], 1, 2) #BETTER BY 0.5 PERCENT
 lmin = parsed_args["lmin"]
 lmax = parsed_args["lmax"]
 #rangeθ = [1/lmax^2 1/lmin^2]
-rangeθ = reshape([50.0 150.0], 1, 2)
+#rangeθ = reshape([50.0 150.0], 1, 2)
+rangeθ = reshape([100.0], 1, 1)
 @info "rangeθ, rangel:" rangeθ, [lmin lmax]
 # rangeθ = [0.111 25]   
 # build btg model

@@ -45,6 +45,19 @@ function covariate_fun(x, p)
     end
 end
 
+function zero_fun(x, p)
+    n = size(x, 1)
+    d = size(x, 2)
+    if p == 1
+        return zeros(n, 1)
+    elseif p == 1 + d
+        return hcat(zeros(n), x)
+    else
+        throw(ArgumentError("Only support constant or linear convariate."))
+    end
+end
+
+
 # training set
 p_train = parsed_args["percent_train"]
 n_train = (Int64)(round(p_train * length(data)))
@@ -70,14 +83,15 @@ test_label = label[ind_test]
 y_train = train_label
 
 x = reshape(x_train, n_train, 1)
-Fx = covariate_fun(x, parsed_args["p"])
-
+#Fx = covariate_fun(x, parsed_args["p"])
+Fx = zero_fun(x, parsed_args["p"])
 trainingData0 = trainingData(x, Fx, train_label) 
 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
 x_test = reshape(x_test, n_test, 1)
-Fx_test = covariate_fun(x_test, parsed_args["p"])
+#Fx_test = covariate_fun(x_test, parsed_args["p"])
+Fx_test = zero_fun(x_test, parsed_args["p"])
 y_test = test_label
 
 elapsedmin = 0
@@ -91,8 +105,10 @@ rangeλ = reshape([-0.2], 1, 1)
 lmin = parsed_args["lmin"]
 lmax = parsed_args["lmax"]
 #rangeθ = [1/lmax^2 1/lmin^2]
-rangeθ = reshape([300.0 450.0], 1, 2)
-@info "rangeθ, rangel:" rangeθ, [lmin lmax]
+#rangeθ = reshape([300.0 450.0], 1, 2)
+rangeθ = reshape([350.0], 1, 1)
+
+#@info "rangeθ, rangel:" rangeθ, [lmin lmax]
 # rangeθ = [0.111 25]   
 # build btg model
 

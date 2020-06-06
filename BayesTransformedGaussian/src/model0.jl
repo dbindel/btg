@@ -198,11 +198,14 @@ function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_dat
         priorTensorGrid[I] = priorTensorGrid_I
 
     end
+    temp_power = copy(powerGrid)
     powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
     weightsTensorGrid = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? powerGrid : weightsTensorGrid .* powerGrid 
     weightsTensorGrid = weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
     #btg.weightsTensorGrid = weightsTensorGrid #store a copy of weights in BTG as well for debugging purposes
     
+    println("Log likelihood")
+    display(temp_power')
     #print grids to detect over-concentration
     println("qTensorGrid")
     display(qTensorGrid)

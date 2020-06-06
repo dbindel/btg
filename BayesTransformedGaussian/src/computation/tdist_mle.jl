@@ -1,4 +1,5 @@
 include("../btg.jl")
+using LinearAlgebra
 """
 Precompute some quantities
 diffs - array of differences between x_i and x_j, used to compute partial_Σθ_theta for various theta
@@ -64,11 +65,18 @@ log(p(theta, lambda|z))
 function tdist_mle(btg::btg, theta, lambda)
     (x, Fx, y, _, n, p) = unpack(btg.trainingData) #unpack training data
     function Σθ(theta)
-        return correlation(btg.k, theta, getPosition(btg.trainingData); jitter = 1e-10)
+        return correlation(btg.k, theta, getPosition(btg.trainingData); jitter = 1e-6)
     end
     g = btg.g 
     dg = (y, λ) -> partialx(btg.g, y, λ)
-    choleskyΣθ = cholesky(Σθ(theta))
+    try
+        global choleskyΣθ = cholesky(Hermitian(Σθ(theta)))
+    catch e
+        println("problematic kernel matrix")
+        display(minimum(eigvals(Hermitian(Σθ(theta)))))
+        println("theta")
+        display(theta)
+    end
     gλz = g(y, lambda)
     Σθ_inv_y = choleskyΣθ\gλz
     Σθ_inv_X = choleskyΣθ\Fx
@@ -86,7 +94,7 @@ function tdist_mle(btg::btg, theta, lambda)
     logdetΣθ = logdet(choleskyΣθ)
     logdetXΣX = logdet(choleskyXΣX)
 
-    logJ = z -> abs(reduce(+, map(x -> log(dg(x, lambda)), z)))
+    logJ = z -> reduce(+, map(x -> log(dg(x, lambda)), z))
     logJ_ret = logJ(y)
 
     logpθ = logProb(pθ, theta)

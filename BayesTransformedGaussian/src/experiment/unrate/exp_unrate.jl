@@ -7,7 +7,14 @@ data, target = unrate(path)
 
 btg0 = load_unrate_btg()
 (pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
-f = theta -> tdist_mle(btg0, theta, -5)
+f = theta -> tdist_mle(btg0, theta, 0.1)
+g(theta, lambda) = tdist_mle(btg0, theta, lambda)
+h = lambda -> tdist_mle(btg0, 130.0, lambda)
+####################################
+########## MLE Estimation ##########
+####################################
+
+
 
 ####################################
 ######## Optional Plotting #########
@@ -91,3 +98,4 @@ if true
         PyPlot.title("BTG $myquadtype", fontsize=10)
         PyPlot.savefig("exp_synthetic_mle_btg4.pdf")
     end
+

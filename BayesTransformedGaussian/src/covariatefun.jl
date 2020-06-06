@@ -30,3 +30,18 @@ b = constant_basis(reshape([1; 2; 3], 3, 1))
 c = linear_polynomial_basis([1 2; 3 4; 5 6])
 d = linear_polynomial_basis([1;2;3])
 end
+
+"""
+Choose covariate type based on p
+"""
+function covariate_fun(x, p)
+    n = size(x, 1)
+    d = size(x, 2)
+    if p == 1
+        return ones(n, 1)
+    elseif p == 1 + d
+        return hcat(ones(n), x)
+    else
+        throw(ArgumentError("Only support constant or linear convariate."))
+    end
+end

@@ -41,6 +41,36 @@ function plt!(f, a, b, numpts=100; label = "y", title = "", color = nothing)
     return(x, y)
 end
 
+function plt2D(f, arr1, arr2, numpts=100; label = "y", title="", color = nothing)
+    a1 = arr1[1]
+    b1 = arr1[2]
+    a2 = arr2[1]
+    b2 = arr2[2]
+    
+    h = (b-a)/(numpts-1)
+
+    x1 = collect(a1:h:b1)
+    x2 = collect(a2:h:b2)
+
+    W = zeros(n, n)
+    C = CartesianIndices(W)
+
+    for I in C
+        W[I] = f(x1[I[1]], x2[I[2]])
+    end
+
+    y = zeros(1,numpts)
+    x = collect(a:h:b)
+    y = map(f, x)
+    if color!=nothing
+        display(Plots.plot!(x, y, label = label, title = title, color = color, linewidth = 3))
+    else 
+        display(Plots.plot!(x, y, label = label, title = title, linewidth = 3))
+    end
+    return (x, y)
+end
+
+
 function plt!(point::Float64; label = "", title = "")
     display(Plots.plot!([point], seriestype = :vline))
 end

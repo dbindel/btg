@@ -46,10 +46,10 @@ mutable struct train_buffer
         @timeit to "Σθ" begin
             Σθ = Array{Float64}(undef, capacity, capacity)
             if length(θ)>1
-                Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-12) #tell correlation there is single length scale
+                Σθ[1:n, 1:n] = correlation(corr, θ, x[1:n, :]; jitter = 1e-6) #tell correlation there is single length scale
             else
-                @info "buffers0 51: x[1:n, :]", x[1:n, :]
-                Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-12) #tell correlation there is single length scale
+                #@info "buffers0 51: x[1:n, :]", x[1:n, :]
+                Σθ[1:n, 1:n] = correlation(corr, θ[1], x[1:n, :]; jitter = 1e-6) #tell correlation there is single length scale
             end
             choleskyΣθ = incremental_cholesky!(Σθ, n)
         end

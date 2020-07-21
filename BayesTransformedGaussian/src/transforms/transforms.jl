@@ -26,7 +26,9 @@ External links
 * `lambda::float=1.0`: lambda hyperparameter
 
 """
-abstract type NonlinearTransform end
+abstract type AbstractTransform end
+
+abstract type NonlinearTransform <: AbstractTransform end
 
 struct BoxCox <:NonlinearTransform end 
 
@@ -78,6 +80,8 @@ end
 struct IdentityTransform <:NonlinearTransform end
 (::IdentityTransform)(x, λ::Union{Array{T, 1}, T} where T<:Real) = (@assert (typeof(λ) <:Array{T} where T<:Real && size(λ, 2)==1) || (typeof(λ)<:Real); 
                                                             identity.(x))
+(::IdentityTransform)(x) = (identity.(x))
+
 partialx(::IdentityTransform, x, λ) = 1
 partialxx(::IdentityTransform, x, λ)  = 0
 partialλ(::IdentityTransform, x, λ) = 0

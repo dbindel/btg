@@ -97,7 +97,7 @@ function checkDerivative(f, df, x0, hessian = nothing, first = 3, last = 12, num
     r1 = log.(h)
     r2 = log.(A)
     plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error")#, fontfamily = font(48, "Courier") , reuse = false)
-    return (r1, r2, plt, polyfit(r1, r2, 1))
+    return (r1, r2, plt, fit(r1, r2, 1))
 end
 
 """
@@ -185,6 +185,6 @@ function checkDerivative_in_place(f, df, x0, store, hessian = nothing, first = 3
     r1 = log.(h)
     r2 = log.(A)
     plt = Plots.plot(r1, r2, title = "Finite Difference Derivative Checker", xlabel = "log of h", ylabel = "log of error")#, fontfamily = font(48, "Courier") , reuse = false)
-    return (r1, r2, plt, polyfit(r1, r2, 1))
+    return (r1, r2, plt, fit(r1, r2, 1))
 end
 

@@ -20,8 +20,10 @@ set -x
 
 # May 30 
 # use inverse uniform distribution of theta
-julia exp_abalone.jl --test --single --randseed 123 2>&1 | tee log_exp_abalone_inverseuniform_rand123.txt
-julia exp_abalone.jl --test --single --transform "IdentityTransform" --randseed 123 2>&1 | tee log_exp_abalone_inverseuniform_idtrans_rand123.txt
+# julia exp_abalone.jl --test --single --randseed 123 2>&1 | tee log_exp_abalone_inverseuniform_rand123.txt
+# julia exp_abalone.jl --test --single --transform "IdentityTransform" --randseed 123 2>&1 | tee log_exp_abalone_inverseuniform_idtrans_rand123.txt
 
-julia exp_abalone.jl --test --single 2>&1 | tee log_exp_abalone_inverseuniform.txt
-julia exp_abalone.jl --test --single --transform "IdentityTransform" 2>&1 | tee log_exp_abalone_inverseuniform_idtrans.txt
+# julia exp_abalone.jl --test --single 2>&1 | tee log_exp_abalone_inverseuniform.txt
+# julia exp_abalone.jl --test --single --transform "IdentityTransform" 2>&1 | tee log_exp_abalone_inverseuniform_idtrans.txt
+
+# July 20

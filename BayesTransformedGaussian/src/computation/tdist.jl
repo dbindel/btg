@@ -12,8 +12,8 @@ end
 Compute cdf, pdf, and pdf_deriv of T-distribution
 """
 function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real; validate = 0) 
-    g = btg.g #nonlinear transform, e.g. BoxCox
-    invg = (x, λ) -> inverse(btg.g, x, λ)
+    g = getfield(Main, Symbol(options.transform_type))() #nonlinear transform, e.g. BoxCox
+    invg = (x, λ) -> inverse(g, x, λ)
     (x, Fx, y, _, n, p) = unpack(btg.trainingData) #unpack training data
     @assert validate >= 0 && n >= validate
     n = validate == 0 ? n : n-1 #downsize by 1, if we will be deleting 1 data point
@@ -157,7 +157,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         #return  sqrt(qC/(n-p))
         #return m
         #return m
-        #return btg.g(y0, λ)
+        #return g(y0, λ)
     end
     
     function main_pdf(y0, t, m, qC)
@@ -233,8 +233,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         @timeit to "cdf jacobian" begin
         qC = q*C
         k = size(qC, 1)
-        gλy0 = btg.g(y0, λ)
-        #dgλy0 = partialx(btg.g, y0, λ) 
+        gλy0 = g(y0, λ)
+        #dgλy0 = partialx(g, y0, λ) 
         jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
         jacy0 = jac(y0)
         ## N.B: please note the difference between t and vanilla t. By default, the build-in julia tdist pdf
@@ -306,8 +306,8 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         m, q, C, βhat = compute_qmC(x0, Fx0)
         qC = q*C
         k = size(qC, 1)
-        gλy0 = btg.g(y0, λ)
-        #dgλy0 = partialx(btg.g, y0, λ) 
+        gλy0 = g(y0, λ)
+        #dgλy0 = partialx(g, y0, λ) 
         jac = x -> abs(reduce(*, map(z -> dg(z, λ), x))) #Jacobian function
         jacy0 = jac(y0)
         ## N.B: please note the difference between t and vanilla t. By default, the build-in julia tdist pdf
@@ -376,7 +376,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         m, q, C, βhat = compute_qmC(x0, Fx0)
         qC = q*C
         k = size(qC, 1)
-        gλy0 = btg.g(y0, λ)
+        gλy0 = g(y0, λ)
         dgλy0 = dg(y0, λ)
         d2gλy0 = dg2(y0, λ)
         x0 = reshape(x0, 1, length(x0))
@@ -486,7 +486,7 @@ function comp_tdist(btg::btg, θ::Union{Array{T, 1}, T} where T<:Real, λ::Real;
         cdf_eval =  Distributions.cdf.(vanillat, arg)
         cdf_deriv = Distributions.pdf.(vanillat, arg) #chain rule term is computed later
         cdf_second_deriv = -(n-p+k) * arg/( n - p  + arg^2) * cdf_deriv #chain rule term computed later
-        gλy0 = btg.g(y0, λ)
+        gλy0 = g(y0, λ)
         dgλy0 = dg(y0, λ)
         d2gλy0 = dg2(y0, λ)
         hess_G = zeros(1+d, 1+d)

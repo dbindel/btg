@@ -1,5 +1,11 @@
 using Dates
 using ArgParse
+using Printf
+using Random
+using GaussianProcesses
+using Cubature
+
+include("../../btg.jl")
 
 s = ArgParseSettings()
 # The defaut setting: --test: multiple length scale, QMC
@@ -73,16 +79,9 @@ s = ArgParseSettings()
 end
 parsed_args = parse_args(ARGS, s)
 
-using Printf
-using Random
-using GaussianProcesses
-using Cubature
-
-# before_all = Dates.now()
-
-include("../../btg.jl")
-
+##################################################
 # load abalone data
+##################################################
 df = DataFrame(CSV.File("../../datasets/abalone.csv", header = 0))
 data = convert(Matrix, df[:,2:8]) #length, diameter, height, whole weight, shucked weight, viscera weight, shell weight
 target = convert(Array, df[:, 9]) #age
@@ -93,7 +92,12 @@ randseed = parsed_args["randseed"]; rng = MersenneTwister(randseed)
 ind_shuffle = randperm(rng, size(data, 1)) 
 data = data[ind_shuffle, :]
 target = target[ind_shuffle]
-# training set
+
+##################################################
+# initialize training set
+##################################################
+# args here: ntrain, posc, yshift, are part of data process, no need to put into BTG options
+# so keep them here 
 id_train = 1:parsed_args["ntrain"]
 n_train = length(id_train)
 posx = 1:feature_size
@@ -107,7 +111,7 @@ elseif parsed_args["posc"] == 0
 else
     throw(ArgumentError("Number of covariates not well-defined."))
 end
-y = float(target[id_train])
+y = float(target[id_train]) # has to be positive
 ymax_train = maximum(y)
 y ./= ymax_train
 yshift = parsed_args["yshift"]
@@ -116,40 +120,44 @@ y .+= yshift
 trainingData0 = trainingData(x, Fx, y) 
 d = getDimension(trainingData0); n = getNumPts(trainingData0); p = getCovDimension(trainingData0)
 
-#parameter setting
-if parsed_args["quadtype"] == 1
-    myquadtype = ["Gaussian", "Gaussian"]
-elseif parsed_args["quadtype"] == 2
-    myquadtype = ["SparseGrid", "Gaussian"]
-elseif parsed_args["quadtype"] == 3
-    myquadtype = ["SparseCarlo", "SparseCarlo"]
-else
-    myquadtype = ["QuasiMonteCarlo", "QuasiMonteCarlo"]
-end
 
-if parsed_args["transform"] == "BoxCox"
-    mytrans = BoxCox() 
-elseif parsed_args["transform"] == "IdentityTransform"
-    mytrans = IdentityTransform()
-elseif parsed_args["transform"] == "ShiftedBoxCox"
-    mytrans = ShiftedBoxCox()
-else 
-    throw(ArgumentError("Transform type not supported."))
-end
-
+##################################################
+# BTG options
+##################################################
 rangeλ = reshape(convert(Array{Float64, 1}, parsed_args["rangelambda"]), 1, 2)
-rangeθs = reshape(convert(Array{Float64, 1}, parsed_args["rangetheta"]), 1, 2)
-@assert size(rangeλ) == (1, 2)
-@assert size(rangeθs) == (1, 2)
-rangeθm = repeat(rangeθs, d, 1)
-rangeθ = parsed_args["single"] ? rangeθs : rangeθm
+rangeθ = reshape(convert(Array{Float64, 1}, parsed_args["rangetheta"]), 1, 2)
+# initialize options by ranges
+if parsed_args["single"] 
+    options = Options(rangeθ, rangeλ, trainingData0)
+else
+    options = Options(rangeθ, rangeλ, trainingData0, d)
+end
+
+if parsed_args["quadtype"] == 1
+    options.quadrature_type["θ"] = "Gaussian" # this is actually default type
+    options.quadrature_type["λ"] = "Gaussian" # this is actually default type
+elseif parsed_args["quadtype"] == 2
+    options.quadrature_type["θ"] = "SparseGrid"
+    options.quadrature_type["λ"] = "Gaussian"
+elseif parsed_args["quadtype"] == 3
+    options.quadrature_type["θ"] = "SparseCarlo"
+    options.quadrature_type["λ"] = "SparseCarlo"
+else
+    options.quadrature_type["θ"] = "QuasiMonteCarlo"
+    options.quadrature_type["λ"] = "QuasiMonteCarlo"
+end
+options.transform_type = parsed_args["transform"]
+
+##################################################
 # build btg model
-btg0 = btg(trainingData0, rangeθ, rangeλ; quadtype = myquadtype, num_gq = parsed_args["num_gq"], transform = mytrans, priorθ = inverseUniform(rangeθ))
-# (pdf0_raw, cdf0_raw, dpdf0_raw, quantInfo0_raw) = solve(btg0);
-(pdf0_raw, cdf0_raw, dpdf0_raw, _, _, quantInfo0_raw, _, _, tgridm, tgridsigma_m, weightsTensorGrid) = solve(btg0)
-####################################
-############### Test ###############
-####################################
+##################################################
+btg0 = btg(trainingData0, options) # initialize btg from options, compute training buffers...
+model = btgModel(btg0); # build weightsgrid, tdist computations...
+
+##################################################
+# prediction
+##################################################
+
 if parsed_args["test"]
     @info "Start Test"
     before = Dates.now()

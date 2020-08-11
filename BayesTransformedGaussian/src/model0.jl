@@ -34,11 +34,12 @@ mutable struct btg
     trainingData::AbstractTrainingData #x, Fx, y, p (dimension of each covariate vector), dimension (dimension of each location vector)
     testingData::AbstractTestingData 
     n::Int64 #number of points in kernel system, if 0 then uninitialized
-    g:: NonlinearTransform #transform family, e.g. BoxCox()
-    k::AbstractCorrelation  #kernel family, e.g. Gaussian()
-    quadType::Array{String,1} #type for theta and lambda respectively, Gaussian, Turan, or MonteCarlo
-    priorθ::priorType
-    priorλ::priorType
+    # g::NonlinearTransform #transform family, e.g. BoxCox()
+    # k::AbstractCorrelation  #kernel family, e.g. Gaussian()
+    # quadType::Array{String,1} #type for theta and lambda respectively, Gaussian, Turan, or MonteCarlo
+    # priorθ::priorType
+    # priorλ::priorType
+    options::BtgOptions
     nodesWeightsθ #integration nodes and weights for θ
     nodesWeightsλ #integration nodes and weights for λ; nodes and weights should remain constant throughout the lifetime of the btg object
     λbuffer_dict::Dict{T where T<:Real, λbuffer} #λbuffer stores gλvals and logjacvals
@@ -54,7 +55,16 @@ mutable struct btg
     debug_log::Any
     debug_log2::Any
     #weightsTensorGrid::Union{Array{T}, G} where T<:Float64 where G<:Nothing
-   function btg(trainingData::AbstractTrainingData, rangeθ, rangeλ; corr = Gaussian(), priorθ = Uniform(rangeθ), priorλ = Uniform(rangeλ), quadtype = ["Gaussian", "Gaussian"], transform = BoxCox(), num_gq = 12, num_mc = 1000)
+    function btg(trainingData::AbstractTrainingData, options::BtgOptions)
+        rangeθ = options.parameter_range["θ"] 
+        rangeλ = options.parameter_range["λ"]
+        corr = getfield(Main, Symbol(options.kernel_type))()
+        priorθ = options.parameter_prior["θ"]
+        priorλ = options.parameter_prior["λ"]
+        quadtype = [options.quadrature_type["θ"], options.quadrature_type["λ"]]
+        transform = getfield(Main, Symbol(options.transform_type))()
+        num_gq = options.quadrature_size["Gaussian"]
+        num_mc = options.quadrature_size["MonteCarlo"]
         @timeit to "assert statements, type-checking" begin
             @assert typeof(corr)<:AbstractCorrelation
             @assert typeof(priorθ)<:priorType
@@ -62,7 +72,6 @@ mutable struct btg
             @assert typeof(quadtype)<:Array{String,1}
             @assert typeof(transform)<: NonlinearTransform
         end
-        @assert Base.size(rangeθ, 1) == getDimension(trainingData) || Base.size(rangeθ, 1)==1
         @timeit to "nodesWeightsθ" nodesWeightsθ = nodesWeights("θ", rangeθ, rangeλ, quadtype[1]; num_pts = num_gq, num_MC = num_mc)
         @timeit to "nodesWeightsλ" nodesWeightsλ = nodesWeights("λ", rangeλ, rangeθ, quadtype[2]; num_pts = num_gq, num_MC = num_mc)
         @timeit to "init λbuffer_dict" λbuffer_dict = init_λbuffer_dict(nodesWeightsλ, trainingData, transform) 
@@ -75,7 +84,7 @@ mutable struct btg
         @timeit to "validation_test_buffer_dict" validation_test_buffer_dict =  init_validation_test_buffer_dict(nodesWeightsθ, test_buffer_dict) #empty dict
         @timeit to "validation_λ_buffer_dict" validation_λ_buffer_dict = init_validation_λ_buffer_dict() #empty dict
         cap = getCapacity(trainingData)
-        new(trainingData, testingData(), trainingData.n, transform, corr, quadtype, priorθ, priorλ, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict,  
+        new(trainingData, testingData(), trainingData.n, options, nodesWeightsθ, nodesWeightsλ, λbuffer_dict, train_buffer_dict, test_buffer_dict,  
         jac_buffer_dict, θλbuffer_dict, validation_λ_buffer_dict, validation_train_buffer_dict, validation_test_buffer_dict, validation_θλ_buffer_dict, cap, [], [])
     end
 end
@@ -128,26 +137,44 @@ end
  #   update_train_buffer!(btg.train_buffer, btg.train)
 #end
 
-function solve(btg::btg; validate = 0, derivatives = false)
-    #println("validate in solve_btg is", validate)
-    @assert typeof(derivatives) == Bool
-    @assert typeof(validate) == Int64
-    #@info "derivatives", derivatives
-    if validate != 0 && derivatives == true
-        println("Derivatives not supported in cross-validation (when validate flag > 0).")
-        return
+"""
+BtgModel object contains results from solve
+"""
+mutable struct btgModel
+    pdf::Function
+    cdf::Function
+    dpdf::Function
+    augmented_cdf_deriv::Function
+    augmented_cdf_hess::Function
+    quantInfo::Function
+    tgridpdf::Array{Function,2}
+    tgridcdf::Array{Function,2}
+    tgridm::Array{Function,2}
+    tgridsigma_m::Array{Function,2}
+    weightsTensorGrid::Array{T,2} where T<:Real
+    function btgModel(btg::btg; validate = 0, derivatives = false)
+        #println("validate in solve_btg is", validate)
+        @assert typeof(derivatives) == Bool
+        @assert typeof(validate) == Int64
+        #@info "derivatives", derivatives
+        if validate != 0 && derivatives == true
+            println("Derivatives not supported in cross-validation (when validate flag > 0).")
+            return
+        end
+        if validate != 0
+            #@info "num keys theta lambda buffer", length(keys(btg.θλbuffer_dict))
+            #println("btg.n: ", btg.n)
+            @assert validate > 0 && btg.n>=validate
+            init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
+        end
+        @timeit to "compute weights" weightsTensorGrid = weight_comp(btg; validate = validate)
+        println("\n weightsTensorGrid")
+        display(weightsTensorGrid)
+        #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo) = prediction_comp(btg, weightsTensorGrid; validate = validate, derivatives = derivatives)
+        (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m) = prediction_comp(btg, weightsTensorGrid; validate = validate, derivatives = derivatives)
+        # return (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m, weightsTensorGrid) 
+        new(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m, weightsTensorGrid)
     end
-    if validate != 0
-        #@info "num keys theta lambda buffer", length(keys(btg.θλbuffer_dict))
-        #println("btg.n: ", btg.n)
-        @assert validate > 0 && btg.n>=validate
-        init_validation_buffers(btg, btg.train_buffer_dict, btg.θλbuffer_dict, btg.test_buffer_dict, btg.λbuffer_dict, validate)
-    end
-    @timeit to "compute weights" weightTensorGrid = weight_comp(btg; validate = validate)
-    println("\n weightTensorGrid")
-    display(weightTensorGrid)
-    #(pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo) = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
-    (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m)  = prediction_comp(btg, weightTensorGrid; validate = validate, derivatives = derivatives)
 end
 
 """
@@ -155,7 +182,8 @@ Stably compute weights in the mixture of T-distributions, i.e. |Σθ|^(-1/2) * |
 for all combinations of quadrature nodes in θ and λ
 """
 function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_data and not test_data
-    nwθ = btg.nodesWeightsθ; nwλ = btg.nodesWeightsλ; quadType = btg.quadType
+    nwθ = btg.nodesWeightsθ; nwλ = btg.nodesWeightsλ
+    quadType = [btg.options.quadrature_type["θ"], btg.options.quadrature_type["λ"]]
     nt1 = nwθ.d   #number of dimensions of theta 
     nt2 = nwθ.num #number of theta quadrature in each dimension
     nl1 = nwλ.d   #number of dimensions of lambda 
@@ -188,7 +216,7 @@ function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_dat
         detTensorGridΣθ_I = -0.5 * logdetΣθ #compute exponents of |Σθ|^(-1/2) and |X'ΣθX|^(-1/2) 
         detTensorGridXΣX_I = -0.5 * logdetXΣX
         jacTensorGrid_I = (1-p/n) * logjacval
-        priorTensorGrid_I = logProb(btg.priorθ, t1) + logProb(btg.priorλ, t2)
+        priorTensorGrid_I = logProb(btg.options.parameter_prior["θ"], t1) + logProb(btg.options.parameter_prior["λ"], t2)
         powerGrid[I] = qTensorGrid_I + detTensorGridΣθ_I + detTensorGridXΣX_I + jacTensorGrid_I + priorTensorGrid_I #sum of exponents              
         #for testing purposes
         qTensorGrid[I] = qTensorGrid_I
@@ -200,25 +228,25 @@ function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_dat
     end
     temp_power = copy(powerGrid)
     powerGrid = exp.(powerGrid .- maximum(powerGrid)) #linear scaling
-    weightsTensorGrid = (endswith(btg.quadType[1], "MonteCarlo") && endswith(btg.quadType[2], "MonteCarlo")) ? powerGrid : weightsTensorGrid .* powerGrid 
+    weightsTensorGrid = (endswith(quadType[1], "MonteCarlo") && endswith(quadType[2], "MonteCarlo")) ? powerGrid : weightsTensorGrid .* powerGrid 
     weightsTensorGrid = weightsTensorGrid/sum(weightsTensorGrid) #normalized grid of weights
     #btg.weightsTensorGrid = weightsTensorGrid #store a copy of weights in BTG as well for debugging purposes
     
-    println("Log likelihood")
-    display(temp_power')
-    #print grids to detect over-concentration
-    println("qTensorGrid")
-    display(qTensorGrid)
-    println("detTensorGridΣθ")
-    display(detTensorGridΣθ)
-    println("detTensorGridXΣX")
-    display(detTensorGridXΣX)
-    println("jacTensorGrid")
-    display(jacTensorGrid)
-    println("weightsTensorGrid")
-    display(weightsTensorGrid)
-    println("priorTensorGrid")
-    display(priorTensorGrid)
+    # println("Log likelihood")
+    # display(temp_power')
+    # #print grids to detect over-concentration
+    # println("qTensorGrid")
+    # display(qTensorGrid)
+    # println("detTensorGridΣθ")
+    # display(detTensorGridΣθ)
+    # println("detTensorGridXΣX")
+    # display(detTensorGridXΣX)
+    # println("jacTensorGrid")
+    # display(jacTensorGrid)
+    # println("weightsTensorGrid")
+    # display(weightsTensorGrid)
+    # println("priorTensorGrid")
+    # display(priorTensorGrid)
 
     return weightsTensorGrid
 end
@@ -243,28 +271,29 @@ function prediction_comp(btg::btg, weightsTensorGrid::Array{Float64}; validate =
     nt1 = getNumLengthScales(nwθ) # number of dimensions of theta
     nt2 = getNum(nwθ) #number of theta quadrature in each dimension
     nl2 = getNum(btg.nodesWeightsλ) #number of lambda quadrature in each dimension
-    quadType = btg.quadType
+    quadType = [btg.options.quadrature_type["θ"], btg.options.quadrature_type["λ"]]
     (tgridpdfderiv, tgridpdf, tgridcdf, tgridm, tgridsigma_m, tgridquantile, tgridcdf_augmented_deriv, tgridcdf_augmented_hess) = tgrids(nt1, nt2, nl2, quadType, weightsTensorGrid; derivatives = derivatives)
     R = CartesianIndices(weightsTensorGrid)
     @timeit to "put functions in array" begin
-    for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
-        (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
-        #@info "validate in prediction_comp", validate
-        (dpdf, pdf, cdf, cdf_jac_us, cdf_hess_us, q_fun, computeqmC) = comp_tdist(btg, θ, λ; validate = validate)
-        tgridpdfderiv[I] = dpdf
-        tgridpdf[I] = pdf
-        tgridcdf[I] = cdf 
-        m = (x0, Fx0, y) -> computeqmC(x0, Fx0)[1]
-        sigma = (x0, Fx0, y) -> ( (_, _, _, s) = computeqmC(x0, Fx0); s)
-        tgridm[I] = m
-        tgridsigma_m[I] = sigma
-        tgridquantile[I] = q_fun # function of (x0, Fx0, q)
-        if derivatives
-            tgridcdf_augmented_deriv[I] = cdf_jac_us
-            tgridcdf_augmented_hess[I] = cdf_hess_us
+        for I in R #it would be nice to iterate over all the lambdas for theta before going to the next theta
+            (r1, r2, θ, λ) = get_index_slices(btg.nodesWeightsθ, btg.nodesWeightsλ, quadType, I)
+            #@info "validate in prediction_comp", validate
+            (dpdf, pdf, cdf, cdf_jac_us, cdf_hess_us, q_fun, computeqmC) = comp_tdist(btg, θ, λ; validate = validate)
+            tgridpdfderiv[I] = dpdf
+            tgridpdf[I] = pdf
+            tgridcdf[I] = cdf 
+            m = (x0, Fx0, y) -> computeqmC(x0, Fx0)[1]
+            sigma = (x0, Fx0, y) -> ( (_, _, _, s) = computeqmC(x0, Fx0); s)
+            tgridm[I] = m
+            tgridsigma_m[I] = sigma
+            tgridquantile[I] = q_fun # function of (x0, Fx0, q)
+            if derivatives
+                tgridcdf_augmented_deriv[I] = cdf_jac_us
+                tgridcdf_augmented_hess[I] = cdf_hess_us
+            end
         end
     end
-end
+
     grid_pdf_deriv = similar(weightsTensorGrid); view_pdf_deriv = generate_view(grid_pdf_deriv, nt1, nt2, nl2, quadType)
     grid_pdf = similar(weightsTensorGrid); view_pdf = generate_view(grid_pdf, nt1, nt2, nl2, quadType)
     grid_cdf = similar(weightsTensorGrid); view_cdf = generate_view(grid_cdf, nt1, nt2, nl2, quadType)
@@ -325,7 +354,6 @@ end
     dpdf = (x0, Fx0, y0) -> (reset_test_buf(btg); btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_dpdf!(x0, Fx0, y0[1]); dot(grid_pdf_deriv, weightsTensorGrid))
     pdf = (x0, Fx0, y0) -> (reset_test_buf(btg); btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_pdf!(x0, Fx0, y0[1]); dot(grid_pdf, weightsTensorGrid))
     cdf = (x0, Fx0, y0) -> (reset_test_buf(btg); btg.debug_log = []; checkInput(x0, Fx0, y0); evalgrid_cdf!(x0, Fx0, y0[1]); dot(grid_cdf, weightsTensorGrid))
-    
     augmented_cdf_deriv = (x0, Fx0, y0) -> ( reset_test_buf(btg); reset_jac_buf(btg); derivatives == true ? (btg.debug_log = []; 
                                 evalgrid_augmented_deriv!(x0, Fx0, y0[1]); 
                                 #println("in augmented_cdf_deriv"); 
@@ -351,8 +379,7 @@ end
     quantile_range = (x0, Fx0, q) -> (evalgrid_quantile!(x0, Fx0, q); (minimum(grid_quantile), maximum(grid_quantile)))
     quantInfo = quantile_range
     # quantInfo = (quant_estimt, EY, EY2, sigma_Y, quantile_range)
-    
-    return (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m, weightsTensorGrid) 
+    return (pdf, cdf, dpdf, augmented_cdf_deriv, augmented_cdf_hess, quantInfo, tgridpdf, tgridcdf, tgridm, tgridsigma_m) 
 end
 
 

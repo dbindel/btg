@@ -7,14 +7,17 @@ Represents training dataset for GP regression problem.
 struct trainingData <: AbstractTrainingData
     x::Array{Float64, 2} #matrix of horizontal location vectors stacked vertically
     Fx::Array{Float64, 2} #matrix of covariates
-    y::Array{Float64, 1} #array of labels
+    y::Array{Float64, 1} #array of labels, normalized
+    ymax::Float64
     d::Int64 #dimension of location vectors in x
     p::Int64 #dimension of covariate vectors in Fx
     n:: Int64 # number of incorporated points
     function trainingData(x, Fx, y) 
         @assert Base.size(x, 1) == Base.size(Fx, 1)
         @assert Base.size(Fx, 1) == length(y)
-        return new(x, Fx, y, Base.size(x, 2), Base.size(Fx, 2), Base.size(x, 1))
+        ymax = maximum(y)
+        y ./= ymax
+        return new(x, Fx, y, ymax, Base.size(x, 2), Base.size(Fx, 2), Base.size(x, 1))
     end
 end
 
@@ -85,10 +88,11 @@ Represents a set of testing data. Currently supports single-point prediction.
 mutable struct testingData<:AbstractTestingData
     x0::Array{T} where T<:Real
     Fx0::Array{T} where T<:Real
+    y0_true::Union{Array{T}, Nothing} where T<:Real
     d::Int64
     p::Int64
     k::Int64
-    testingData(x0::Array{T, 2} where T<:Real, Fx0::Array{T, 2} where T<:Real) = (@assert size(x0, 1)==size(Fx0, 1);  new(x0, Fx0, size(x0, 2), size(Fx0, 2), size(x0, 1)))
+    testingData(x0::Array{T, 2}, Fx0::Array{T, 2}; y0_true=nothing) where T<:Real = (@assert size(x0, 1)==size(Fx0, 1);  new(x0, Fx0, y0_true, size(x0, 2), size(Fx0, 2), size(x0, 1)))
     testingData() = new()
 end
 getPosition(td::testingData) = td.x0

@@ -16,10 +16,12 @@ include("transforms/transforms.jl")
 include("priors/priors.jl")                                                     
 include("bayesopt/incremental.jl")                                              
 include("kernels/kernel.jl")                                                    
-include("datastructs.jl")                                                       
+include("datastructs.jl")     
+include("options.jl")                                                  
 include("computation/buffers0.jl") #datastruct, kernel, incremental, quadrature 
 include("model0.jl") #buffers, datastructs, several auxiliary   
 include("computation/finitedifference.jl")                                                                
 include("computation/tdist.jl") #model0 and buffer0     
-include("statistics.jl") #posterior statistics computation                       
+include("statistics.jl") #posterior statistics computation       
+include("prediction.jl")                                                  
 #################################################################################

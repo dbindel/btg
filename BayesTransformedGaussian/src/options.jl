@@ -48,3 +48,22 @@ mutable struct Options<:BtgOptions
         new(transform_type, kernel_type, quadrature_type, quadrature_size, parameter_range, parameter_prior, parameter_dimθ, confidence_level)
     end
 end
+
+function print(O::BtgOptions)
+    println("\n\n=============== BTG OPTIONS =============== ")
+    println("   transform type:       $(O.transform_type)")
+    println("   Kernel type:          $(O.kernel_type)")
+    println("   quadrature type:      $(O.quadrature_type)")
+    println("   quadrature size:      $(O.quadrature_size)")
+    println("   Confidence level:     $(O.confidence_level)")
+    println("   Parameter range:      ")
+    for key in keys(O.parameter_range)
+        println("                         $(key): $(O.parameter_range[key])")
+    end
+    println("   Parameter prior:      ")
+    for key in keys(O.parameter_prior)
+        println("                         $(key): $(O.parameter_prior[key])")
+    end
+end
+
+

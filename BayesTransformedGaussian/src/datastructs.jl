@@ -73,13 +73,18 @@ unpack(t::trainingData) = (t.x, t.Fx, t.y, t.d, t.n, t.p)
 unpack(t::extensible_trainingData) = (t.x[1:t.n, :], t.Fx[1:t.n, :], t.y[1:t.n], t.d, t.n, t.p)
 
 function print(data::AbstractTrainingData)
-    println("\n ##############  TRAINING DATA")
-    println("=============== Position ===============")
-    display(getPosition(data)')
-    println("=============== Covariates ===============")
-    display(getCovariates(data)')
-    println("=============== Label =============== ")
-    display(getLabel(data)')
+    println("\n=============== TRAINING DATA =============== ")
+    println("Number of training points:     $(getNumPts(data))")
+    println("Dimension of training points:  $(getDimension(data))")
+    println("Dimension of covariates:       $(getCovDimension(data))")
+    flush(stdout)
+
+    # println("\nTraining points position: ")
+    # flush(stdout)
+    # display(getPosition(data)')
+    # println("Covariates: ")
+    # flush(stdout)
+    # display(getCovariates(data)')
 end
 
 """
@@ -101,6 +106,20 @@ getDimension(td::testingData) = td.d
 getCovDimension(td::testingData) = td.p
 getNumPts(td::testingData) = td.k
 
+function print(data::AbstractTestingData)
+    println("\n=============== TESTING DATA =============== ")
+    println("Number of testing points:     $(getNumPts(data))")
+    println("Dimension of testing points:  $(getDimension(data))")
+    println("Dimension of covariates:      $(getCovDimension(data))")
+    flush(stdout)
+
+    # println("\nTesting points position: ")
+    # flush(stdout)
+    # display(getPosition(data)')
+    # println("Covariates: ")
+    # flush(stdout)
+    # display(getCovariates(data)')
+end
 #unpack(t::testingData) = (t.x0, t.Fx0, t.k) #never used, because we will always supply this data when calling pdf, cdf, etc.
 
 """

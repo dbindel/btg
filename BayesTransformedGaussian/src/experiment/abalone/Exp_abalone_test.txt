@@ -310,3 +310,7 @@ BTG test results:
             Time cost by single prediction: 0.07819048788164935
             Failed index in credible intervel:       Any[196, 2591] 
             BTG: Failed index in pdf computation:     Any[]
+
+2020-08-16T18:07:45.901, randseed: 1234 
+Data set: Abalone   
+            id_train:  1:100;  id_test:  1001:1005;   posx: 1:7;   posc: 1:3

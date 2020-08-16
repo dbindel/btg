@@ -26,4 +26,5 @@ set -x
 # julia exp_abalone.jl --test --single 2>&1 | tee log_exp_abalone_inverseuniform.txt
 # julia exp_abalone.jl --test --single --transform "IdentityTransform" 2>&1 | tee log_exp_abalone_inverseuniform_idtrans.txt
 
-# July 20
+# Aug 16
+julia exp_abalone.jl --test --single --ntrain 100 --ntest 5 --posc 3 2>&1 |tee log_exp_abalone_test.txt 

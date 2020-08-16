@@ -199,7 +199,7 @@ function weight_comp(btg::btg; validate = 0, debug = false)#depends on train_dat
     jacTensorGrid = similar(weightsTensorGrid)
     priorTensorGrid = similar(weightsTensorGrid)
     for I in R
-        (r1, r2, t1, t2) = get_index_slices(nwθ,nwλ, quadType, I)
+        (r1, r2, t1, t2) = get_index_slices(nwθ, nwλ, quadType, I)
         t1 = length(t1)==1 ? t1[1] : t1
         θλpair = (t1, t2)::Tuple{Union{Array{T, 1}, T}, T} where T<:Real #key composed of t1 and t2
         if validate == 0 #bring appropriate quantities into local scope

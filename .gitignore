@@ -170,3 +170,4 @@ BayesTransformedGaussian/src/experiment/abalone/log_exp_abalone_inverseuniform_i
 BayesTransformedGaussian/src/experiment/abalone/test_threads.jl
 BayesTransformedGaussian/src/experiment/abalone/test_threads.sh
 # BayesTransformedGaussian/src/experiment/abalone/Test_wrappers.ipynb
+BayesTransformedGaussian/src/experiment/abalone/log_exp_abalone_test.txt
